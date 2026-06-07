@@ -13,7 +13,6 @@ from typing import Optional, Any
 from automation_hub.core.db import db_connect, get_db_file, utc_now_iso
 from automation_hub.core.notifications import create_notification, fire_webhooks
 from automation_hub.core import audit
-from automation_hub.core import audit
 
 # Try to import Celery support
 try:
@@ -44,7 +43,7 @@ class JobProcessor:
             "yes",
         )
         self._use_celery = _celery_available and celery_requested
-        if self._use_celery:
+        if self._use_celery or celery_enabled():
             self._setup_celery_tasks()
 
     def _setup_celery_tasks(self) -> None:

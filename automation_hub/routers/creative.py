@@ -867,7 +867,8 @@ async def process_files(
     username = user["username"] if user else None
 
     if async_param in ("1", "true", "yes"):
-        now = db.utc_now_iso()
+        from automation_hub.services.job_queue import create_job, enqueue_job
+
         payload = {
             "psd_file_id": psd_file_id,
             "data_file_id": data_file_id,
@@ -878,34 +879,15 @@ async def process_files(
             "font_id": font_id,
             "username": username,
         }
-        conn = _db()
         try:
-            conn.execute(
-                "INSERT INTO job_queue (username, status, payload_json, created_at, updated_at) VALUES (?,?,?,?,?)",
-                (username or "anonymous", "pending", json.dumps(payload), now, now),
+            qid = create_job(
+                username or "anonymous",
+                "creative_psd",
+                payload,
             )
-            row = conn.execute("SELECT last_insert_rowid() AS id").fetchone()
-            qid = row["id"]
-            conn.commit()
-        finally:
-            conn.close()
-        # If Celery is enabled, enqueue job via Celery as well (JobProcessor will no-op)
-        try:
-            from automation_hub.core.celery_app import (
-                get_celery_app,
-                is_enabled as celery_enabled,
-            )
-
-            if celery_enabled():
-                app = get_celery_app()
-                if app:
-                    app.send_task(
-                        "automation_hub.process_creative_job",
-                        args=[json.dumps(payload)],
-                    )
-        except Exception:
-            # Fallback silently to thread-based worker
-            pass
+            enqueue_job(qid)
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc))
         return JSONResponse(
             {
                 "success": True,

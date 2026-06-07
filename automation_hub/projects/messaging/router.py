@@ -72,49 +72,47 @@ async def send_emails(
             if image_folder_id:
                 image_folder = str(UPLOAD_DIR / image_folder_id)
 
-        # Read data
-        if data_path.suffix == ".csv":
-            df = pd.read_csv(data_path)
-        else:
-            df = pd.read_excel(data_path)
-
-        email_service = getattr(request.app.state, "email_service", None)
-        if not email_service:
-            raise HTTPException(status_code=500, detail="Email service not available")
-
-        # Send emails in background
-        background_tasks.add_task(
-            email_service.send_bulk_emails,
-            email,
-            password,
-            df,
-            subject,
-            image_folder,
-            attached_image_path,
-            image_link,
-            to_column,
-            img_column,
-            cc_columns_list,
-            smtp_server,
-            smtp_port,
+        user = auth.get_current_user(request)
+        from automation_hub.services.job_queue import (
+            create_job,
+            enqueue_job,
+            store_job_secret,
         )
 
-        # Fire webhook
-        notifications.fire_webhooks(
-            "email_sent",
-            {
-                "recipient_count": len(df),
-                "subject": subject,
-                "smtp_server": smtp_server,
-            },
+        payload = {
+            "email": email,
+            "data_path": str(data_path),
+            "subject": subject,
+            "image_folder": image_folder,
+            "attached_image_path": attached_image_path,
+            "image_link": image_link,
+            "to_column": to_column,
+            "img_column": img_column,
+            "cc_columns": cc_columns_list,
+            "smtp_server": smtp_server,
+            "smtp_port": smtp_port,
+        }
+        queue_id = create_job(
+            (user or {}).get("username", "anonymous"),
+            "bulk_email",
+            payload,
         )
+        store_job_secret(queue_id, "smtp_password", password)
+        enqueue_job(queue_id)
 
         return JSONResponse(
-            {"success": True, "message": "Email sending started in background"}
+            {
+                "success": True,
+                "job_id": queue_id,
+                "message": f"Email job queued. Poll /api/jobs/{queue_id}",
+            },
+            status_code=202,
         )
 
     except HTTPException:
         raise
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

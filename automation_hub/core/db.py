@@ -431,13 +431,36 @@ def init_database() -> None:
             CREATE TABLE IF NOT EXISTS job_queue (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT NOT NULL,
+                job_type TEXT NOT NULL DEFAULT 'creative_psd',
                 status TEXT NOT NULL,
+                progress INTEGER NOT NULL DEFAULT 0,
+                message TEXT,
+                celery_task_id TEXT,
+                attempts INTEGER NOT NULL DEFAULT 0,
+                max_attempts INTEGER NOT NULL DEFAULT 3,
+                cancel_requested INTEGER NOT NULL DEFAULT 0,
                 payload_json TEXT NOT NULL,
                 result_json TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             )
             """)
+        job_columns = {
+            safe_row_get(r, "name")
+            for r in conn.execute("PRAGMA table_info(job_queue)").fetchall()
+        }
+        job_migrations = {
+            "job_type": "TEXT NOT NULL DEFAULT 'creative_psd'",
+            "progress": "INTEGER NOT NULL DEFAULT 0",
+            "message": "TEXT",
+            "celery_task_id": "TEXT",
+            "attempts": "INTEGER NOT NULL DEFAULT 0",
+            "max_attempts": "INTEGER NOT NULL DEFAULT 3",
+            "cancel_requested": "INTEGER NOT NULL DEFAULT 0",
+        }
+        for column, definition in job_migrations.items():
+            if column not in job_columns:
+                conn.execute(f"ALTER TABLE job_queue ADD COLUMN {column} {definition}")
 
         # Email campaigns and analytics
         conn.execute("""

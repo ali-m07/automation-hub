@@ -18,6 +18,9 @@
 
 ### Features
 
+Background PSD, bulk-email, and file jobs use Celery + Redis with automatic
+retry, persisted progress, per-user status APIs, and cancellation.
+
 - **Creative Studio (PSD)** – Upload PSD template + Excel/CSV; map columns to text layers; composite and export PNG/PSD (no Photoshop). **Preview** – first-row sample before full process. **Template library** – save PSDs as named templates and select from list. **Queue** – optional “Process in background” for heavy jobs (in-app queue + worker thread).
 - **Data & Connectors** – Spreadsheet-like grid (Tabulator.js), multiple tables, JSON storage, search, copy/paste, share links, per-user permissions (view/edit/view_nocopy). **External database sync**: configure SQL Server connectors in Admin; users with the “Database Connectors” module can upload Excel and sync to the remote table (staging + MERGE). Requires pyodbc and an ODBC driver for SQL Server.
 - **Messaging** – Bulk email with images; SMTP config (host, port, user, password); test connection; optional image link per row.

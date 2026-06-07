@@ -8,7 +8,7 @@ from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from pathlib import Path
-from typing import List, Optional
+from typing import Callable, Dict, List, Optional
 
 import pandas as pd
 import smtplib
@@ -53,7 +53,8 @@ class EmailService:
         cc_columns: List[str],
         smtp_server: Optional[str] = None,
         smtp_port: Optional[int] = None,
-    ) -> None:
+        progress_callback: Optional[Callable[[int, int, str], None]] = None,
+    ) -> Dict[str, int]:
         """Send bulk emails with images."""
         try:
             server_host = smtp_server or self.smtp_server
@@ -74,6 +75,7 @@ class EmailService:
 
             success_count = 0
             error_count = 0
+            total_count = len(df)
 
             for idx, row in df.iterrows():
                 try:
@@ -154,13 +156,24 @@ class EmailService:
                 except Exception as e:
                     error_count += 1
                     print(f"Row {idx + 2}: Failed to send email: {str(e)}")
-                    continue
+                finally:
+                    if progress_callback:
+                        progress_callback(
+                            success_count + error_count,
+                            total_count,
+                            f"Processed {success_count + error_count} of {total_count}",
+                        )
 
             server.quit()
             print(
                 f"\nEmail sending completed: {success_count} successful, "
                 f"{error_count} failed"
             )
+            return {
+                "total": total_count,
+                "sent": success_count,
+                "failed": error_count,
+            }
         except smtplib.SMTPAuthenticationError as e:
             print(f"SMTP Authentication Error: {str(e)}")
             raise

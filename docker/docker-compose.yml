@@ -23,6 +23,7 @@ services:
     - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
     - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/1}
     - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-redis://redis:6379/1}
+    - USE_CELERY_WORKER=1
     env_file:
     - ../.env
     restart: unless-stopped
@@ -99,12 +100,13 @@ services:
     - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
     - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/1}
     - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-redis://redis:6379/1}
+    - SESSION_SECRET=${SESSION_SECRET:?SESSION_SECRET is required}
     env_file:
     - ../.env
     command:
     - celery
     - -A
-    - automation_hub.core.celery_app
+    - automation_hub.core.celery_app:celery_app
     - worker
     - -l
     - info
@@ -112,6 +114,9 @@ services:
     networks:
     - hub-network
     volumes:
+    - ../uploads:/app/uploads
+    - ../outputs:/app/outputs
+    - hub-data:/app/data
     - font-data:/app/fonts
 volumes:
   hub-data:
