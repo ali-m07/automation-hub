@@ -61,6 +61,22 @@
     </div>
 </div>
 
+<div class="card" id="psd-layer-editor-card" style="display:none;">
+    <h2>Advanced PSD Layer Editor</h2>
+    <p style="color:#6b7280;">
+        Preview the PSD canvas and override text, fonts, data columns, or image layers.
+        These settings apply to both first-row preview and batch ZIP rendering.
+    </p>
+    <div style="display:grid; grid-template-columns:minmax(280px, 1fr) minmax(320px, 1.35fr); gap:16px; align-items:start;">
+        <div style="position:sticky; top:16px; padding:12px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:10px;">
+            <div id="psd-editor-empty" style="color:#6b7280;">Loading PSD canvas...</div>
+            <img id="psd-editor-canvas" alt="PSD canvas preview" style="display:none; width:100%; max-height:70vh; object-fit:contain; border-radius:8px;">
+        </div>
+        <div id="psd-layer-editor-list" style="display:grid; gap:10px; max-height:72vh; overflow:auto;"></div>
+    </div>
+    <div id="psd-editor-status" class="status-box" style="margin-top:12px;"></div>
+</div>
+
 <div class="card">
     <h2>Rendering Font</h2>
     <p style="color:#6b7280; margin-top:0;">

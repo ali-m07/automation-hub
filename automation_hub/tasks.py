@@ -29,6 +29,11 @@ def _process_psd(queue_id: int, payload: Dict[str, Any]) -> Dict[str, Any]:
     set_progress(queue_id, 10, "Loading PSD and data")
     selected_font = resolve_font(payload.get("font_id"))
     set_progress(queue_id, 25, "Rendering PSD outputs")
+
+    def progress(done: int, total: int) -> None:
+        percent = 25 + int((done / max(total, 1)) * 65)
+        set_progress(queue_id, percent, f"Rendered {done} of {total} rows")
+
     job_id, results, _ = creative_module._run_process_core(
         payload["psd_file_id"],
         payload["data_file_id"],
@@ -39,6 +44,8 @@ def _process_psd(queue_id: int, payload: Dict[str, Any]) -> Dict[str, Any]:
         PSDProcessor(),
         watermark_config=payload.get("watermark_config"),
         font_path=str(selected_font) if selected_font else None,
+        layer_overrides=payload.get("layer_overrides"),
+        progress_callback=progress,
     )
     set_progress(queue_id, 90, "Packaging generated files")
     return {

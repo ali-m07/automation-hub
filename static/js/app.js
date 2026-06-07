@@ -22,7 +22,8 @@ let state = {
     dbConnectors: [],
     dbSyncFilename: null,
     dbSyncSheets: [],
-    creativeFonts: []
+    creativeFonts: [],
+    layerOverrides: {}
 };
 
 // Dark mode
@@ -1567,6 +1568,7 @@ async function loadCreativeFonts(selectedId = null) {
             status.textContent = `${state.creativeFonts.length} readable font(s) available.`;
             status.className = 'status-box info';
         }
+        renderPsdLayerEditor();
     } catch (error) {
         if (status) {
             status.textContent = error.message;
@@ -1642,6 +1644,7 @@ async function handlePSDUpload(event) {
         if (result.success) {
             state.psdFileId = result.file_id;
             state.layers = result.layers;
+            state.layerOverrides = {};
             const templateSel = document.getElementById('psd-template-select');
             if (templateSel) { templateSel.value = ''; }
             const saveBtn = document.getElementById('save-as-template-btn');
@@ -1799,7 +1802,137 @@ function renderLayersInfo() {
     if (browser) browser.style.display = 'block';
     if (summary) summary.textContent = `${state.layers.length} total layers · ${textLayerCount} text layers`;
     renderCreativeLayerList();
+    renderPsdLayerEditor();
+    loadPsdCanvasPreview();
     renderCreativeLayerPicker();
+}
+
+async function loadPsdCanvasPreview() {
+    const image = document.getElementById('psd-editor-canvas');
+    const empty = document.getElementById('psd-editor-empty');
+    if (!image || !state.psdFileId) return;
+    const formData = new FormData();
+    formData.append('psd_file_id', state.psdFileId);
+    try {
+        const response = await fetch('/api/creative/canvas-preview', {
+            method: 'POST', body: formData, credentials: 'include'
+        });
+        const data = await response.json();
+        if (!response.ok || !data.preview_url) throw new Error(data.detail || 'Preview failed');
+        image.src = data.preview_url;
+        image.style.display = 'block';
+        if (empty) empty.style.display = 'none';
+    } catch (error) {
+        if (empty) {
+            empty.textContent = error.message;
+            empty.style.display = 'block';
+        }
+    }
+}
+
+function getLayerOverride(layer) {
+    const name = layer.name || '';
+    if (!state.layerOverrides[name]) {
+        state.layerOverrides[name] = {
+            enabled: true,
+            type: layer.is_text_layer ? 'text' : 'image',
+            source: 'column',
+            column: '',
+            value: '',
+            font_id: '',
+            font_size: 0,
+            image_file_id: ''
+        };
+    }
+    return state.layerOverrides[name];
+}
+
+function updateLayerOverride(layerName, field, value, rerender = true) {
+    const layer = (state.layers || []).find(item => item.name === layerName);
+    if (!layer) return;
+    const override = getLayerOverride(layer);
+    override[field] = value;
+    if (field === 'source' && value === 'constant' && !override.value) {
+        override.value = layer.text || '';
+    }
+    if (rerender) renderPsdLayerEditor();
+    scheduleAutoPreview();
+}
+
+async function uploadLayerReplacement(layerName, input) {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    showStatus('psd-editor-status', `Uploading ${file.name}...`, 'info');
+    try {
+        const response = await fetch('/api/upload-image', {
+            method: 'POST', body: formData, credentials: 'include'
+        });
+        const data = await response.json();
+        if (!response.ok || !data.file_id) throw new Error(data.detail || 'Upload failed');
+        updateLayerOverride(layerName, 'image_file_id', data.file_id);
+        updateLayerOverride(layerName, 'source', 'image');
+        showStatus('psd-editor-status', `${file.name} is ready for preview and batch rendering.`, 'success');
+    } catch (error) {
+        showStatus('psd-editor-status', error.message, 'error');
+    }
+}
+
+function renderPsdLayerEditor() {
+    const container = document.getElementById('psd-layer-editor-list');
+    const card = document.getElementById('psd-layer-editor-card');
+    if (!container || !card) return;
+    const layers = state.layers || [];
+    card.style.display = layers.length ? 'block' : 'none';
+    container.innerHTML = '';
+    layers.forEach(layer => {
+        const override = getLayerOverride(layer);
+        const row = document.createElement('div');
+        row.style.cssText = 'padding:14px; border:1px solid #e5e7eb; border-radius:10px; background:#fff; display:grid; gap:10px;';
+        const fontOptions = '<option value="">Global/default font</option>' +
+            (state.creativeFonts || []).map(font =>
+                `<option value="${escapeHtml(font.id)}"${override.font_id === font.id ? ' selected' : ''}>${escapeHtml(font.family + ' - ' + font.style)}</option>`
+            ).join('');
+        const columnOptions = '<option value="">Select data column</option>' +
+            (state.columns || []).map(column =>
+                `<option value="${escapeHtml(column)}"${override.column === column ? ' selected' : ''}>${escapeHtml(column)}</option>`
+            ).join('');
+        const bbox = Array.isArray(layer.bbox) ? layer.bbox.join(', ') : 'No bounds';
+        row.innerHTML = `
+            <div style="display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap;">
+                <div><strong>${escapeHtml(layer.name || 'Unnamed layer')}</strong>
+                    <span style="color:#6b7280; margin-left:8px;">${layer.is_text_layer ? 'Text' : 'Image'} · ${escapeHtml(bbox)}</span>
+                </div>
+                <label><input type="checkbox" ${override.enabled ? 'checked' : ''}
+                    onchange="updateLayerOverride(${JSON.stringify(layer.name)}, 'enabled', this.checked)"> Apply override</label>
+            </div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px;">
+                <select class="form-control" onchange="updateLayerOverride(${JSON.stringify(layer.name)}, 'source', this.value)">
+                    <option value="column"${override.source === 'column' ? ' selected' : ''}>Data column</option>
+                    ${layer.is_text_layer ? `<option value="constant"${override.source === 'constant' ? ' selected' : ''}>Fixed text</option>` : ''}
+                    <option value="image"${override.source === 'image' ? ' selected' : ''}>Uploaded image</option>
+                </select>
+                ${override.source === 'column' ? `<select class="form-control" onchange="updateLayerOverride(${JSON.stringify(layer.name)}, 'column', this.value)">${columnOptions}</select>` : ''}
+                ${override.source === 'constant' ? `<input class="form-control" value="${escapeHtml(override.value || layer.text || '')}" placeholder="Replacement text" oninput="updateLayerOverride(${JSON.stringify(layer.name)}, 'value', this.value, false)">` : ''}
+                ${override.source === 'image' ? `<input class="form-control" type="file" accept=".png,.jpg,.jpeg,.webp" onchange="uploadLayerReplacement(${JSON.stringify(layer.name)}, this)">` : ''}
+                ${layer.is_text_layer ? `<select class="form-control" onchange="updateLayerOverride(${JSON.stringify(layer.name)}, 'font_id', this.value)">${fontOptions}</select>
+                    <input class="form-control" type="number" min="8" max="300" value="${override.font_size || ''}" placeholder="Auto font size" onchange="updateLayerOverride(${JSON.stringify(layer.name)}, 'font_size', parseInt(this.value || 0))">` : ''}
+            </div>
+        `;
+        container.appendChild(row);
+    });
+}
+
+function getActiveLayerOverrides() {
+    const result = {};
+    Object.entries(state.layerOverrides || {}).forEach(([name, override]) => {
+        if (!override.enabled) return;
+        if (override.source === 'column' && !override.column) return;
+        if (override.source === 'image' && !override.image_file_id) return;
+        result[name] = override;
+    });
+    return result;
 }
 
 function getFilteredCreativeLayers() {
@@ -2248,6 +2381,7 @@ function onPsdTemplateSelect() {
     if (!val) {
         state.psdFileId = null;
         state.layers = [];
+        state.layerOverrides = {};
         document.getElementById('psd-file-name').textContent = '';
         document.getElementById('save-as-template-btn').style.display = 'none';
         renderLayersInfo();
@@ -2258,6 +2392,7 @@ function onPsdTemplateSelect() {
     const filePath = opt && opt.getAttribute('data-file-path');
     if (!filePath) return;
     state.psdFileId = filePath;
+    state.layerOverrides = {};
     document.getElementById('psd-file-name').textContent = opt.textContent;
     document.getElementById('save-as-template-btn').style.display = 'none';
     fetch('/api/creative/templates/' + val + '/layers', { credentials: 'include' })
@@ -2385,6 +2520,7 @@ async function runPreview() {
     const outputFormat = document.getElementById('output-format')?.value || 'png';
     formData.append('output_format', outputFormat);
     formData.append('font_id', document.getElementById('creative-font-select')?.value || '');
+    formData.append('layer_overrides', JSON.stringify(getActiveLayerOverrides()));
     
     // Add watermark config
     const watermarkConfig = getWatermarkConfig();
@@ -2436,6 +2572,7 @@ async function processFiles() {
     formData.append('filename_fields', JSON.stringify(state.filenameFields));
     formData.append('output_format', document.getElementById('output-format').value);
     formData.append('font_id', document.getElementById('creative-font-select')?.value || '');
+    formData.append('layer_overrides', JSON.stringify(getActiveLayerOverrides()));
     
     // Add watermark config
     const watermarkConfig = getWatermarkConfig();
@@ -2482,10 +2619,20 @@ async function processFiles() {
                         `Done! <a href="${j.result.zip_file}" download>Download ZIP</a>`, 'success');
                     return;
                 }
+                if (j.status === 'cancelled') {
+                    showStatus('process-status', 'Job cancelled.', 'error');
+                    return;
+                }
                 if (j.status === 'failed' && j.result && j.result.error) {
                     showStatus('process-status', 'Job failed: ' + j.result.error, 'error');
                     return;
                 }
+                showStatus(
+                    'process-status',
+                    `${escapeHtml(j.message || 'Processing')} (${j.progress || 0}%) ` +
+                    `<button class="btn" onclick="cancelCreativeJob(${jobId})">Cancel</button>`,
+                    'info'
+                );
                 setTimeout(poll, 2000);
             };
             poll();
@@ -2504,6 +2651,19 @@ async function processFiles() {
     } catch (error) {
         showStatus('process-status', `Error: ${error.message}`, 'error');
     }
+}
+
+async function cancelCreativeJob(jobId) {
+    const response = await fetch(`/api/jobs/${jobId}/cancel`, {
+        method: 'POST',
+        credentials: 'include'
+    });
+    const data = await response.json();
+    showStatus(
+        'process-status',
+        response.ok ? 'Job cancelled.' : (data.detail || 'Could not cancel job'),
+        response.ok ? 'success' : 'error'
+    );
 }
 
 // Email Sender Functions

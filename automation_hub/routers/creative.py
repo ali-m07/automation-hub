@@ -9,7 +9,7 @@ import secrets
 import shutil
 import zipfile
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import pandas as pd
 from fastapi import File, Form, HTTPException, Query, Request, UploadFile
@@ -127,6 +127,8 @@ def _run_process_core(
     psd_processor,
     watermark_config: Optional[Dict[str, Any]] = None,
     font_path: Optional[str] = None,
+    layer_overrides: Optional[Dict[str, Dict[str, Any]]] = None,
+    progress_callback: Optional[Callable[[int, int], None]] = None,
 ) -> tuple:
     """Run PSD processing (sync). Returns (job_id, results, zip_path)."""
     psd_path = _resolve_psd_path(psd_file_id, username)
@@ -156,6 +158,7 @@ def _run_process_core(
                 output_format,
                 watermark_config=watermark_config,
                 font_path=font_path,
+                layer_overrides=layer_overrides,
             )
             results.append(
                 {
@@ -167,6 +170,9 @@ def _run_process_core(
             )
         except Exception as e:
             results.append({"row": idx + 1, "success": False, "error": str(e)})
+        finally:
+            if progress_callback:
+                progress_callback(idx + 1, len(df))
     zip_path = OUTPUT_DIR / f"{job_id}.zip"
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
         for root, dirs, files in os.walk(job_output_dir):
@@ -447,6 +453,31 @@ async def read_creative_layers(request: Request, psd_file_id: str = Form(...)):
         )
 
 
+@creative_router.post("/creative/canvas-preview")
+async def creative_canvas_preview(request: Request, psd_file_id: str = Form(...)):
+    """Render the PSD canvas before layer overrides are applied."""
+    user = auth.get_current_user(request)
+    auth.require_module(request, "creative_psd", auth.get_current_user)
+    psd_processor = getattr(request.app.state, "psd_processor", None)
+    psd_path = _resolve_psd_path(psd_file_id, user["username"] if user else None)
+    if not psd_processor or not psd_path.is_file():
+        raise HTTPException(status_code=404, detail="PSD file not found")
+    preview_id = f"canvas_{secrets.token_hex(8)}"
+    preview_dir = OUTPUT_DIR / preview_id
+    preview_path = preview_dir / "canvas.png"
+    await run_in_threadpool(
+        psd_processor.render_composite_preview,
+        str(psd_path),
+        str(preview_path),
+    )
+    return JSONResponse(
+        {
+            "success": True,
+            "preview_url": f"/api/download-preview/{preview_id}/canvas.png",
+        }
+    )
+
+
 @creative_router.get("/creative/templates/{template_id}/layers")
 async def get_template_layers(template_id: int, request: Request):
     """Get layer info for a saved template (to build mapping UI)."""
@@ -680,6 +711,7 @@ async def preview_process(request: Request):
             form.get("watermark_config") or form.get("watermarkConfig") or "{}"
         )
         font_id = form.get("font_id") or form.get("fontId") or ""
+        layer_overrides_json = form.get("layer_overrides") or "{}"
         if not psd_file_id or not data_file_id:
             raise HTTPException(
                 status_code=400, detail="psd_file_id and data_file_id required"
@@ -690,6 +722,7 @@ async def preview_process(request: Request):
         watermark_config = (
             json.loads(watermark_config_json) if watermark_config_json else None
         )
+        layer_overrides = json.loads(layer_overrides_json)
         selected_font = resolve_font(str(font_id))
         if font_id and not selected_font:
             raise HTTPException(
@@ -731,6 +764,7 @@ async def preview_process(request: Request):
                 output_format,
                 watermark_config=watermark_config,
                 font_path=str(selected_font) if selected_font else None,
+                layer_overrides=layer_overrides,
             )
             return job_id, output_paths
 
@@ -848,6 +882,7 @@ async def process_files(
     output_format: str = Form("both"),  # "psd", "png", "webp", "avif", "pdf", "both"
     watermark_config: str = Form("{}"),  # JSON string
     font_id: str = Form(""),
+    layer_overrides: str = Form("{}"),
     async_param: str = Query("0", alias="async"),
 ):
     """Process PSD files with data mapping. Use ?async=1 to enqueue and poll /api/jobs/{id}."""
@@ -861,6 +896,7 @@ async def process_files(
     mapping = json.loads(layer_mapping)
     filename_fields_list = json.loads(filename_fields)
     watermark_config_dict = json.loads(watermark_config) if watermark_config else None
+    layer_overrides_dict = json.loads(layer_overrides) if layer_overrides else {}
     selected_font = resolve_font(font_id)
     if font_id and not selected_font:
         raise HTTPException(status_code=400, detail="Selected font is not available.")
@@ -877,6 +913,7 @@ async def process_files(
             "output_format": output_format,
             "watermark_config": watermark_config_dict,
             "font_id": font_id,
+            "layer_overrides": layer_overrides_dict,
             "username": username,
         }
         try:
@@ -909,6 +946,7 @@ async def process_files(
             psd_processor,
             watermark_config=watermark_config_dict,
             font_path=str(selected_font) if selected_font else None,
+            layer_overrides=layer_overrides_dict,
         )
         return JSONResponse(
             {

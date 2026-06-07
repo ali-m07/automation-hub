@@ -15,6 +15,7 @@ from PIL import Image, ImageDraw, ImageFont
 from psd_tools import PSDImage
 
 from automation_hub.services.font_manager import get_font_dir
+from automation_hub.services.font_manager import resolve_font
 
 
 class PSDProcessor:
@@ -43,6 +44,7 @@ class PSDProcessor:
                         "type": type(layer).__name__,
                         "visible": layer.visible,
                         "bbox": layer.bbox if hasattr(layer, "bbox") else None,
+                        "opacity": getattr(layer, "opacity", 255),
                     }
 
                     # Add text content if it's a text layer
@@ -65,6 +67,20 @@ class PSDProcessor:
             return layers
         except Exception as e:  # pragma: no cover - defensive
             raise Exception(f"Failed to read PSD file: {str(e)}") from e
+
+    def render_composite_preview(
+        self, psd_path: str, output_path: str, max_size: int = 1400
+    ) -> str:
+        """Render a flattened PSD canvas for the browser editor."""
+        psd = PSDImage.open(psd_path)
+        image = psd.composite()
+        if isinstance(image, np.ndarray):
+            image = Image.fromarray(image.astype(np.uint8))
+        image = image.convert("RGBA")
+        image.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+        image.save(output_path, "PNG")
+        return output_path
 
     def find_layer_by_name(self, psd: PSDImage, layer_name: str):
         """Find a layer by name recursively."""
@@ -474,6 +490,7 @@ class PSDProcessor:
         output_format: str = "both",
         watermark_config: Optional[Dict[str, Any]] = None,
         font_path: str | None = None,
+        layer_overrides: Optional[Dict[str, Dict[str, Any]]] = None,
     ) -> Dict[str, str]:
         """
         Process a single PSD file with data row.
@@ -493,7 +510,13 @@ class PSDProcessor:
 
             mapped_layers = []
             hidden_layers = []
-            for layer_name in layer_mapping.keys():
+            effective_layers = list(layer_mapping.keys())
+            effective_layers.extend(
+                name
+                for name in (layer_overrides or {}).keys()
+                if name not in layer_mapping
+            )
+            for layer_name in effective_layers:
                 layer = self.find_layer_by_name(psd, layer_name)
                 mapped_layers.append((layer_name, layer))
                 if not layer:
@@ -538,14 +561,30 @@ class PSDProcessor:
 
             # Process each layer mapping
             mapped_layer_lookup = {name: layer for name, layer in mapped_layers}
-            for layer_name, column_name in layer_mapping.items():
+            for layer_name in effective_layers:
                 try:
                     layer = mapped_layer_lookup.get(layer_name)
                     if not layer:
                         print(f"Warning: Layer '{layer_name}' not found")
                         continue
 
-                    cell_value = self._normalize_cell_value(data_row[column_name])
+                    override = (layer_overrides or {}).get(layer_name) or {}
+                    if override.get("enabled", True) is False:
+                        continue
+                    source = override.get("source", "column")
+                    column_name = override.get("column") or layer_mapping.get(
+                        layer_name
+                    )
+                    if source == "constant":
+                        cell_value = self._normalize_cell_value(override.get("value"))
+                    elif source == "image":
+                        cell_value = self._normalize_cell_value(
+                            override.get("image_file_id")
+                        )
+                    elif column_name:
+                        cell_value = self._normalize_cell_value(data_row[column_name])
+                    else:
+                        continue
 
                     if hasattr(layer, "bbox") and layer.bbox:
                         bbox = layer.bbox
@@ -564,7 +603,8 @@ class PSDProcessor:
                         except Exception:
                             is_text_layer = False
 
-                    if not is_text_layer:
+                    override_type = override.get("type")
+                    if not is_text_layer or override_type == "image":
                         replacement_image = self._load_image_from_value(cell_value)
                         if replacement_image and bbox:
                             img = self.replace_image_in_bbox(
@@ -578,6 +618,10 @@ class PSDProcessor:
 
                     font_size = 12
                     text_color = (0, 0, 0)
+                    layer_font_path = font_path
+                    override_font = resolve_font(str(override.get("font_id") or ""))
+                    if override_font:
+                        layer_font_path = str(override_font)
 
                     if hasattr(layer, "text") and hasattr(layer, "_engine"):
                         try:
@@ -603,8 +647,8 @@ class PSDProcessor:
                             img,
                             cell_value,
                             bbox,
-                            font_path=font_path,
-                            font_size=font_size,
+                            font_path=layer_font_path,
+                            font_size=int(override.get("font_size") or font_size),
                             color=text_color,
                         )
                     else:
@@ -617,8 +661,8 @@ class PSDProcessor:
                                 x + max(120, len(cell_value) * 10),
                                 y + max(40, font_size * 3),
                             ),
-                            font_path=font_path,
-                            font_size=font_size,
+                            font_path=layer_font_path,
+                            font_size=int(override.get("font_size") or font_size),
                             color=text_color,
                         )
                 except Exception as e:

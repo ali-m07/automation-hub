@@ -98,6 +98,7 @@ class JobProcessor:
                 self.psd_processor,
                 watermark_config=payload.get("watermark_config"),
                 font_path=str(selected_font) if selected_font else None,
+                layer_overrides=payload.get("layer_overrides"),
             )
             return {
                 "job_id": job_id,
@@ -175,6 +176,7 @@ class JobProcessor:
                         self.psd_processor,
                         watermark_config=payload.get("watermark_config"),
                         font_path=str(selected_font) if selected_font else None,
+                        layer_overrides=payload.get("layer_overrides"),
                     )
                     result_obj = {
                         "job_id": job_id,
