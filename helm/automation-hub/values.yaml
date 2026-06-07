@@ -1,0 +1,81 @@
+replicaCount: 2
+
+image:
+  repository: your-registry/automation-hub
+  tag: latest
+  pullPolicy: Always
+
+service:
+  type: LoadBalancer
+  port: 80
+  targetPort: 8000
+  sessionAffinity: ClientIP
+  sessionAffinityTimeout: 10800
+
+ingress:
+  enabled: false
+  className: nginx
+  annotations:
+    # Large uploads (PSD, Excel)
+    nginx.ingress.kubernetes.io/proxy-body-size: "500m"
+    # Long timeouts so large downloads (ZIP/Excel) don't hit "upstream timed out"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    # Stream large responses instead of buffering (avoids download getting stuck)
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-request-buffering: "off"
+  hosts:
+    - host: automation-hub.yourdomain.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+config:
+  environment: production
+  appDataDir: /app/data
+  smtpServer: smtp.example.com
+  smtpPort: "587"
+  # Optional: Redis URL for caching / rate limiting (e.g. redis://redis:6379/0)
+  redisUrl: ""
+
+secret:
+  create: true
+  sessionSecret: ""  # set via --set secret.sessionSecret=xxx or in a values file
+  smtpUser: ""
+  smtpPassword: ""
+  adminEmail: ""
+
+resources:
+  requests:
+    memory: 512Mi
+    cpu: 250m
+  limits:
+    memory: 2Gi
+    cpu: "2"
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilization: 70
+  targetMemoryUtilization: 80
+
+persistence:
+  data:
+    enabled: true
+    size: 10Gi
+    storageClass: null
+  uploads:
+    enabled: true
+    size: 20Gi
+    storageClass: null
+  outputs:
+    enabled: true
+    size: 50Gi
+    storageClass: null
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

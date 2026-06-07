@@ -1,0 +1,20 @@
+services:
+  automation-hub:
+    volumes:
+      - ../fonts:/app/fonts
+
+  celery-worker:
+    volumes:
+      - ../fonts:/app/fonts
+
+volumes:
+  hub-data:
+    external: false
+    name: automation-hub-data
+  font-data:
+    external: false
+
+networks:
+  hub-network:
+    external: false
+    name: automation-hub-network

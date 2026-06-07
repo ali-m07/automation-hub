@@ -1,0 +1,152 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Messaging – Automation Hub{% endblock %}
+
+{% block subtitle %}Email campaigns and messaging automation{% endblock %}
+
+{% block content %}
+<header>
+    <h1>Messaging / Email Campaigns</h1>
+    <p class="subtitle">Send personalized emails with attachments and images from Excel data.</p>
+</header>
+
+<div class="card">
+    <h2>Messaging / Email Campaigns</h2>
+    
+    <div class="form-group">
+        <label>Email Address:</label>
+        <input type="email" id="email-address" class="form-control" placeholder="your@email.com">
+    </div>
+
+    <div class="form-group">
+        <label>Email Password:</label>
+        <input type="password" id="email-password" class="form-control" placeholder="Your password">
+    </div>
+
+    <div class="form-group">
+        <label>Excel File:</label>
+        <div class="file-upload">
+            <input type="file" id="email-data-file" accept=".xlsx,.xls" onchange="handleEmailDataUpload(event)">
+            <label for="email-data-file" class="upload-button">📊 Choose Excel File</label>
+            <span id="email-data-file-name" class="file-name"></span>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label>Image Sending Option:</label>
+        <select id="image-option" class="form-control" onchange="toggleImageOptions()">
+            <option value="1">Attach one image for all emails</option>
+            <option value="2">Send photo with finding relationship</option>
+        </select>
+    </div>
+
+    <div class="form-group" id="single-image-section">
+        <label>Upload Image:</label>
+        <div class="file-upload">
+            <input type="file" id="single-image" accept=".jpg,.jpeg,.png" onchange="handleSingleImageUpload(event)">
+            <label for="single-image" class="upload-button">🖼️ Choose Image</label>
+            <span id="single-image-name" class="file-name"></span>
+        </div>
+    </div>
+
+    <div class="form-group" id="folder-image-section" style="display: none;">
+        <label>Image Folder:</label>
+        <div class="file-upload">
+            <input type="file" id="folder-images" accept=".jpg,.jpeg,.png" multiple onchange="handleFolderImagesUpload(event)">
+            <label for="folder-images" class="upload-button">📁 Choose Images</label>
+            <span id="folder-images-count" class="file-name"></span>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label>Email Subject:</label>
+        <input type="text" id="email-subject" class="form-control" placeholder="Your email subject">
+    </div>
+
+    <div class="form-group">
+        <label>Optional Image Link:</label>
+        <input type="url" id="image-link" class="form-control" placeholder="https://example.com">
+    </div>
+
+    <!-- Messaging Settings Panel -->
+    <div id="messaging-settings-panel" style="display: none; margin-top: 24px; padding: 20px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+            <h3 style="margin: 0; font-size: 1.1rem; color: #111827;">Messaging Settings</h3>
+            <button type="button" onclick="hideMessagingSettings()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280;">×</button>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+            <div class="form-group" style="margin: 0;">
+                <label>SMTP Server:</label>
+                <input type="text" id="smtp-server" class="form-control" placeholder="smtp.example.com" value="smtp.example.com">
+            </div>
+            <div class="form-group" style="margin: 0;">
+                <label>SMTP Port:</label>
+                <input type="number" id="smtp-port" class="form-control" placeholder="587" value="587">
+            </div>
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 16px;">
+            <label>To Column (Email Addresses): <span style="color: #dc2626;">*</span></label>
+            <input type="text" id="email-to-column" class="form-control" placeholder="Enter column name for 'To' addresses" required>
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 16px;">
+            <label>Image Column (Optional):</label>
+            <input type="text" id="email-img-column" class="form-control" placeholder="Enter column name for image filenames (leave empty if not needed)">
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 16px;">
+            <label>CC Columns:</label>
+            <div id="email-cc-columns-container" style="display: flex; flex-direction: column; gap: 8px;">
+                <!-- CC columns will be added dynamically -->
+            </div>
+            <button type="button" class="btn" onclick="addCCColumn()" style="margin-top: 8px; padding: 6px 12px;">+ Add CC Column</button>
+        </div>
+        
+        <div style="display: flex; gap: 12px; margin-top: 20px;">
+            <button type="button" class="btn btn-primary" onclick="saveMessagingSettings()">Save Settings</button>
+            <button type="button" class="btn" onclick="testSMTPConnection()">Test SMTP Connection</button>
+        </div>
+        <div id="smtp-test-status" class="status-box" style="margin-top: 12px;"></div>
+    </div>
+
+    <div style="display: flex; gap: 12px; margin-top: 20px;">
+        <button class="btn btn-primary" onclick="showMessagingSettings()">⚙️ Configure Settings</button>
+        <button class="btn" onclick="showTemplateEditor()">📝 Email Template Editor</button>
+        <button class="btn btn-success btn-large" onclick="sendEmails()">
+            📧 Send Emails
+        </button>
+    </div>
+    <div id="email-status" class="status-box"></div>
+</div>
+
+<!-- Email Template Editor Modal -->
+<div id="template-editor-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center;">
+    <div style="background:#fff; border-radius:12px; padding:24px; max-width:900px; width:90%; max-height:90vh; overflow:auto;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h2 style="margin:0;">Email Template Editor</h2>
+            <button onclick="hideTemplateEditor()" style="background:none; border:none; font-size:1.5rem; cursor:pointer;">×</button>
+        </div>
+        <div style="margin-bottom:16px;">
+            <label>Template Name:</label>
+            <input type="text" id="template-name" class="form-control" placeholder="My Email Template">
+        </div>
+        <div style="margin-bottom:16px;">
+            <label>HTML Content:</label>
+            <textarea id="template-html" class="form-control" rows="15" style="font-family:monospace;" placeholder="<html><body><h1>Hello {{name}}</h1><p>Your email content here...</p></body></html>"></textarea>
+        </div>
+        <div style="display:flex; gap:8px; margin-bottom:16px;">
+            <button class="btn" onclick="insertTemplateVariable('name')">Insert {{name}}</button>
+            <button class="btn" onclick="insertTemplateVariable('email')">Insert {{email}}</button>
+            <button class="btn" onclick="insertTemplateVariable('company')">Insert {{company}}</button>
+        </div>
+        <div style="display:flex; gap:8px;">
+            <button class="btn btn-primary" onclick="saveTemplate()">Save Template</button>
+            <button class="btn" onclick="previewTemplate()">Preview</button>
+            <button class="btn" onclick="hideTemplateEditor()">Cancel</button>
+        </div>
+        <div id="template-preview" style="margin-top:20px; padding:16px; background:#f9fafb; border-radius:8px; display:none;"></div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: automation-hub-config
+  labels:
+    app: automation-hub
+data:
+  ENVIRONMENT: "production"
+  PYTHONUNBUFFERED: "1"
+  APP_DATA_DIR: "/app/data"
+  LOG_LEVEL: "INFO"
+  SMTP_SERVER: "smtp.example.com"
+  SMTP_PORT: "587"

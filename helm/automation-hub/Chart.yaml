@@ -1,0 +1,13 @@
+apiVersion: v2
+name: automation-hub
+description: Automation Hub - Data & Connectors, Creative Studio, Messaging, Admin, Tickets
+type: application
+version: 1.0.0
+appVersion: "2.0.0"
+keywords:
+  - automation
+  - psd
+  - data
+  - messaging
+maintainers:
+  - name: Automation Hub

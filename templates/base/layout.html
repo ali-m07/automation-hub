@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Automation Hub{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Left sidebar + overlay -->
+    <div id="sidebar-overlay" class="sidebar-overlay" onclick="closeSidebar()" style="display:none;"></div>
+    <aside id="app-sidebar" class="app-sidebar" aria-label="Main menu">
+        <div class="sidebar-header">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <div class="top-nav-logo"></div>
+                <div>
+                    <div style="font-weight:800; color:#111827;">Automation Hub</div>
+                    <div style="font-size:0.8rem; color:#6b7280;">Menu</div>
+                </div>
+            </div>
+            <button class="sidebar-close-btn" type="button" onclick="closeSidebar()" aria-label="Close menu">×</button>
+        </div>
+
+        <div class="sidebar-section">
+            <div class="sidebar-user">
+                <div style="font-weight:700; color:#111827;">{{ user.username }}</div>
+                <div style="font-size:0.85rem; color:#6b7280;">Role: {{ user.role }}</div>
+            </div>
+        </div>
+
+        <div class="sidebar-section">
+            <div class="sidebar-title">Workspace</div>
+            <a href="/summary" class="sidebar-link">Summary</a>
+            {% if user and (user.role == 'admin' or 'data_tables_manual' in (user.modules or [])) %}
+            <a href="/data" class="sidebar-link">Data &amp; Connectors</a>
+            {% endif %}
+            {% if user and (user.role == 'admin' or 'connectors_db' in (user.modules or [])) %}
+            <a href="/external-db" class="sidebar-link">External database</a>
+            {% endif %}
+            {% if user and (user.role == 'admin' or 'feedback_180' in (user.modules or []) or 'feedback_180_admin' in (user.modules or [])) %}
+            <a href="/feedback" class="sidebar-link">180 Feedback</a>
+            {% endif %}
+            <a href="/creative" class="sidebar-link">Creative Studio</a>
+            <a href="/gallery" class="sidebar-link">File Repository</a>
+            <a href="/messaging" class="sidebar-link">Messaging</a>
+            <a href="/support" class="sidebar-link">Support</a>
+        </div>
+
+        <div class="sidebar-section">
+            <div class="sidebar-title">Account</div>
+            <a href="#" class="sidebar-link" onclick="toggleNotificationsPanel(); closeSidebar(); return false;">Notifications</a>
+            {% if user and user.role == 'admin' %}
+            <a href="/admin" class="sidebar-link">Admin</a>
+            {% endif %}
+            <a href="#" class="sidebar-link" onclick="toggleProfilePanel(); closeSidebar(); return false;">Profile</a>
+            <a href="#" class="sidebar-link" onclick="toggleSecurityPanel(); closeSidebar(); return false;">Security</a>
+            <a href="/logout" class="sidebar-link sidebar-link-danger">Logout</a>
+        </div>
+    </aside>
+
+    <div class="app-main" id="app-main">
+    <nav class="top-nav">
+        <div class="top-nav-left">
+            <button type="button" class="nav-hamburger" id="nav-hamburger" aria-label="Menu" onclick="toggleSidebar()">
+                <span></span><span></span><span></span>
+            </button>
+            <div class="top-nav-logo"></div>
+            <div>
+                <div class="top-nav-title">Automation Hub</div>
+                <div class="top-nav-sub">{% block subtitle %}Data connectors, evaluation pipelines, creative automation and messaging in one place{% endblock %}</div>
+            </div>
+        </div>
+        <div class="top-nav-right" id="top-nav-menu">
+            {% if user and user.role == 'admin' %}
+            <a href="/admin" class="top-nav-link" style="font-weight:700;">Admin panel</a>
+            {% endif %}
+            <div style="position:relative;">
+                <input type="text" id="platform-search" class="form-control" placeholder="Search tables, templates, gallery, tickets…" style="width:220px; padding:8px 12px; margin-right:8px;" oninput="onPlatformSearchInput(this.value)" onfocus="onPlatformSearchFocus()">
+                <div id="platform-search-results" style="display:none; position:absolute; top:100%; left:0; margin-top:4px; width:320px; max-height:360px; overflow:auto; background:#fff; border:1px solid #e5e7eb; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,0.1); z-index:1001;"></div>
+            </div>
+            <button type="button" class="top-nav-link" onclick="toggleDarkMode()" style="background:none; border:none; cursor:pointer; padding:8px;" title="Toggle dark mode">
+                <span id="dark-mode-icon">🌙</span>
+            </button>
+            <select id="language-selector" onchange="setLanguage(this.value)" style="padding:6px 10px; border:1px solid #e5e7eb; border-radius:6px; background:#fff; margin-right:8px;">
+                <option value="en">EN</option>
+                <option value="fa">FA</option>
+            </select>
+            <div class="notifications-wrap" style="position:relative;">
+                <a href="#" class="top-nav-link" onclick="toggleNotificationsPanel(); return false;" id="notifications-trigger">Notifications <span id="notifications-badge" style="display:none; background:#ef4444; color:#fff; border-radius:10px; padding:2px 6px; font-size:0.75rem; margin-left:4px;">0</span></a>
+                <div id="notifications-panel" style="display:none; position:absolute; top:100%; right:0; margin-top:6px; width:320px; max-height:400px; overflow:auto; background:#fff; border:1px solid #e5e7eb; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,0.1); z-index:1000;">
+                    <div style="padding:12px; border-bottom:1px solid #e5e7eb; font-weight:700;">Notifications</div>
+                    <div id="notifications-list" style="padding:8px;"></div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container fade-in">
+        {% block content %}{% endblock %}
+    </div>
+    </div>
+
+    <!-- Toast container -->
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+    <!-- Profile / Settings panel -->
+    <div id="profile-panel" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000; align-items: center; justify-content: center;">
+        <div style="background: #fff; border-radius: 12px; padding: 24px; max-width: 440px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0;">Profile &amp; Settings</h3>
+                <button type="button" onclick="toggleProfilePanel()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280;">×</button>
+            </div>
+            <div class="form-group">
+                <label>Username (email)</label>
+                <input type="text" id="profile-username" class="form-control" readonly style="background: #f3f4f6;">
+            </div>
+            <div class="form-group">
+                <label>First name</label>
+                <input type="text" id="profile-first-name" class="form-control" placeholder="First name">
+            </div>
+            <div class="form-group">
+                <label>Last name</label>
+                <input type="text" id="profile-last-name" class="form-control" placeholder="Last name">
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="profile-email" class="form-control" placeholder="email@example.com">
+            </div>
+            <button type="button" class="btn btn-primary" onclick="saveProfile()" style="margin-bottom: 16px;">Save profile</button>
+            <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
+            <h4 style="margin-bottom: 12px;">Change password</h4>
+            <div class="form-group">
+                <label>Current password</label>
+                <input type="password" id="profile-current-password" class="form-control" placeholder="Current password">
+            </div>
+            <div class="form-group">
+                <label>New password</label>
+                <input type="password" id="profile-new-password" class="form-control" placeholder="New password">
+            </div>
+            <button type="button" class="btn btn-primary" onclick="changePassword()">Change password</button>
+            <div style="margin-top: 20px;">
+                <a href="#" onclick="toggleProfilePanel(); toggleSecurityPanel(); return false;" class="top-nav-link">→ Two-Factor Authentication (2FA)</a>
+            </div>
+            <div id="profile-message" class="status-box" style="margin-top: 12px; display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Security (2FA) panel -->
+    <div id="security-panel" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000; align-items: center; justify-content: center;">
+        <div style="background: #fff; border-radius: 12px; padding: 24px; max-width: 420px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="margin: 0;">Security – Two-Factor Authentication</h3>
+                <button type="button" onclick="toggleSecurityPanel()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280;">×</button>
+            </div>
+            <div id="2fa-status" style="margin-bottom: 16px; color: #6b7280;">Loading…</div>
+            <div id="2fa-setup" style="display: none;">
+                <p style="color: #6b7280; font-size: 0.9rem; margin-bottom: 12px;">Generate a QR code and scan it with Google Authenticator, then enter the 6-digit code to enable.</p>
+                <button type="button" class="btn btn-primary" onclick="setup2FA()" style="margin-bottom: 12px;">Generate QR code</button>
+                <div id="2fa-qr" style="margin-bottom: 12px;"></div>
+                <input type="text" id="2fa-verify-code" class="form-control" placeholder="Enter 6-digit code" maxlength="8" style="margin-bottom: 8px;">
+                <button type="button" class="btn btn-primary" onclick="enable2FA()">Enable 2FA</button>
+            </div>
+            <div id="2fa-disable" style="display: none;">
+                <input type="text" id="2fa-disable-code" class="form-control" placeholder="Enter current 6-digit code" maxlength="8" style="margin-bottom: 8px;">
+                <button type="button" class="btn" style="background: #fee2e2;" onclick="disable2FA()">Disable 2FA</button>
+            </div>
+            <div id="2fa-message" class="status-box" style="margin-top: 12px; display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Cache-buster to ensure latest UI loads -->
+    <script src="/static/js/app.js?v=20260426-creative-fix"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

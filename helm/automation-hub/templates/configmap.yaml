@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "automation-hub.fullname" . }}-config
+  labels:
+    {{- include "automation-hub.labels" . | nindent 4 }}
+data:
+  ENVIRONMENT: {{ .Values.config.environment | quote }}
+  PYTHONUNBUFFERED: "1"
+  APP_DATA_DIR: {{ .Values.config.appDataDir | quote }}
+  SMTP_SERVER: {{ .Values.config.smtpServer | quote }}
+  SMTP_PORT: {{ .Values.config.smtpPort | quote }}
+  {{- if .Values.config.redisUrl }}
+  REDIS_URL: {{ .Values.config.redisUrl | quote }}
+  {{- end }}

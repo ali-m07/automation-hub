@@ -1,0 +1,28 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Summary – Automation Hub{% endblock %}
+
+{% block subtitle %}Overview of your workspace{% endblock %}
+
+{% block content %}
+<header>
+    <h1>Summary</h1>
+    <p class="subtitle">Overview of your tables, Creative jobs, gallery files, and latest ticket.</p>
+</header>
+
+<div class="card">
+    <h2>Summary</h2>
+    <p>Overview of your tables, Creative jobs, gallery files, and latest ticket.</p>
+    <div id="summary-cards" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:16px; margin-top:16px;"></div>
+    <div id="summary-last-jobs" style="margin-top:20px;"></div>
+    <div id="summary-last-ticket" style="margin-top:16px;"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    if (typeof loadSummary === 'function') {
+        loadSummary();
+    }
+</script>
+{% endblock %}

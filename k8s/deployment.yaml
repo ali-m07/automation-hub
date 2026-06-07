@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: automation-hub
+  labels:
+    app: automation-hub
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: automation-hub
+  template:
+    metadata:
+      labels:
+        app: automation-hub
+    spec:
+      containers:
+      - name: automation-hub
+        image: your-registry/automation-hub:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+          name: http
+        envFrom:
+        - configMapRef:
+            name: automation-hub-config
+        - secretRef:
+            name: automation-hub-secrets
+            optional: true
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+        livenessProbe:
+          httpGet:
+            path: /live
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 20
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8000
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        volumeMounts:
+        - name: uploads
+          mountPath: /app/uploads
+        - name: outputs
+          mountPath: /app/outputs
+        - name: data
+          mountPath: /app/data
+      volumes:
+      - name: uploads
+        persistentVolumeClaim:
+          claimName: automation-hub-uploads-pvc
+      - name: outputs
+        persistentVolumeClaim:
+          claimName: automation-hub-outputs-pvc
+      - name: data
+        persistentVolumeClaim:
+          claimName: automation-hub-data-pvc

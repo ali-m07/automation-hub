@@ -1,0 +1,32 @@
+# Use with: docker-compose -f docker-compose.yml -f docker-compose.redis.yml up -d
+# Enables Redis for optional caching / rate limiting / future session store.
+
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: automation-hub-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - hub-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  automation-hub:
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+
+volumes:
+  redis-data:

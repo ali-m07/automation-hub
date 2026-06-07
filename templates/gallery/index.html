@@ -1,0 +1,40 @@
+{% extends "base/layout.html" %}
+
+{% block title %}File Repository – Automation Hub{% endblock %}
+
+{% block subtitle %}Browse and download processed creative outputs{% endblock %}
+
+{% block content %}
+<header>
+    <h1>File Repository</h1>
+    <p class="subtitle">Processed outputs (PSD/PNG) from Creative Studio are stored here.</p>
+</header>
+
+<div class="card">
+    <h2>File Repository</h2>
+    <p>Processed outputs (PSD/PNG) from Creative Studio are stored here. Each file is listed with a thumbnail; you can download any item.</p>
+    <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 16px;">
+        <input type="text" id="gallery-search" class="form-control" placeholder="Search by name..." style="max-width: 220px;" oninput="loadGallery()">
+        <label style="font-size: 0.9rem; color: #6b7280;">From:</label>
+        <input type="date" id="gallery-from-date" class="form-control" style="max-width: 140px;" onchange="loadGallery()">
+        <label style="font-size: 0.9rem; color: #6b7280;">To:</label>
+        <input type="date" id="gallery-to-date" class="form-control" style="max-width: 140px;" onchange="loadGallery()">
+        <button type="button" class="btn" onclick="loadGallery()">Apply filter</button>
+    </div>
+    <div id="gallery-list" style="margin-top: 8px; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px;">
+        <div id="gallery-empty" style="display: none; grid-column: 1 / -1; text-align: center; padding: 32px; color: #6b7280; background: #f9fafb; border-radius: 12px;">
+            No files yet. Run a job in Creative Studio to see outputs here.
+        </div>
+        <div id="gallery-loading" style="grid-column: 1 / -1; text-align: center; padding: 24px; color: #6b7280;">Loading...</div>
+        <div id="gallery-cards" style="display: contents;"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    if (typeof loadGallery === 'function') {
+        loadGallery();
+    }
+</script>
+{% endblock %}

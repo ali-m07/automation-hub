@@ -1,0 +1,21 @@
+# Use with: docker-compose -f docker-compose.yml -f docker-compose.nginx.yml up -d
+# Then open http://localhost (Nginx on 80). Large downloads (ZIP/Excel) won't timeout.
+
+version: '3.8'
+
+services:
+  nginx:
+    build:
+      context: ../nginx
+      dockerfile: Dockerfile
+    image: automation-hub-nginx:latest
+    container_name: automation-hub-nginx
+    ports:
+      - "80:80"
+    depends_on:
+      - automation-hub
+    networks:
+      - hub-network
+
+  automation-hub:
+    ports: []   # don't expose 8000 when Nginx is used; access via :80

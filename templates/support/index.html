@@ -1,0 +1,67 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Support – Automation Hub{% endblock %}
+
+{% block subtitle %}Get help and submit support tickets{% endblock %}
+
+{% block content %}
+<header>
+    <h1>Support & Contact Admin</h1>
+    <p class="subtitle">Create a support ticket if you encounter any issues or need assistance.</p>
+</header>
+
+<div class="card">
+    <h2>Support & Contact Admin</h2>
+    <p>Create a support ticket if you encounter any issues or need assistance.</p>
+    
+    <div id="ticket-form" style="margin-top: 24px;">
+        <div class="form-group">
+            <label>Priority</label>
+            <select id="ticket-priority" class="form-control">
+                <option value="low">Low</option>
+                <option value="medium" selected>Medium</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Category</label>
+            <select id="ticket-category" class="form-control">
+                <option value="bug">Bug</option>
+                <option value="feature">Feature request</option>
+                <option value="question" selected>Question</option>
+                <option value="other">Other</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Subject</label>
+            <input type="text" id="ticket-subject" class="form-control" placeholder="Brief description of your issue" />
+        </div>
+        
+        <div class="form-group">
+            <label>Message</label>
+            <textarea id="ticket-body" class="form-control" rows="8" placeholder="Describe your issue or question in detail..."></textarea>
+        </div>
+        
+        <button class="btn btn-primary" onclick="submitTicket()">Submit Ticket</button>
+        <div id="ticket-status" class="status-box" style="margin-top: 16px;"></div>
+    </div>
+    
+    <div id="my-tickets" style="margin-top: 40px;">
+        <h3>My Tickets</h3>
+        <div id="tickets-list" style="margin-top: 16px;">
+            <div style="text-align: center; color: #9ca3af; padding: 20px;">Loading tickets...</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    if (typeof loadMyTickets === 'function') {
+        loadMyTickets();
+    }
+</script>
+{% endblock %}

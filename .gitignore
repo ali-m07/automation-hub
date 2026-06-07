@@ -1,0 +1,69 @@
+# App data (do not commit)
+app.db
+data_pool.json
+data_pools/*.json
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# Testing
+.pytest_cache/
+.coverage
+.coverage.xml
+coverage.xml
+htmlcov/
+.coverage.*
+*.cover
+.hypothesis/
+.tox/
+
+# Uploads and outputs
+uploads/
+outputs/
+fonts/*
+!fonts/.gitkeep
+*.psd
+*.png
+*.jpg
+*.jpeg
+*.xlsx
+*.xls
+*.csv
+*.zip
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+temp/
+
+# Kubernetes secrets (keep example files)
+k8s/secrets.yaml
+!k8s/secrets.yaml.example
+
+# Kubeconfig files
+kubeconfig*
+*.kubeconfig

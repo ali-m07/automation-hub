@@ -1,0 +1,53 @@
+name: Kubernetes Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'development'
+        type: choice
+        options:
+          - development
+          - staging
+          - production
+      image_tag:
+        description: 'Docker image tag to deploy'
+        required: true
+        default: 'latest'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  deploy:
+    name: Deploy to ${{ github.event.inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Configure kubectl
+      uses: azure/setup-kubectl@v3
+    
+    - name: Set up Kustomize
+      uses: imranismail/setup-kustomize@v2
+      with:
+        version: 'v5.0.0'
+    
+    - name: Update image tag
+      run: |
+        cd k8s
+        kustomize edit set image automation-hub=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.image_tag }}
+    
+    - name: Deploy to Kubernetes
+      run: |
+        cd k8s
+        kubectl apply -k . -n ${{ github.event.inputs.environment }}
+        kubectl rollout status deployment/automation-hub -n ${{ github.event.inputs.environment }} --timeout=5m
+      env:
+        KUBECONFIG: ${{ secrets.KUBECONFIG }}

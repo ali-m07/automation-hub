@@ -1,0 +1,53 @@
+{{- if .Values.persistence.data.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "automation-hub.fullname" . }}-data
+  labels:
+    {{- include "automation-hub.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: {{ .Values.persistence.data.size }}
+  {{- if .Values.persistence.data.storageClass }}
+  storageClassName: {{ .Values.persistence.data.storageClass }}
+  {{- end }}
+---
+{{- end }}
+{{- if .Values.persistence.uploads.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "automation-hub.fullname" . }}-uploads
+  labels:
+    {{- include "automation-hub.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: {{ .Values.persistence.uploads.size }}
+  {{- if .Values.persistence.uploads.storageClass }}
+  storageClassName: {{ .Values.persistence.uploads.storageClass }}
+  {{- end }}
+---
+{{- end }}
+{{- if .Values.persistence.outputs.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "automation-hub.fullname" . }}-outputs
+  labels:
+    {{- include "automation-hub.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: {{ .Values.persistence.outputs.size }}
+  {{- if .Values.persistence.outputs.storageClass }}
+  storageClassName: {{ .Values.persistence.outputs.storageClass }}
+  {{- end }}
+{{- end }}

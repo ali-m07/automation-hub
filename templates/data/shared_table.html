@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shared Table | Automation Hub</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/tabulator.min.css">
+</head>
+<body>
+    <nav class="top-nav">
+        <div class="top-nav-left">
+            <div class="top-nav-logo"></div>
+            <div>
+                <div class="top-nav-title">Automation Hub</div>
+                <div class="top-nav-sub">Shared table view (read-only)</div>
+            </div>
+        </div>
+        <div class="top-nav-right">
+            <a href="/login" class="top-nav-link">Login</a>
+        </div>
+    </nav>
+
+    <div class="container fade-in">
+        <header>
+            <h1>Shared Table</h1>
+            <p class="subtitle">This is a read-only view of a shared data table.</p>
+        </header>
+
+        <div class="card">
+            <h2>Table: {{ table_id }}</h2>
+            <p style="color: #6b7280; margin-bottom: 15px;">This table is shared. You can view the data but cannot edit it.</p>
+            <div id="shared-data-grid" style="margin-top: 10px;"></div>
+        </div>
+    </div>
+
+    <script src="/static/js/tabulator.min.js"></script>
+    <script>
+        const tableId = '{{ table_id }}';
+        const token = '{{ token }}';
+        
+        let sharedGrid = null;
+        
+        async function loadSharedTable() {
+            try {
+                const res = await fetch(`/api/data/tables/share/${token}`);
+                const data = await res.json();
+                
+                if (!data.success && data.error) {
+                    document.getElementById('shared-data-grid').innerHTML = `<p style="color: #dc2626;">Error: ${data.error}</p>`;
+                    return;
+                }
+                
+                // Initialize Tabulator
+                const columns = data.columns || [];
+                const rows = data.rows || [];
+                
+                sharedGrid = new Tabulator('#shared-data-grid', {
+                    height: '70vh',
+                    layout: 'fitColumns',
+                    placeholder: 'No data available.',
+                    selectable: false,
+                    clipboard: false,
+                    columns: columns.length > 0 ? columns : [
+                        {title: 'Col 1', field: 'c1', editor: false},
+                        {title: 'Col 2', field: 'c2', editor: false},
+                        {title: 'Col 3', field: 'c3', editor: false},
+                        {title: 'Col 4', field: 'c4', editor: false},
+                        {title: 'Col 5', field: 'c5', editor: false}
+                    ],
+                    data: rows
+                });
+            } catch (err) {
+                document.getElementById('shared-data-grid').innerHTML = `<p style="color: #dc2626;">Error loading table: ${err.message}</p>`;
+            }
+        }
+        
+        window.addEventListener('DOMContentLoaded', () => {
+            loadSharedTable();
+        });
+    </script>
+</body>
+</html>

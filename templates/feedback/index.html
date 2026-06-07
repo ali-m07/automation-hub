@@ -1,0 +1,82 @@
+{% extends "base/layout.html" %}
+
+{% block title %}180 Feedback - Automation Hub{% endblock %}
+{% block subtitle %}Jira-style 180 workflow board, screens, participants and responses{% endblock %}
+
+{% block content %}
+<header class="feedback-hero">
+    <div>
+        <div class="eyebrow">People operations</div>
+        <h1>180 Feedback Studio</h1>
+        <p class="subtitle">180 admins configure workflow statuses and screens. Participants use the response screen only.</p>
+    </div>
+    <div class="feedback-hero-panel">
+        <div class="metric"><span id="fb-metric-subjects">0</span><small>Subjects</small></div>
+        <div class="metric"><span id="fb-metric-reviewers">0</span><small>Reviewers</small></div>
+        <div class="metric"><span id="fb-metric-progress">Draft</span><small>Status</small></div>
+    </div>
+</header>
+
+<div class="feedback-shell">
+    <aside class="feedback-sidebar card">
+        <button class="btn btn-primary" type="button" onclick="fbNewProject()">+ New feedback cycle</button>
+        <div class="feedback-list-title">Saved cycles</div>
+        <div id="fb-project-list" class="feedback-project-list"></div>
+    </aside>
+
+    <main class="feedback-main">
+        <section class="card feedback-card">
+            <div class="feedback-card-head">
+                <div><h2>Cycle setup</h2><p>Define the review goal, rating scale and default deadline.</p></div>
+                <div class="feedback-actions">
+                    <button class="btn" type="button" onclick="fbExportProject()">Export JSON</button>
+                    <button class="btn btn-success" type="button" onclick="fbSaveProject()">Save cycle</button>
+                </div>
+            </div>
+            <div class="feedback-grid two">
+                <label>Cycle title<input id="fb-title" class="form-control" placeholder="Q2 Leadership 180"></label>
+                <label>Cycle name<input id="fb-cycle" class="form-control" placeholder="2026 Q2"></label>
+                <label>Default deadline (days)<input id="fb-deadline" type="number" min="1" max="120" class="form-control"></label>
+                <label>Rating scale<select id="fb-scale" class="form-control"><option value="1-5">1 to 5</option><option value="1-10">1 to 10</option><option value="0-100">0 to 100</option></select></label>
+            </div>
+            <label>Description<textarea id="fb-description" class="form-control" rows="3" placeholder="Explain who is being reviewed and what decisions this feedback supports."></textarea></label>
+            <label class="feedback-toggle"><input id="fb-anonymous" type="checkbox"> Keep reviewer identity anonymous in summaries</label>
+            <div id="fb-status" class="status-box info" style="display:none;"></div>
+        </section>
+
+        <section class="card feedback-card">
+            <div class="feedback-card-head"><div><h2>Jira-style workflow board</h2><p>Only 180 admins can drag statuses between columns, reorder them and attach screens.</p></div><button class="btn" type="button" data-admin-only onclick="fbAddWorkflowStatus()">+ Add status</button></div>
+            <div id="fb-admin-lock" class="feedback-empty" style="display:none;">You have participant access. Workflow configuration is locked to 180 admins.</div><div id="fb-workflow-board" class="workflow-board"></div><div id="fb-screen-builder" class="screen-builder"></div>
+        </section>
+
+        <section class="card feedback-card">
+            <div class="feedback-card-head"><div><h2>Participants</h2><p>Paste one person per line. The matrix pairs every reviewer with every subject by default.</p></div><button class="btn" type="button" onclick="fbBuildMatrix()">Refresh matrix</button></div>
+            <div class="feedback-grid two">
+                <label>People being reviewed<textarea id="fb-subjects" class="form-control" rows="7" placeholder="Sara Manager&#10;Omid Lead"></textarea></label>
+                <label>Reviewers<textarea id="fb-reviewers" class="form-control" rows="7" placeholder="Direct manager&#10;Team member&#10;Peer reviewer"></textarea></label>
+            </div>
+            <div id="fb-matrix" class="feedback-matrix"></div>
+        </section>
+
+        <section class="card feedback-card">
+            <div class="feedback-card-head"><div><h2>Question builder</h2><p>Create rating, text and yes/no questions for the 180 form.</p></div><button class="btn" type="button" onclick="fbAddQuestion()">+ Add question</button></div>
+            <div id="fb-questions" class="question-builder"></div>
+        </section>
+
+        <section class="card feedback-card">
+            <div class="feedback-card-head"><div><h2>Form preview & response capture</h2><p>Test the live form before launching the cycle.</p></div><button class="btn" type="button" onclick="fbSubmitDemoResponse()">Submit demo response</button></div>
+            <div class="feedback-grid two">
+                <label>Subject<select id="fb-response-subject" class="form-control"></select></label>
+                <label>Reviewer<select id="fb-response-reviewer" class="form-control"></select></label>
+            </div>
+            <div id="fb-form-preview" class="feedback-form-preview"></div>
+            <label>Overall comment<textarea id="fb-response-comment" class="form-control" rows="3" placeholder="Add strengths, risks and coaching notes."></textarea></label>
+            <div id="fb-response-summary" class="feedback-summary"></div>
+        </section>
+    </main>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/feedback.js?v=20260509-180-feedback"></script>
+{% endblock %}

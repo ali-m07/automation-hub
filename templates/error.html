@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error | Automation Hub</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav class="top-nav">
+        <div class="top-nav-left">
+            <div class="top-nav-logo"></div>
+            <div>
+                <div class="top-nav-title">Automation Hub</div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container fade-in">
+        <div class="card">
+            <h2>Error</h2>
+            <p style="color: #dc2626; font-size: 1.1em;">{{ error }}</p>
+            {% if request_id %}
+            <p style="color: #6b7280; font-size: 0.9rem; margin-top: 8px;">Request ID: <code>{{ request_id }}</code></p>
+            {% endif %}
+            <div style="margin-top: 20px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+                <a href="/login" class="btn btn-primary">Go to Login</a>
+                <button type="button" class="btn" id="report-error-btn" onclick="toggleReportForm()">Report to admin</button>
+            </div>
+            <div id="report-error-form" style="display: none; margin-top: 24px; padding-top: 24px; border-top: 1px solid #e5e7eb;">
+                <p style="color: #6b7280; font-size: 0.9rem; margin-bottom: 12px;">Send this error to the admin (creates a support ticket). If you are not logged in, enter your email.</p>
+                <input type="email" id="report-email" class="form-control" placeholder="your@email.com" style="margin-bottom: 12px;">
+                <button type="button" class="btn btn-primary" onclick="submitReport()">Send report</button>
+                <span id="report-status" class="status-box" style="margin-left: 12px;"></span>
+            </div>
+        </div>
+    </div>
+    <div id="error-payload" data-error="{{ error | e }}" data-request-id="{{ request_id | e }}" style="display:none;"></div>
+    <script>
+        const errorPayload = document.getElementById('error-payload');
+        const errorMessage = errorPayload ? (errorPayload.getAttribute('data-error') || '') : '';
+        const requestId = errorPayload ? (errorPayload.getAttribute('data-request-id') || '') : '';
+        function toggleReportForm() {
+            const el = document.getElementById('report-error-form');
+            el.style.display = el.style.display === 'none' ? 'block' : 'none';
+        }
+        async function submitReport() {
+            const email = document.getElementById('report-email').value.trim();
+            const statusEl = document.getElementById('report-status');
+            statusEl.textContent = 'Sending...';
+            statusEl.className = 'status-box info';
+            statusEl.style.display = 'inline-block';
+            try {
+                const res = await fetch('/api/report-error', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ error: errorMessage, request_id: requestId, email: email || undefined })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    statusEl.textContent = data.message || 'Report sent.';
+                    statusEl.className = 'status-box success';
+                    document.getElementById('report-error-btn').style.display = 'none';
+                } else {
+                    statusEl.textContent = data.detail || data.error || 'Failed';
+                    statusEl.className = 'status-box error';
+                }
+            } catch (e) {
+                statusEl.textContent = 'Error: ' + e.message;
+                statusEl.className = 'status-box error';
+            }
+        }
+    </script>
+</body>
+</html>

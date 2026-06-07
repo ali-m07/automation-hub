@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automation Hub</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <!-- Data grid library (Tabulator) for Data & Connectors (local, offline-safe) -->
+    <link rel="stylesheet" href="/static/css/tabulator.min.css">
+</head>
+<body>
+    <!-- Left sidebar + overlay -->
+    <div id="sidebar-overlay" class="sidebar-overlay" onclick="closeSidebar()" style="display:none;"></div>
+    <aside id="app-sidebar" class="app-sidebar" aria-label="Main menu">
+        <div class="sidebar-header">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <div class="top-nav-logo"></div>
+                <div>
+                    <div style="font-weight:800; color:#111827;">Automation Hub</div>
+                    <div style="font-size:0.8rem; color:#6b7280;">Menu</div>
+                </div>
+            </div>
+            <button class="sidebar-close-btn" type="button" onclick="closeSidebar()" aria-label="Close menu">×</button>
+        </div>
+
+        <div class="sidebar-section">
+            <div class="sidebar-user">
+                <div style="font-weight:700; color:#111827;">{{ user.username }}</div>
+                <div style="font-size:0.85rem; color:#6b7280;">Role: {{ user.role }}</div>
+            </div>
+        </div>
+
+        <div class="sidebar-section">
+            <div class="sidebar-title">Workspace</div>
+            <a href="#" class="sidebar-link" onclick="switchTab('summary'); closeSidebar(); return false;">Summary</a>
+            <a href="#" class="sidebar-link" onclick="switchTab('data-connectors'); closeSidebar(); return false;">Data &amp; Connectors</a>
+            <a href="#" class="sidebar-link" onclick="switchTab('creative'); closeSidebar(); return false;">Creative Studio</a>
+            <a href="#" class="sidebar-link" onclick="switchTab('gallery'); closeSidebar(); return false;">File Repository</a>
+            <a href="#" class="sidebar-link" onclick="switchTab('messaging'); closeSidebar(); return false;">Messaging</a>
+            <a href="#" class="sidebar-link" onclick="switchTab('support'); closeSidebar(); return false;">Support</a>
+        </div>
+
+        <div class="sidebar-section">
+            <div class="sidebar-title">Account</div>
+            <a href="#" class="sidebar-link" onclick="toggleNotificationsPanel(); closeSidebar(); return false;">Notifications</a>
+            {% if user and user.role == 'admin' %}
+            <a href="/admin" class="sidebar-link">Admin</a>
+            {% endif %}
+            <a href="#" class="sidebar-link" onclick="toggleProfilePanel(); closeSidebar(); return false;">Profile</a>
+            <a href="#" class="sidebar-link" onclick="toggleSecurityPanel(); closeSidebar(); return false;">Security</a>
+            <a href="/logout" class="sidebar-link sidebar-link-danger">Logout</a>
+        </div>
+    </aside>
+
+    <div class="app-main" id="app-main">
+    <nav class="top-nav">
+        <div class="top-nav-left">
+            <button type="button" class="nav-hamburger" id="nav-hamburger" aria-label="Menu" onclick="toggleSidebar()">
+                <span></span><span></span><span></span>
+            </button>
+            <div class="top-nav-logo"></div>
+            <div>
+                <div class="top-nav-title">Automation Hub</div>
+                <div class="top-nav-sub">Data connectors, evaluation pipelines, creative automation and messaging in one place</div>
+            </div>
+        </div>
+        <div class="top-nav-right" id="top-nav-menu">
+            {% if user and user.role == 'admin' %}
+            <a href="/admin" class="top-nav-link" style="font-weight:700;">Admin panel</a>
+            {% endif %}
+            <div style="position:relative;">
+                <input type="text" id="platform-search" class="form-control" placeholder="Search tables, templates, gallery, tickets…" style="width:220px; padding:8px 12px; margin-right:8px;" oninput="onPlatformSearchInput(this.value)" onfocus="onPlatformSearchFocus()">
+                <div id="platform-search-results" style="display:none; position:absolute; top:100%; left:0; margin-top:4px; width:320px; max-height:360px; overflow:auto; background:#fff; border:1px solid #e5e7eb; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,0.1); z-index:1001;"></div>
+            </div>
+            <div class="notifications-wrap" style="position:relative;">
+                <a href="#" class="top-nav-link" onclick="toggleNotificationsPanel(); return false;" id="notifications-trigger">Notifications <span id="notifications-badge" style="display:none; background:#ef4444; color:#fff; border-radius:10px; padding:2px 6px; font-size:0.75rem; margin-left:4px;">0</span></a>
+                <div id="notifications-panel" style="display:none; position:absolute; top:100%; right:0; margin-top:6px; width:320px; max-height:400px; overflow:auto; background:#fff; border:1px solid #e5e7eb; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,0.1); z-index:1000;">
+                    <div style="padding:12px; border-bottom:1px solid #e5e7eb; font-weight:700;">Notifications</div>
+                    <div id="notifications-list" style="padding:8px;"></div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container fade-in">
+        <header>
+            <h1>Automation hub for data, evaluation and creative modules</h1>
+            <p class="subtitle">From connecting to databases and 180-degree evaluations to generating creative outputs (such as PSDs) and running messaging campaigns – all in one unified platform.</p>
+        </header>
+
+        <!-- Tabs removed: navigation is via left sidebar to avoid confusion -->
+
+        <!-- Summary Tab -->
+        <div id="summary" class="tab-content">
+            <div class="card">
+                <h2>Summary</h2>
+                <p>Overview of your tables, Creative jobs, gallery files, and latest ticket.</p>
+                <div id="summary-cards" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:16px; margin-top:16px;"></div>
+                <div id="summary-last-jobs" style="margin-top:20px;"></div>
+                <div id="summary-last-ticket" style="margin-top:16px;"></div>
+            </div>
+        </div>
+
+        <!-- Data & Connectors Tab -->
+        <div id="data-connectors" class="tab-content active">
+            <div class="card">
+                <h2>Data & Connectors</h2>
+                <p>Spreadsheet-like grid for managing HR data pools (e.g. 180, evaluations, databases).</p>
+                <div id="tables-hub" style="margin-top: 10px;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px;">
+                        <div>
+                            <div style="font-weight:800; font-size:1.05rem; color:#111827;">Start a new table</div>
+                            <div style="color:#6b7280; font-size:0.9rem;">Create and manage multiple data pools like Sheets.</div>
+                        </div>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <input id="tables-search" class="form-control" style="max-width:260px; padding:10px 12px;" placeholder="Search tables..." />
+                        </div>
+                    </div>
+                    <div id="tables-start-row" style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:18px;">
+                        <!-- Fallback starter card (so UI works even if JS is cached) -->
+                        <button class="btn" type="button"
+                                onclick="createNewDataTable()"
+                                style="width:220px; height:110px; border:1px solid #e5e7eb; border-radius:14px; background:#fff; text-align:left; padding:14px; cursor:pointer;">
+                            <div style="font-weight:900; color:#111827; margin-bottom:6px;">+ Blank table</div>
+                            <div style="color:#6b7280; font-size:0.9rem;">Create a new empty table</div>
+                        </button>
+                    </div>
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin:10px 0 6px;">
+                        <div style="font-weight:800; font-size:1.05rem; color:#111827;">Recent tables</div>
+                        <div style="color:#6b7280; font-size:0.9rem;">Open a table to edit or view based on access.</div>
+                    </div>
+                    <div id="tables-list" style="border:1px solid #e5e7eb; border-radius:12px; overflow:hidden; background:#fff;"></div>
+                </div>
+
+                <div id="grid-panel" style="display:none;">
+                    <div class="form-group" style="margin-top: 15px;">
+                        <button class="btn btn-primary" onclick="loadDataGrid()">Load sample data</button>
+                        <button class="btn" style="margin-inline-start:8px;" onclick="deleteSelectedRows()">Delete selected</button>
+                        <button class="btn btn-success" style="margin-inline-start:8px;" onclick="saveDataGrid()">Save</button>
+                        <button class="btn" style="margin-inline-start:8px;" onclick="exportTableToExcel()">Download as Excel</button>
+                        <button class="btn" style="margin-inline-start:8px;" onclick="exportTableToJson()">Export as JSON</button>
+                        <input type="file" id="import-json-file" accept=".json" style="display:none;" onchange="importTableFromJsonFile(event)">
+                        <button class="btn" type="button" style="margin-inline-start:8px;" onclick="document.getElementById('import-json-file').click()">Import from JSON</button>
+                        <button class="btn" style="margin-inline-start:8px;" onclick="toggleTableVersionsPanel()">Versions</button>
+                        <button class="btn" style="margin-inline-start:8px;" onclick="showTablesHub()">Back to tables</button>
+                    </div>
+                <div id="table-versions-panel" style="display:none; margin-top:10px; padding:12px; border:1px solid #e5e7eb; border-radius:8px; background:#f9fafb;">
+                    <div style="font-weight:700; margin-bottom:8px;">Backup versions (last 5)</div>
+                    <div id="table-versions-list"></div>
+                </div>
+                <div class="form-group" style="margin-top: 10px; display:flex; align-items:center; gap:8px;">
+                    <input type="text" id="data-grid-search" class="form-control" style="max-width:260px;" placeholder="Search in all columns..." oninput="searchDataGrid(this.value)">
+                    <span id="data-grid-status" class="status-box info"></span>
+                </div>
+                <div class="form-group" style="margin-top: 4px; display:flex; align-items:center; gap:8px;">
+                    <span style="font-weight:600; color:#555;">Column:</span>
+                    <span id="data-grid-column-label" style="min-width:120px; font-size:0.95em; color:#374151;">None</span>
+                    <button class="btn" style="padding:6px 12px;" onclick="renameSelectedColumn()">Rename</button>
+                    <button class="btn" style="padding:6px 12px; background:#fee2e2;" onclick="deleteSelectedColumn()">Delete</button>
+                    <button class="btn" style="padding:6px 12px; margin-inline-start:8px;" onclick="addDataColumn()">+ Column</button>
+                    <button class="btn" style="padding:6px 12px;" onclick="addDataRow()">+ Row</button>
+                </div>
+                <div style="margin-top: 8px; padding: 10px 14px; background: #f0f9ff; border-left: 4px solid #0ea5e9; border-radius: 6px; font-size: 0.9em; color: #0369a1; line-height: 1.6;">
+                    <strong>💡 How to use:</strong><br>
+                    • <strong>Click</strong> a cell to edit it<br>
+                    • <strong>Hold Shift/Ctrl and drag</strong> to select multiple cells (they will turn blue)<br>
+                    • <strong>Arrow keys</strong> to move between cells after editing<br>
+                    • <strong>Ctrl+C</strong> to copy selected cells • <strong>Ctrl+V</strong> to paste<br>
+                    • <strong>Ctrl+Z</strong> to undo changes
+                </div>
+                <div id="data-grid" style="margin-top: 10px;"></div>
+                </div>
+            </div>
+
+            <!-- External database sync (SQL Server Excel sync) -->
+            <div class="card" id="db-connectors-card" style="margin-top: 24px;">
+                <h2>External database sync</h2>
+                <p>Upload an Excel file and sync it to a configured SQL Server table (staging + MERGE). Configure connectors in Admin.</p>
+                <div id="db-connectors-no-access" style="display:none; padding:12px; background:#fef3c7; border-radius:8px; color:#92400e;">
+                    You do not have access to Database Connectors. Ask an admin to enable the &quot;Database Connectors&quot; module for your user.
+                </div>
+                <div id="db-connectors-form" style="display:none;">
+                    <div class="form-group" style="margin-top: 12px;">
+                        <label>Connector:</label>
+                        <select id="db-connector-select" class="form-control" style="max-width: 360px;" onchange="updateDbSyncRunButton()">
+                            <option value="">— Select connector —</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Excel file:</label>
+                        <div class="file-upload">
+                            <input type="file" id="db-sync-file" accept=".xlsx,.xls" onchange="handleDbSyncUpload(event)">
+                            <label for="db-sync-file" class="upload-button">📊 Choose Excel file</label>
+                            <span id="db-sync-file-name" class="file-name"></span>
+                        </div>
+                    </div>
+                    <div class="form-group" id="db-sync-sheet-row" style="display:none;">
+                        <label>Sheet:</label>
+                        <select id="db-sync-sheet" class="form-control" style="max-width: 280px;" onchange="updateDbSyncRunButton()"></select>
+                    </div>
+                    <div class="form-group" style="margin-top: 12px;">
+                        <button type="button" class="btn btn-success" id="db-sync-run-btn" onclick="runDbSync()" disabled>Sync to database</button>
+                        <span id="db-sync-status" class="status-box info" style="margin-left: 12px;"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Creative Studio (Photoshop module is one part) -->
+        <div id="creative" class="tab-content">
+            <div class="card">
+                <h2>Creative Studio – Photoshop Module</h2>
+                
+                <div class="upload-section">
+                    <label>PSD Template:</label>
+                    <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+                        <select id="psd-template-category-filter" class="form-control" style="max-width: 160px;" onchange="loadCreativeTemplates()">
+                            <option value="">All categories</option>
+                        </select>
+                        <select id="psd-template-select" class="form-control" style="max-width: 280px;" onchange="onPsdTemplateSelect()">
+                            <option value="">— Upload new or select template —</option>
+                        </select>
+                        <div class="file-upload">
+                            <input type="file" id="psd-file" accept=".psd,.psb" onchange="handlePSDUpload(event)">
+                            <label for="psd-file" class="upload-button">📁 Upload PSD</label>
+                            <span id="psd-file-name" class="file-name"></span>
+                        </div>
+                        <button type="button" class="btn" id="save-as-template-btn" onclick="saveCurrentPsdAsTemplate()" style="display: none;">Save as template</button>
+                    </div>
+                    <div id="psd-layers-info" class="info-box" style="display: none;"></div>
+                </div>
+
+                <div class="upload-section">
+                    <label>Excel/CSV Data File:</label>
+                    <div class="file-upload">
+                        <input type="file" id="data-file" accept=".xlsx,.xls,.csv" onchange="handleDataUpload(event)">
+                        <label for="data-file" class="upload-button">📊 Choose Data File</label>
+                        <span id="data-file-name" class="file-name"></span>
+                    </div>
+                    <div id="data-columns-info" class="info-box" style="display: none;"></div>
+                </div>
+            </div>
+
+                <div class="card" id="mapping-section" style="display: none;">
+                <h2>Step 2: Map Layers to Columns</h2>
+                <datalist id="layer-names"></datalist>
+                <div id="layer-mapping-container"></div>
+                <button class="btn btn-primary" onclick="addMappingRow()">+ Add Mapping</button>
+            </div>
+
+            <div class="card" id="filename-section" style="display: none;">
+                <h2>Step 3: Select Filename Fields</h2>
+                <div id="filename-fields-container"></div>
+            </div>
+
+            <div class="card" id="process-section" style="display: none;">
+                <h2>Step 4: Process Files</h2>
+                <div class="form-group">
+                    <label>Output Format:</label>
+                    <select id="output-format" class="form-control">
+                        <option value="both">Both PSD and PNG</option>
+                        <option value="psd">PSD Only</option>
+                        <option value="png">PNG Only</option>
+                    </select>
+                </div>
+                <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 12px;">
+                    <button class="btn btn-primary" onclick="runPreview()">👁 Preview (first row)</button>
+                    <button class="btn btn-success btn-large" onclick="processFiles()">🚀 Process Files</button>
+                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                        <input type="checkbox" id="process-async" value="1"> Process in background (queue)
+                    </label>
+                </div>
+                <div id="preview-area" style="display: none; margin-bottom: 12px; padding: 12px; background: #f9fafb; border-radius: 8px;">
+                    <div style="font-weight: 600; margin-bottom: 8px;">Preview (first row):</div>
+                    <img id="preview-image" src="" alt="Preview" style="max-width: 100%; max-height: 300px; border: 1px solid #e5e7eb; border-radius: 6px;">
+                </div>
+                <div id="process-status" class="status-box"></div>
+            </div>
+
+            <div class="card">
+                <h2>Job history</h2>
+                <p>List of your Creative jobs (status, date, ZIP link).</p>
+                <div id="creative-jobs-list" style="margin-top:10px; min-height:80px;"></div>
+            </div>
+        </div>
+
+        <!-- Messaging / Campaigns Tab -->
+        <div id="messaging" class="tab-content">
+            <div class="card">
+                <h2>Messaging / Email Campaigns</h2>
+                
+                <div class="form-group">
+                    <label>Email Address:</label>
+                    <input type="email" id="email-address" class="form-control" placeholder="your@email.com">
+                </div>
+
+                <div class="form-group">
+                    <label>Email Password:</label>
+                    <input type="password" id="email-password" class="form-control" placeholder="Your password">
+                </div>
+
+                <div class="form-group">
+                    <label>Excel File:</label>
+                    <div class="file-upload">
+                        <input type="file" id="email-data-file" accept=".xlsx,.xls" onchange="handleEmailDataUpload(event)">
+                        <label for="email-data-file" class="upload-button">📊 Choose Excel File</label>
+                        <span id="email-data-file-name" class="file-name"></span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Image Sending Option:</label>
+                    <select id="image-option" class="form-control" onchange="toggleImageOptions()">
+                        <option value="1">Attach one image for all emails</option>
+                        <option value="2">Send photo with finding relationship</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="single-image-section">
+                    <label>Upload Image:</label>
+                    <div class="file-upload">
+                        <input type="file" id="single-image" accept=".jpg,.jpeg,.png" onchange="handleSingleImageUpload(event)">
+                        <label for="single-image" class="upload-button">🖼️ Choose Image</label>
+                        <span id="single-image-name" class="file-name"></span>
+                    </div>
+                </div>
+
+                <div class="form-group" id="folder-image-section" style="display: none;">
+                    <label>Image Folder:</label>
+                    <div class="file-upload">
+                        <input type="file" id="folder-images" accept=".jpg,.jpeg,.png" multiple onchange="handleFolderImagesUpload(event)">
+                        <label for="folder-images" class="upload-button">📁 Choose Images</label>
+                        <span id="folder-images-count" class="file-name"></span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Email Subject:</label>
+                    <input type="text" id="email-subject" class="form-control" placeholder="Your email subject">
+                </div>
+
+                <div class="form-group">
+                    <label>Optional Image Link:</label>
+                    <input type="url" id="image-link" class="form-control" placeholder="https://example.com">
+                </div>
+
+                <!-- Messaging Settings Panel -->
+                <div id="messaging-settings-panel" style="display: none; margin-top: 24px; padding: 20px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+                        <h3 style="margin: 0; font-size: 1.1rem; color: #111827;">Messaging Settings</h3>
+                        <button type="button" onclick="hideMessagingSettings()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280;">×</button>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+                        <div class="form-group" style="margin: 0;">
+                            <label>SMTP Server:</label>
+                            <input type="text" id="smtp-server" class="form-control" placeholder="smtp.example.com" value="smtp.example.com">
+                        </div>
+                        <div class="form-group" style="margin: 0;">
+                            <label>SMTP Port:</label>
+                            <input type="number" id="smtp-port" class="form-control" placeholder="587" value="587">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label>To Column (Email Addresses): <span style="color: #dc2626;">*</span></label>
+                        <input type="text" id="email-to-column" class="form-control" placeholder="Enter column name for 'To' addresses" required>
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label>Image Column (Optional):</label>
+                        <input type="text" id="email-img-column" class="form-control" placeholder="Enter column name for image filenames (leave empty if not needed)">
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label>CC Columns:</label>
+                        <div id="email-cc-columns-container" style="display: flex; flex-direction: column; gap: 8px;">
+                            <!-- CC columns will be added dynamically -->
+                        </div>
+                        <button type="button" class="btn" onclick="addCCColumn()" style="margin-top: 8px; padding: 6px 12px;">+ Add CC Column</button>
+                    </div>
+                    
+                    <div style="display: flex; gap: 12px; margin-top: 20px;">
+                        <button type="button" class="btn btn-primary" onclick="saveMessagingSettings()">Save Settings</button>
+                        <button type="button" class="btn" onclick="testSMTPConnection()">Test SMTP Connection</button>
+                    </div>
+                    <div id="smtp-test-status" class="status-box" style="margin-top: 12px;"></div>
+                </div>
+
+                <div style="display: flex; gap: 12px; margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="showMessagingSettings()">⚙️ Configure Settings</button>
+                    <button class="btn btn-success btn-large" onclick="sendEmails()">
+                        📧 Send Emails
+                    </button>
+                </div>
+                <div id="email-status" class="status-box"></div>
+            </div>
+        </div>
+
+        <!-- File Repository / Gallery Tab -->
+        <div id="gallery" class="tab-content">
+            <div class="card">
+                <h2>File Repository</h2>
+                <p>Processed outputs (PSD/PNG) from Creative Studio are stored here. Each file is listed with a thumbnail; you can download any item.</p>
+                <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 16px;">
+                    <input type="text" id="gallery-search" class="form-control" placeholder="Search by name..." style="max-width: 220px;" oninput="loadGallery()">
+                    <label style="font-size: 0.9rem; color: #6b7280;">From:</label>
+                    <input type="date" id="gallery-from-date" class="form-control" style="max-width: 140px;" onchange="loadGallery()">
+                    <label style="font-size: 0.9rem; color: #6b7280;">To:</label>
+                    <input type="date" id="gallery-to-date" class="form-control" style="max-width: 140px;" onchange="loadGallery()">
+                    <button type="button" class="btn" onclick="loadGallery()">Apply filter</button>
+                </div>
+                <div id="gallery-list" style="margin-top: 8px; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px;">
+                    <div id="gallery-empty" style="display: none; grid-column: 1 / -1; text-align: center; padding: 32px; color: #6b7280; background: #f9fafb; border-radius: 12px;">
+                        No files yet. Run a job in Creative Studio to see outputs here.
+                    </div>
+                    <div id="gallery-loading" style="grid-column: 1 / -1; text-align: center; padding: 24px; color: #6b7280;">Loading...</div>
+                    <div id="gallery-cards" style="display: contents;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Support / Tickets Tab -->
+        <div id="support" class="tab-content">
+            <div class="card">
+                <h2>Support & Contact Admin</h2>
+                <p>Create a support ticket if you encounter any issues or need assistance.</p>
+                
+                <div id="ticket-form" style="margin-top: 24px;">
+                    <div class="form-group">
+                        <label>Priority</label>
+                        <select id="ticket-priority" class="form-control">
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                            <option value="urgent">Urgent</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Category</label>
+                        <select id="ticket-category" class="form-control">
+                            <option value="bug">Bug</option>
+                            <option value="feature">Feature request</option>
+                            <option value="question" selected>Question</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Subject</label>
+                        <input type="text" id="ticket-subject" class="form-control" placeholder="Brief description of your issue" />
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Message</label>
+                        <textarea id="ticket-body" class="form-control" rows="8" placeholder="Describe your issue or question in detail..."></textarea>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="submitTicket()">Submit Ticket</button>
+                    <div id="ticket-status" class="status-box" style="margin-top: 16px;"></div>
+                </div>
+                
+                <div id="my-tickets" style="margin-top: 40px;">
+                    <h3>My Tickets</h3>
+                    <div id="tickets-list" style="margin-top: 16px;">
+                        <div style="text-align: center; color: #9ca3af; padding: 20px;">Loading tickets...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <!-- Toast container -->
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+    <!-- Profile / Settings panel -->
+    <div id="profile-panel" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000; align-items: center; justify-content: center;">
+        <div style="background: #fff; border-radius: 12px; padding: 24px; max-width: 440px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0;">Profile &amp; Settings</h3>
+                <button type="button" onclick="toggleProfilePanel()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280;">×</button>
+            </div>
+            <div class="form-group">
+                <label>Username (email)</label>
+                <input type="text" id="profile-username" class="form-control" readonly style="background: #f3f4f6;">
+            </div>
+            <div class="form-group">
+                <label>First name</label>
+                <input type="text" id="profile-first-name" class="form-control" placeholder="First name">
+            </div>
+            <div class="form-group">
+                <label>Last name</label>
+                <input type="text" id="profile-last-name" class="form-control" placeholder="Last name">
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="profile-email" class="form-control" placeholder="email@example.com">
+            </div>
+            <button type="button" class="btn btn-primary" onclick="saveProfile()" style="margin-bottom: 16px;">Save profile</button>
+            <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
+            <h4 style="margin-bottom: 12px;">Change password</h4>
+            <div class="form-group">
+                <label>Current password</label>
+                <input type="password" id="profile-current-password" class="form-control" placeholder="Current password">
+            </div>
+            <div class="form-group">
+                <label>New password</label>
+                <input type="password" id="profile-new-password" class="form-control" placeholder="New password">
+            </div>
+            <button type="button" class="btn btn-primary" onclick="changePassword()">Change password</button>
+            <div style="margin-top: 20px;">
+                <a href="#" onclick="toggleProfilePanel(); toggleSecurityPanel(); return false;" class="top-nav-link">→ Two-Factor Authentication (2FA)</a>
+            </div>
+            <div id="profile-message" class="status-box" style="margin-top: 12px; display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Security (2FA) panel -->
+    <div id="security-panel" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000; align-items: center; justify-content: center;">
+        <div style="background: #fff; border-radius: 12px; padding: 24px; max-width: 420px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="margin: 0;">Security – Two-Factor Authentication</h3>
+                <button type="button" onclick="toggleSecurityPanel()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280;">×</button>
+            </div>
+            <div id="2fa-status" style="margin-bottom: 16px; color: #6b7280;">Loading…</div>
+            <div id="2fa-setup" style="display: none;">
+                <p style="color: #6b7280; font-size: 0.9rem; margin-bottom: 12px;">Generate a QR code and scan it with Google Authenticator, then enter the 6-digit code to enable.</p>
+                <button type="button" class="btn btn-primary" onclick="setup2FA()" style="margin-bottom: 12px;">Generate QR code</button>
+                <div id="2fa-qr" style="margin-bottom: 12px;"></div>
+                <input type="text" id="2fa-verify-code" class="form-control" placeholder="Enter 6-digit code" maxlength="8" style="margin-bottom: 8px;">
+                <button type="button" class="btn btn-primary" onclick="enable2FA()">Enable 2FA</button>
+            </div>
+            <div id="2fa-disable" style="display: none;">
+                <input type="text" id="2fa-disable-code" class="form-control" placeholder="Enter current 6-digit code" maxlength="8" style="margin-bottom: 8px;">
+                <button type="button" class="btn" style="background: #fee2e2;" onclick="disable2FA()">Disable 2FA</button>
+            </div>
+            <div id="2fa-message" class="status-box" style="margin-top: 12px; display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Cache-buster to ensure latest UI loads -->
+    <script src="/static/js/app.js?v=20260426-creative-fix"></script>
+</body>
+</html>

@@ -1,0 +1,124 @@
+version: '3.8'
+services:
+  automation-hub:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: automation-hub:latest
+    container_name: automation-hub
+    ports:
+    - 2050:8000
+    volumes:
+    - ../uploads:/app/uploads
+    - ../outputs:/app/outputs
+    - hub-data:/app/data
+    - font-data:/app/fonts
+    environment:
+    - PYTHONUNBUFFERED=1
+    - ENVIRONMENT=${ENVIRONMENT:-development}
+    - APP_DATA_DIR=/app/data
+    - FONT_DIR=/app/fonts
+    - SESSION_SECRET=${SESSION_SECRET:?SESSION_SECRET is required}
+    - POSTGRES_DSN=postgresql://${POSTGRES_USER:-automation}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-automation}
+    - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+    - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/1}
+    - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-redis://redis:6379/1}
+    env_file:
+    - ../.env
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+      - CMD
+      - curl
+      - -sf
+      - http://localhost:8000/health
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+    - hub-network
+  postgres:
+    image: postgres:15-alpine
+    container_name: automation-hub-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-automation}
+      POSTGRES_USER: ${POSTGRES_USER:-automation}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+    - postgres-data:/var/lib/postgresql/data
+    ports:
+    - 5432:5432
+    restart: unless-stopped
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB
+      interval: 20s
+      timeout: 5s
+      retries: 5
+    networks:
+    - hub-network
+  redis:
+    image: redis:7-alpine
+    container_name: automation-hub-redis
+    command: redis-server --appendonly yes
+    volumes:
+    - redis-data:/data
+    ports:
+    - 6379:6379
+    restart: unless-stopped
+    healthcheck:
+      test:
+      - CMD
+      - redis-cli
+      - ping
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+    - hub-network
+  celery-worker:
+    image: automation-hub:latest
+    container_name: automation-hub-celery
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+    - ENVIRONMENT=${ENVIRONMENT:-development}
+    - APP_DATA_DIR=/app/data
+    - FONT_DIR=/app/fonts
+    - POSTGRES_DSN=postgresql://${POSTGRES_USER:-automation}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-automation}
+    - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+    - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/1}
+    - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-redis://redis:6379/1}
+    env_file:
+    - ../.env
+    command:
+    - celery
+    - -A
+    - automation_hub.core.celery_app
+    - worker
+    - -l
+    - info
+    restart: unless-stopped
+    networks:
+    - hub-network
+    volumes:
+    - font-data:/app/fonts
+volumes:
+  hub-data:
+    name: automation-hub-data
+  postgres-data: null
+  redis-data: null
+  font-data: null
+networks:
+  hub-network:
+    name: automation-hub-network

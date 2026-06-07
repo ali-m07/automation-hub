@@ -1,0 +1,943 @@
+# Creative/PSD processing routes
+# Uses automation_hub.core only (no app import to avoid circular deps).
+
+from __future__ import annotations
+
+import json
+import os
+import secrets
+import shutil
+import zipfile
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import pandas as pd
+from fastapi import File, Form, HTTPException, Query, Request, UploadFile
+from fastapi.responses import FileResponse, JSONResponse
+from starlette.concurrency import run_in_threadpool
+
+from automation_hub.core import auth, db
+from automation_hub.services.font_manager import (
+    MAX_FONT_UPLOAD_BYTES,
+    list_fonts,
+    resolve_font,
+    store_font,
+)
+
+try:
+    from automation_hub.core.redis_util import redis_available, rate_limit_check
+except ImportError:
+
+    def redis_available() -> bool:
+        return False
+
+    def rate_limit_check(key: str, limit: int, window_seconds: int):
+        return (True, 0, None)
+
+
+def _db():
+    conn = db.db_connect(db.get_db_file())
+    return conn
+
+
+def _client_ip(request: Request) -> str:
+    return request.client.host if request.client else ""
+
+
+def _rate_limit_abort(
+    request: Request, scope: str, identifier: str, limit: int, window_seconds: int = 60
+) -> None:
+    """If Redis is available and limit exceeded, raise HTTP 429."""
+    if not redis_available():
+        return
+    key = f"{scope}:{identifier}"
+    allowed, count, retry_after = rate_limit_check(key, limit, window_seconds)
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many requests. Try again later.",
+            headers={"Retry-After": str(retry_after or 60)},
+        )
+
+
+def _check_upload_size(request: Request) -> None:
+    """Raise 413 if request body exceeds admin-configured max upload size."""
+    from automation_hub.core.settings import get_upload_limits
+
+    max_bytes, _ = get_upload_limits()
+    cl = request.headers.get("content-length")
+    if cl and int(cl) > max_bytes:
+        mb = max_bytes // (1024 * 1024)
+        raise HTTPException(
+            status_code=413, detail=f"File too large. Maximum size is {mb} MB."
+        )
+
+
+def _gallery_safe_username(username: str) -> str:
+    """Safe filesystem segment from username (e.g. email)."""
+    safe = "".join(
+        c for c in username if c.isalnum() or c in ("-", "_", "@", ".")
+    ).strip()
+    return safe or "user"
+
+
+def _gallery_create_placeholder_thumbnail(thumb_path: Path) -> None:
+    """Create a 200x200 placeholder PNG for ZIP (e.g. gallery thumbnail)."""
+    try:
+        from PIL import Image, ImageDraw
+
+        img = Image.new("RGB", (200, 200), color=(240, 240, 245))
+        d = ImageDraw.Draw(img)
+        d.text((100, 90), "ZIP", fill=(100, 100, 120), anchor="mm")
+        thumb_path.parent.mkdir(parents=True, exist_ok=True)
+        img.save(thumb_path, "PNG")
+    except Exception:
+        pass
+
+
+# Directories (same as app.py)
+UPLOAD_DIR = Path("uploads")
+OUTPUT_DIR = Path("outputs")
+GALLERY_DIR = Path("gallery")
+TEMPLATES_PSD_DIR = Path("templates_psd")
+UPLOAD_DIR.mkdir(exist_ok=True)
+OUTPUT_DIR.mkdir(exist_ok=True)
+GALLERY_DIR.mkdir(exist_ok=True)
+TEMPLATES_PSD_DIR.mkdir(exist_ok=True)
+
+
+def _resolve_psd_path(psd_file_id: str, username: Optional[str]) -> Path:
+    """Resolve PSD path: if it looks like a template path (no 'template_' prefix with random), check TEMPLATES_PSD_DIR."""
+    p_upload = UPLOAD_DIR / psd_file_id
+    if p_upload.is_file():
+        return p_upload
+    p_templates = TEMPLATES_PSD_DIR / psd_file_id
+    if p_templates.is_file():
+        return p_templates
+    return UPLOAD_DIR / psd_file_id
+
+
+def _run_process_core(
+    psd_file_id: str,
+    data_file_id: str,
+    mapping: Dict[str, str],
+    filename_fields_list: List[str],
+    output_format: str,
+    username: Optional[str],
+    psd_processor,
+    watermark_config: Optional[Dict[str, Any]] = None,
+    font_path: Optional[str] = None,
+) -> tuple:
+    """Run PSD processing (sync). Returns (job_id, results, zip_path)."""
+    psd_path = _resolve_psd_path(psd_file_id, username)
+    data_path = UPLOAD_DIR / data_file_id
+    if not psd_path.exists() or not data_path.exists():
+        raise FileNotFoundError("File not found")
+    if data_path.suffix == ".csv":
+        df = pd.read_csv(data_path)
+    else:
+        df = pd.read_excel(data_path)
+    job_id = f"job_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}"
+    job_output_dir = OUTPUT_DIR / job_id
+    job_output_dir.mkdir(exist_ok=True)
+    results = []
+    for idx, row in df.iterrows():
+        try:
+            filename = "_".join(str(row[field]) for field in filename_fields_list)
+            filename = "".join(
+                c for c in filename if c.isalnum() or c in (" ", "-", "_")
+            ).strip()
+            output_paths = psd_processor.process_psd(
+                str(psd_path),
+                row,
+                mapping,
+                str(job_output_dir),
+                filename,
+                output_format,
+                watermark_config=watermark_config,
+                font_path=font_path,
+            )
+            results.append(
+                {
+                    "row": idx + 1,
+                    "filename": filename,
+                    "success": True,
+                    "files": output_paths,
+                }
+            )
+        except Exception as e:
+            results.append({"row": idx + 1, "success": False, "error": str(e)})
+    zip_path = OUTPUT_DIR / f"{job_id}.zip"
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+        for root, dirs, files in os.walk(job_output_dir):
+            for file in files:
+                file_path = Path(root) / file
+                zipf.write(file_path, file_path.relative_to(job_output_dir))
+    shutil.rmtree(job_output_dir, ignore_errors=True)
+    if username:
+        try:
+            safe_user = _gallery_safe_username(username)
+            user_gallery = GALLERY_DIR / safe_user
+            user_gallery.mkdir(parents=True, exist_ok=True)
+            dest_zip = user_gallery / f"{job_id}.zip"
+            shutil.copy2(zip_path, dest_zip)
+            file_size = dest_zip.stat().st_size
+            thumbs_dir = user_gallery / "thumbs"
+            thumbs_dir.mkdir(exist_ok=True)
+            thumb_path = thumbs_dir / f"{job_id}.png"
+            _gallery_create_placeholder_thumbnail(thumb_path)
+            rel_file = f"{safe_user}/{job_id}.zip"
+            rel_thumb = (
+                f"{safe_user}/thumbs/{job_id}.png" if thumb_path.exists() else None
+            )
+            now = db.utc_now_iso()
+            conn = _db()
+            try:
+                conn.execute(
+                    """
+                    INSERT INTO gallery_files (username, file_path, thumbnail_path, display_name, file_size, created_at, job_id)
+                    VALUES (?,?,?,?,?,?,?)
+                    """,
+                    (username, rel_file, rel_thumb, job_id, file_size, now, job_id),
+                )
+                conn.commit()
+            finally:
+                conn.close()
+        except Exception:
+            pass
+    return (job_id, results, str(zip_path))
+
+
+# Router
+from fastapi import APIRouter
+
+creative_router = APIRouter(prefix="/api", tags=["creative"])
+
+
+@creative_router.get("/creative/fonts")
+async def get_creative_fonts(request: Request):
+    """List all readable application fonts."""
+    auth.require_module(request, "creative_psd", auth.get_current_user)
+    fonts = await run_in_threadpool(list_fonts)
+    return JSONResponse({"success": True, "fonts": fonts})
+
+
+@creative_router.post("/creative/fonts")
+async def upload_creative_font(request: Request, file: UploadFile = File(...)):
+    """Validate and store a font for Creative text rendering."""
+    auth.require_module(request, "creative_psd", auth.get_current_user)
+    user = auth.get_current_user(request)
+    ident = user["username"] if user else _client_ip(request)
+    _rate_limit_abort(request, "font-upload", ident, 15, 60)
+
+    content_length = request.headers.get("content-length")
+    if content_length and int(content_length) > MAX_FONT_UPLOAD_BYTES + 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Font upload is too large.")
+
+    content = await file.read(MAX_FONT_UPLOAD_BYTES + 1)
+    try:
+        font, created = await run_in_threadpool(
+            store_font, file.filename or "font", content
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return JSONResponse(
+        {"success": True, "font": font, "created": created},
+        status_code=201 if created else 200,
+    )
+
+
+@creative_router.post("/upload-psd")
+async def upload_psd(request: Request, file: UploadFile = File(...)):
+    """Upload PSD template file"""
+    _check_upload_size(request)
+    auth.require_module(request, "creative_psd", auth.get_current_user)
+    user = auth.get_current_user(request)
+    ident = user["username"] if user else _client_ip(request)
+    _rate_limit_abort(request, "upload", ident, 30, 60)
+    psd_processor = getattr(request.app.state, "psd_processor", None)
+    if not psd_processor:
+        raise HTTPException(status_code=500, detail="PSD processor not available")
+    try:
+        safe_filename = os.path.basename(file.filename.replace("\\", "/"))
+        file_path = UPLOAD_DIR / f"template_{safe_filename}"
+        with open(file_path, "wb") as buffer:
+            # Wrap file writing in thread pool since copyfileobj can block
+            await run_in_threadpool(shutil.copyfileobj, file.file, buffer)
+
+        # Validate PSD file and extract layer info
+        try:
+            layer_info = await run_in_threadpool(
+                psd_processor.get_layer_info, str(file_path)
+            )
+            return JSONResponse(
+                {"success": True, "file_id": file_path.name, "layers": layer_info}
+            )
+        except Exception as e:
+            return JSONResponse(
+                {"success": False, "error": f"Invalid PSD file: {str(e)}"},
+                status_code=400,
+            )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@creative_router.post("/upload-data")
+async def upload_data(request: Request, file: UploadFile = File(...)):
+    """Upload Excel/CSV data file"""
+    _check_upload_size(request)
+    auth.require_any_module(
+        request,
+        ["creative_psd", "messaging_send", "data_excel_to_sql"],
+        auth.get_current_user,
+    )
+    user = auth.get_current_user(request)
+    ident = user["username"] if user else _client_ip(request)
+    _rate_limit_abort(request, "upload", ident, 30, 60)
+    try:
+        safe_filename = os.path.basename(file.filename.replace("\\", "/"))
+        file_path = UPLOAD_DIR / f"data_{safe_filename}"
+        with open(file_path, "wb") as buffer:
+            await run_in_threadpool(shutil.copyfileobj, file.file, buffer)
+
+        # Validate with pandas in threadpool
+        def _read_data():
+            if safe_filename.endswith(".csv"):
+                df = pd.read_csv(file_path)
+            elif safe_filename.endswith((".xlsx", ".xls")):
+                df = pd.read_excel(file_path)
+            else:
+                raise ValueError("Unsupported file type")
+            return df.columns.tolist(), len(df)
+
+        # Read and return column names
+        try:
+            columns, row_count = await run_in_threadpool(_read_data)
+
+            return JSONResponse(
+                {
+                    "success": True,
+                    "file_id": file_path.name,
+                    "columns": columns,
+                    "row_count": row_count,
+                }
+            )
+        except Exception as e:
+            return JSONResponse(
+                {"success": False, "error": f"Invalid data file: {str(e)}"},
+                status_code=400,
+            )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@creative_router.get("/creative/templates")
+async def list_psd_templates(request: Request, category: Optional[str] = Query(None)):
+    """List PSD templates for the current user. Optional filter: category."""
+    user = auth.get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Login required")
+    auth.require_module(request, "creative_psd", auth.get_current_user)
+    cat = (category or "").strip()
+    conn = _db()
+    try:
+        rows = conn.execute(
+            "SELECT id, name, file_path, created_at, category FROM psd_templates WHERE username = ? ORDER BY created_at DESC",
+            (user["username"],),
+        ).fetchall()
+    finally:
+        conn.close()
+    rows = [db.row_to_dict(r) for r in rows]
+    if cat:
+        rows = [r for r in rows if (r.get("category") or "") == cat]
+    return JSONResponse(
+        {
+            "templates": [
+                {
+                    "id": r["id"],
+                    "name": r["name"],
+                    "file_path": r["file_path"],
+                    "created_at": r["created_at"],
+                    "category": (r["category"] if "category" in r.keys() else "") or "",
+                }
+                for r in rows
+            ]
+        }
+    )
+
+
+@creative_router.post("/creative/templates")
+async def save_psd_template(request: Request, payload: Dict[str, Any]):
+    """Save current PSD as a named template. Body: { name, file_id }."""
+    user = auth.get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Login required")
+    auth.require_module(request, "creative_psd", auth.get_current_user)
+    name = (payload.get("name") or "").strip()
+    file_id = (payload.get("file_id") or "").strip()
+    category = (payload.get("category") or "").strip()
+    if not name or not file_id:
+        raise HTTPException(status_code=400, detail="name and file_id required")
+    src = UPLOAD_DIR / file_id
+    if not src.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+    safe_user = _gallery_safe_username(user["username"])
+    template_dir = TEMPLATES_PSD_DIR / safe_user
+    template_dir.mkdir(parents=True, exist_ok=True)
+    now = db.utc_now_iso()
+    conn = _db()
+    try:
+        conn.execute(
+            "INSERT INTO psd_templates (username, name, file_path, created_at, category) VALUES (?,?,?,?,?)",
+            (user["username"], name, "", now, category or None),
+        )
+        row = conn.execute("SELECT last_insert_rowid() AS id").fetchone()
+        tid = row["id"]
+        conn.commit()
+    finally:
+        conn.close()
+    ext = src.suffix or ".psd"
+    dest_path = template_dir / f"template_{tid}{ext}"
+
+    def copy_template():
+        shutil.copy2(src, dest_path)
+
+    await run_in_threadpool(copy_template)
+
+    rel_path = f"{safe_user}/template_{tid}{ext}"
+    conn = _db()
+    try:
+        conn.execute(
+            "UPDATE psd_templates SET file_path = ?, category = ? WHERE id = ?",
+            (rel_path, category or None, tid),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    return JSONResponse(
+        {
+            "success": True,
+            "id": tid,
+            "name": name,
+            "file_path": rel_path,
+            "category": category or "",
+        }
+    )
+
+
+@creative_router.post("/creative/read-layers")
+async def read_creative_layers(request: Request, psd_file_id: str = Form(...)):
+    """Read PSD layers for an uploaded file or saved template path."""
+    user = auth.get_current_user(request)
+    auth.require_module(request, "creative_psd", auth.get_current_user)
+    psd_processor = getattr(request.app.state, "psd_processor", None)
+    if not psd_processor:
+        raise HTTPException(status_code=500, detail="PSD processor not available")
+    psd_path = _resolve_psd_path(psd_file_id, user["username"] if user else None)
+    if not psd_path.exists():
+        raise HTTPException(status_code=404, detail="PSD file not found")
+    try:
+        layers = await run_in_threadpool(psd_processor.get_layer_info, str(psd_path))
+        return JSONResponse(
+            {"success": True, "layers": layers, "file_path": str(psd_path)}
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=400, detail=f"Failed to read PSD layers: {str(e)}"
+        )
+
+
+@creative_router.get("/creative/templates/{template_id}/layers")
+async def get_template_layers(template_id: int, request: Request):
+    """Get layer info for a saved template (to build mapping UI)."""
+    user = auth.get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Login required")
+    auth.require_module(request, "creative_psd", auth.get_current_user)
+    psd_processor = getattr(request.app.state, "psd_processor", None)
+    if not psd_processor:
+        raise HTTPException(status_code=500, detail="PSD processor not available")
+    conn = _db()
+    try:
+        row = conn.execute(
+            "SELECT id, username, file_path FROM psd_templates WHERE id = ? AND username = ?",
+            (template_id, user["username"]),
+        ).fetchone()
+    finally:
+        conn.close()
+    if not row or not row["file_path"]:
+        raise HTTPException(status_code=404, detail="Template not found")
+    path = TEMPLATES_PSD_DIR / row["file_path"]
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="Template file not found")
+    try:
+        layer_info = await run_in_threadpool(psd_processor.get_layer_info, str(path))
+        return JSONResponse(
+            {"success": True, "layers": layer_info, "file_path": row["file_path"]}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@creative_router.delete("/creative/templates/{template_id}")
+async def delete_psd_template(template_id: int, request: Request):
+    """Delete a PSD template (current user only)."""
+    user = auth.get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Login required")
+    auth.require_module(request, "creative_psd", auth.get_current_user)
+    conn = _db()
+    try:
+        row = conn.execute(
+            "SELECT id, file_path FROM psd_templates WHERE id = ? AND username = ?",
+            (template_id, user["username"]),
+        ).fetchone()
+    finally:
+        conn.close()
+    if not row:
+        raise HTTPException(status_code=404, detail="Template not found")
+    full_path = TEMPLATES_PSD_DIR / row["file_path"]
+    if full_path.is_file():
+        try:
+            full_path.unlink()
+        except Exception:
+            pass
+    conn = _db()
+    try:
+        conn.execute(
+            "DELETE FROM psd_templates WHERE id = ? AND username = ?",
+            (template_id, user["username"]),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    return JSONResponse({"success": True})
+
+
+@creative_router.get("/creative/market/templates")
+async def list_market_templates(
+    request: Request, category: Optional[str] = Query(None)
+):
+    """List public marketplace templates."""
+    auth.require_module(request, "creative_psd", auth.get_current_user)
+    cat = (category or "").strip()
+    conn = _db()
+    try:
+        if cat:
+            rows = conn.execute(
+                """
+                SELECT id, slug, title, description, category, tags_json, price, currency, thumbnail_path, file_path
+                FROM psd_market_templates
+                WHERE is_active = 1 AND category = ?
+                ORDER BY created_at DESC
+                """,
+                (cat,),
+            ).fetchall()
+        else:
+            rows = conn.execute("""
+                SELECT id, slug, title, description, category, tags_json, price, currency, thumbnail_path, file_path
+                FROM psd_market_templates
+                WHERE is_active = 1
+                ORDER BY created_at DESC
+                """).fetchall()
+    finally:
+        conn.close()
+    templates = [
+        {
+            "id": r["id"],
+            "slug": r["slug"],
+            "title": r["title"],
+            "description": r["description"],
+            "category": r["category"],
+            "tags": json.loads(r["tags_json"] or "[]"),
+            "price": r["price"] or 0,
+            "currency": r["currency"] or "USD",
+            "thumbnail_path": r["thumbnail_path"],
+            "file_path": r["file_path"],
+        }
+        for r in rows
+    ]
+    return JSONResponse({"success": True, "templates": templates})
+
+
+@creative_router.get("/creative/market/templates/{template_id}")
+async def get_market_template(template_id: int, request: Request):
+    """Get marketplace template details."""
+    auth.require_module(request, "creative_psd", auth.get_current_user)
+    conn = _db()
+    try:
+        row = conn.execute(
+            """
+            SELECT id, slug, title, description, category, tags_json, price, currency, thumbnail_path, file_path
+            FROM psd_market_templates
+            WHERE id = ? AND is_active = 1
+            """,
+            (template_id,),
+        ).fetchone()
+    finally:
+        conn.close()
+    if not row:
+        raise HTTPException(status_code=404, detail="Template not found")
+    template = {
+        "id": row["id"],
+        "slug": row["slug"],
+        "title": row["title"],
+        "description": row["description"],
+        "category": row["category"],
+        "tags": json.loads(row["tags_json"] or "[]"),
+        "price": row["price"] or 0,
+        "currency": row["currency"] or "USD",
+        "thumbnail_path": row["thumbnail_path"],
+        "file_path": row["file_path"],
+    }
+    # Get layer info if available
+    psd_processor = getattr(request.app.state, "psd_processor", None)
+    if psd_processor:
+        try:
+            path = TEMPLATES_PSD_DIR / row["file_path"]
+            if path.exists():
+                layer_info = psd_processor.get_layer_info(str(path))
+                template["layers"] = layer_info
+        except Exception:
+            pass
+    return JSONResponse({"success": True, "template": template})
+
+
+@creative_router.post("/creative/market/templates/{template_id}/use")
+async def use_market_template(template_id: int, request: Request):
+    """Use a marketplace template (copy to user's templates)."""
+    user = auth.get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Login required")
+    auth.require_module(request, "creative_psd", auth.get_current_user)
+    conn = _db()
+    try:
+        row = conn.execute(
+            "SELECT file_path FROM psd_market_templates WHERE id = ? AND is_active = 1",
+            (template_id,),
+        ).fetchone()
+    finally:
+        conn.close()
+    if not row:
+        raise HTTPException(status_code=404, detail="Template not found")
+    src_path = TEMPLATES_PSD_DIR / row["file_path"]
+    if not src_path.exists():
+        raise HTTPException(status_code=404, detail="Template file not found")
+    # Copy to user's templates
+    safe_user = _gallery_safe_username(user["username"])
+    user_template_dir = TEMPLATES_PSD_DIR / safe_user
+    user_template_dir.mkdir(parents=True, exist_ok=True)
+    now = db.utc_now_iso()
+    conn = _db()
+    try:
+        conn.execute(
+            "INSERT INTO psd_templates (username, name, file_path, created_at, category) VALUES (?,?,?,?,?)",
+            (user["username"], f"Market Template #{template_id}", "", now, None),
+        )
+        row = conn.execute("SELECT last_insert_rowid() AS id").fetchone()
+        tid = row["id"]
+        conn.commit()
+    finally:
+        conn.close()
+    ext = src_path.suffix or ".psd"
+    dest_path = user_template_dir / f"template_{tid}{ext}"
+
+    def copy_template():
+        shutil.copy2(src_path, dest_path)
+
+    await run_in_threadpool(copy_template)
+
+    rel_path = f"{safe_user}/template_{tid}{ext}"
+    conn = _db()
+    try:
+        conn.execute(
+            "UPDATE psd_templates SET file_path = ? WHERE id = ?",
+            (rel_path, tid),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    return JSONResponse({"success": True, "template_id": tid, "file_path": rel_path})
+
+
+@creative_router.post("/preview")
+async def preview_process(request: Request):
+    """Process first row only and return preview file URL (sample output for layer mapping)."""
+    auth.require_module(request, "creative_psd", auth.get_current_user)
+    psd_processor = getattr(request.app.state, "psd_processor", None)
+    if not psd_processor:
+        raise HTTPException(status_code=500, detail="PSD processor not available")
+    try:
+        form = await request.form()
+        psd_file_id = form.get("psd_file_id") or form.get("psdFileId")
+        data_file_id = form.get("data_file_id") or form.get("dataFileId")
+        layer_mapping = form.get("layer_mapping") or form.get("layerMapping") or "{}"
+        filename_fields = (
+            form.get("filename_fields") or form.get("filenameFields") or "[]"
+        )
+        output_format = form.get("output_format") or form.get("outputFormat") or "png"
+        watermark_config_json = (
+            form.get("watermark_config") or form.get("watermarkConfig") or "{}"
+        )
+        font_id = form.get("font_id") or form.get("fontId") or ""
+        if not psd_file_id or not data_file_id:
+            raise HTTPException(
+                status_code=400, detail="psd_file_id and data_file_id required"
+            )
+        user = auth.get_current_user(request)
+        mapping = json.loads(layer_mapping)
+        filename_fields_list = json.loads(filename_fields)
+        watermark_config = (
+            json.loads(watermark_config_json) if watermark_config_json else None
+        )
+        selected_font = resolve_font(str(font_id))
+        if font_id and not selected_font:
+            raise HTTPException(
+                status_code=400, detail="Selected font is not available."
+            )
+        psd_path = _resolve_psd_path(psd_file_id, user["username"] if user else None)
+        data_path = UPLOAD_DIR / data_file_id
+        if not psd_path.exists() or not data_path.exists():
+            raise HTTPException(status_code=404, detail="File not found")
+
+        def process_preview_sync():
+            if data_path.suffix == ".csv":
+                df = pd.read_csv(data_path)
+            else:
+                df = pd.read_excel(data_path)
+            if len(df) == 0:
+                raise ValueError("Data file has no rows")
+            row = df.iloc[0]
+            filename = (
+                "_".join(str(row[field]) for field in filename_fields_list)
+                if filename_fields_list
+                else "preview"
+            )
+            filename = (
+                "".join(
+                    c for c in filename if c.isalnum() or c in (" ", "-", "_")
+                ).strip()
+                or "preview"
+            )
+            job_id = f"preview_{secrets.token_hex(8)}"
+            job_output_dir = OUTPUT_DIR / job_id
+            job_output_dir.mkdir(exist_ok=True)
+            output_paths = psd_processor.process_psd(
+                str(psd_path),
+                row,
+                mapping,
+                str(job_output_dir),
+                filename,
+                output_format,
+                watermark_config=watermark_config,
+                font_path=str(selected_font) if selected_font else None,
+            )
+            return job_id, output_paths
+
+        try:
+            job_id, output_paths = await run_in_threadpool(process_preview_sync)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+        preview_url = None
+        if output_paths:
+            first_path = (
+                output_paths.get("png")
+                or output_paths.get("webp")
+                or output_paths.get("avif")
+                or output_paths.get("pdf")
+                or output_paths.get("psd_export")
+                or list(output_paths.values())[0]
+            )
+            if first_path and Path(first_path).exists():
+                rel = Path(first_path).name
+                preview_url = f"/api/download-preview/{job_id}/{rel}"
+        return JSONResponse(
+            {"success": True, "preview_url": preview_url, "job_id": job_id}
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@creative_router.get("/creative/jobs")
+async def list_creative_jobs(request: Request):
+    """List Creative job history for current user (job_queue + zip link from result)."""
+    user = auth.get_current_user(request)
+    if not user:
+        return JSONResponse(
+            {"success": False, "error": "Authentication required"}, status_code=401
+        )
+    auth.require_module(request, "creative_psd", auth.get_current_user)
+    conn = _db()
+    try:
+        rows = conn.execute(
+            """
+            SELECT id, username, status, payload_json, result_json, created_at, updated_at
+            FROM job_queue WHERE username = ?
+            ORDER BY created_at DESC LIMIT 100
+            """,
+            (user["username"],),
+        ).fetchall()
+    finally:
+        conn.close()
+    jobs = []
+    for r in rows:
+        payload = {}
+        if r["payload_json"]:
+            try:
+                payload = json.loads(r["payload_json"]) or {}
+            except Exception:
+                pass
+        result = None
+        if r["result_json"]:
+            try:
+                result = json.loads(r["result_json"])
+            except Exception:
+                pass
+        row_count = len(payload.get("layer_mapping") or [])
+        zip_link = None
+        if result and result.get("zip_file"):
+            zip_link = result.get("zip_file")
+        elif result and result.get("job_id"):
+            zip_link = f"/api/download/{result.get('job_id')}.zip"
+        jobs.append(
+            {
+                "job_id": r["id"],
+                "status": r["status"],
+                "created_at": r["created_at"],
+                "updated_at": r["updated_at"],
+                "row_count": row_count,
+                "zip_link": zip_link,
+            }
+        )
+    return JSONResponse({"success": True, "jobs": jobs})
+
+
+@creative_router.get("/download-preview/{job_id}/{filename}")
+async def download_preview(job_id: str, filename: str):
+    """Serve a preview output file (single file from preview job)."""
+    # Sanitize job_id to prevent path traversal via base directory
+    if ".." in job_id or "/" in job_id or "\\" in job_id:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    base = OUTPUT_DIR / job_id
+    path = base / filename
+    try:
+        if not path.is_file():
+            raise HTTPException(status_code=404, detail="Not found")
+        path_resolved = path.resolve()
+        base_resolved = base.resolve()
+        if not str(path_resolved).startswith(str(base_resolved)):
+            raise HTTPException(status_code=404, detail="Not found")
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=404, detail="Not found")
+    return FileResponse(path=str(path), filename=filename)
+
+
+@creative_router.post("/process")
+async def process_files(
+    request: Request,
+    psd_file_id: str = Form(...),
+    data_file_id: str = Form(...),
+    layer_mapping: str = Form(...),  # JSON string
+    filename_fields: str = Form(...),  # JSON string
+    output_format: str = Form("both"),  # "psd", "png", "webp", "avif", "pdf", "both"
+    watermark_config: str = Form("{}"),  # JSON string
+    font_id: str = Form(""),
+    async_param: str = Query("0", alias="async"),
+):
+    """Process PSD files with data mapping. Use ?async=1 to enqueue and poll /api/jobs/{id}."""
+    auth.require_module(request, "creative_psd", auth.get_current_user)
+    user = auth.get_current_user(request)
+    ident = user["username"] if user else _client_ip(request)
+    _rate_limit_abort(request, "process", ident, 20, 60)
+    psd_processor = getattr(request.app.state, "psd_processor", None)
+    if not psd_processor:
+        raise HTTPException(status_code=500, detail="PSD processor not available")
+    mapping = json.loads(layer_mapping)
+    filename_fields_list = json.loads(filename_fields)
+    watermark_config_dict = json.loads(watermark_config) if watermark_config else None
+    selected_font = resolve_font(font_id)
+    if font_id and not selected_font:
+        raise HTTPException(status_code=400, detail="Selected font is not available.")
+    username = user["username"] if user else None
+
+    if async_param in ("1", "true", "yes"):
+        now = db.utc_now_iso()
+        payload = {
+            "psd_file_id": psd_file_id,
+            "data_file_id": data_file_id,
+            "layer_mapping": mapping,
+            "filename_fields": filename_fields_list,
+            "output_format": output_format,
+            "watermark_config": watermark_config_dict,
+            "font_id": font_id,
+            "username": username,
+        }
+        conn = _db()
+        try:
+            conn.execute(
+                "INSERT INTO job_queue (username, status, payload_json, created_at, updated_at) VALUES (?,?,?,?,?)",
+                (username or "anonymous", "pending", json.dumps(payload), now, now),
+            )
+            row = conn.execute("SELECT last_insert_rowid() AS id").fetchone()
+            qid = row["id"]
+            conn.commit()
+        finally:
+            conn.close()
+        # If Celery is enabled, enqueue job via Celery as well (JobProcessor will no-op)
+        try:
+            from automation_hub.core.celery_app import (
+                get_celery_app,
+                is_enabled as celery_enabled,
+            )
+
+            if celery_enabled():
+                app = get_celery_app()
+                if app:
+                    app.send_task(
+                        "automation_hub.process_creative_job",
+                        args=[json.dumps(payload)],
+                    )
+        except Exception:
+            # Fallback silently to thread-based worker
+            pass
+        return JSONResponse(
+            {
+                "success": True,
+                "async": True,
+                "job_id": qid,
+                "message": "Queued. Poll /api/jobs/" + str(qid),
+            }
+        )
+
+    try:
+        job_id, results, zip_path = await run_in_threadpool(
+            _run_process_core,
+            psd_file_id,
+            data_file_id,
+            mapping,
+            filename_fields_list,
+            output_format,
+            username,
+            psd_processor,
+            watermark_config=watermark_config_dict,
+            font_path=str(selected_font) if selected_font else None,
+        )
+        return JSONResponse(
+            {
+                "success": True,
+                "async": False,
+                "job_id": job_id,
+                "results": results,
+                "zip_file": f"/api/download/{job_id}.zip",
+            }
+        )
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="File not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

@@ -1,0 +1,95 @@
+{% extends "base/layout.html" %}
+
+{% block title %}External Database – Automation Hub{% endblock %}
+
+{% block subtitle %}Browse and sync external SQL Server tables{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/tabulator.min.css">
+{% endblock %}
+
+{% block content %}
+<header>
+    <h1>External database</h1>
+    <p class="subtitle">Browse external SQL Server tables and sync data from Excel (when enabled).</p>
+</header>
+
+<div class="card" id="external-db-card">
+    <h2>External database</h2>
+    <p>Connectors are configured by admins in the Admin &rarr; DB Connectors panel. Select a connector to browse its data or run Excel sync, depending on your permissions.</p>
+
+    <div id="db-connectors-no-access" style="display:none; padding:12px; background:#fef3c7; border-radius:8px; color:#92400e; margin-top:12px;">
+        You do not have access to Database Connectors. Ask an admin to enable the &quot;Database Connectors&quot; module for your user.
+    </div>
+
+    <div id="db-connectors-form" style="display:none; margin-top:12px;">
+        <div class="form-group">
+            <label>Connector:</label>
+            <select id="db-connector-select" class="form-control" style="max-width: 360px;" onchange="updateDbSyncRunButton(); loadDbConnectorPreview();">
+                <option value="">— Select connector —</option>
+            </select>
+        </div>
+        <div style="margin-top: 12px; display:flex; gap:8px; flex-wrap:wrap;">
+            <button type="button" class="btn tab-button active" id="db-tab-browse-btn" onclick="switchDbTab('browse')">Browse table</button>
+            <button type="button" class="btn tab-button" id="db-tab-sync-btn" onclick="switchDbTab('sync')">Sync from Excel</button>
+        </div>
+
+        <!-- Browse tab -->
+        <div id="db-preview-panel" style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px;">
+                <div>
+                    <h3 style="margin:0; font-size:1rem;">Browse connector table</h3>
+                    <p style="margin:4px 0 0; font-size:0.85rem; color:#6b7280;">Read-only, paginated view of the target table with search.</p>
+                </div>
+                <button type="button" class="btn" onclick="downloadDbConnectorData()">Download as CSV</button>
+            </div>
+            <div class="form-group" style="margin-bottom:8px;">
+                <input type="text" id="db-browse-search" class="form-control" style="max-width:260px;" placeholder="Search in table..." oninput="filterDbBrowseGrid(this.value)">
+            </div>
+            <div id="db-preview-status" class="status-box info" style="margin-bottom:8px;"></div>
+            <div id="db-preview-grid" style="border:1px solid #e5e7eb; border-radius:8px; background:#fff; max-height:400px; overflow:auto;"></div>
+        </div>
+
+        <!-- Sync tab -->
+        <div id="db-sync-tab" style="display:none;">
+            <div class="form-group" style="margin-top: 16px;">
+                <label>Excel file:</label>
+                <div class="file-upload">
+                    <input type="file" id="db-sync-file" accept=".xlsx,.xls" onchange="handleDbSyncUpload(event)">
+                    <label for="db-sync-file" class="upload-button">📊 Choose Excel file</label>
+                    <span id="db-sync-file-name" class="file-name"></span>
+                </div>
+            </div>
+            <div class="form-group" id="db-sync-sheet-row" style="display:none;">
+                <label>Sheet:</label>
+                <select id="db-sync-sheet" class="form-control" style="max-width: 280px;" onchange="updateDbSyncRunButton()"></select>
+            </div>
+            <div class="form-group" style="margin-top: 12px;">
+                <button type="button" class="btn btn-success" id="db-sync-run-btn" onclick="runDbSync()" disabled>Sync to database</button>
+                <span id="db-sync-status" class="status-box info" style="margin-left: 12px;"></span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Ensure Tabulator is loaded for the browse grid
+    const initExternalDb = () => {
+        if (typeof loadDbConnectors === 'function') {
+            loadDbConnectors();
+            // Default tab is browse for this page
+            if (typeof switchDbTab === 'function') {
+                switchDbTab('browse');
+            }
+        }
+    };
+    if (typeof ensureTabulatorLoaded === 'function') {
+        ensureTabulatorLoaded(initExternalDb);
+    } else {
+        initExternalDb();
+    }
+</script>
+{% endblock %}
+

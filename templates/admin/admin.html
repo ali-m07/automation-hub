@@ -1,0 +1,2026 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Console | Automation Hub</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="/static/js/app.js"></script>
+</head>
+<body>
+    <!-- Left sidebar + overlay -->
+    <div id="sidebar-overlay" class="sidebar-overlay" onclick="closeSidebar()" style="display:none;"></div>
+    <aside id="app-sidebar" class="app-sidebar" aria-label="Admin menu">
+        <div class="sidebar-header">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <div class="top-nav-logo"></div>
+                <div>
+                    <div style="font-weight:800; color:#111827;">Admin Console</div>
+                    <div style="font-size:0.8rem; color:#6b7280;">{{ user.username }}</div>
+                </div>
+            </div>
+            <button class="sidebar-close-btn" type="button" onclick="closeSidebar()" aria-label="Close menu">×</button>
+        </div>
+
+        <div class="sidebar-section">
+            <div class="sidebar-title">Admin</div>
+            <a href="#" class="sidebar-link" onclick="switchAdminTab('overview', event); closeSidebar(); return false;">Overview</a>
+            <a href="#" class="sidebar-link" onclick="switchAdminTab('users', event); closeSidebar(); return false;">Users</a>
+            <a href="#" class="sidebar-link" onclick="switchAdminTab('settings', event); closeSidebar(); return false;">Settings</a>
+            <a href="#" class="sidebar-link" onclick="switchAdminTab('data-tables', event); closeSidebar(); return false;">Data Tables Review</a>
+            <a href="#" class="sidebar-link" onclick="switchAdminTab('db-connectors', event); closeSidebar(); return false;">DB Connectors</a>
+            <a href="#" class="sidebar-link" onclick="switchAdminTab('tickets', event); closeSidebar(); return false;">Tickets</a>
+            <a href="#" class="sidebar-link" onclick="switchAdminTab('audit', event); closeSidebar(); return false;">Audit log</a>
+            <a href="#" class="sidebar-link" onclick="switchAdminTab('webhooks', event); closeSidebar(); return false;">Webhooks</a>
+            <a href="#" class="sidebar-link" onclick="switchAdminTab('smtp', event); closeSidebar(); return false;">SMTP / Email</a>
+            <a href="#" class="sidebar-link" onclick="switchAdminTab('diagnostics', event); closeSidebar(); return false;">Diagnostics</a>
+        </div>
+
+        <div class="sidebar-section">
+            <div class="sidebar-title">Navigation</div>
+            <a href="/" class="sidebar-link">Back to app</a>
+            <a href="/logout" class="sidebar-link sidebar-link-danger">Logout</a>
+        </div>
+    </aside>
+
+    <div class="app-main" id="app-main">
+    <nav class="top-nav">
+        <div class="top-nav-left">
+            <button type="button" class="nav-hamburger" id="nav-hamburger" aria-label="Menu" onclick="toggleSidebar()">
+                <span></span><span></span><span></span>
+            </button>
+            <div class="top-nav-logo"></div>
+            <div>
+                <div class="top-nav-title">Admin Console</div>
+                <div class="top-nav-sub">System health, roles, SMTP and module configuration</div>
+            </div>
+        </div>
+        <div class="top-nav-right">
+            <div class="top-nav-pill">{{ user.username }} (admin)</div>
+            <a href="/" class="top-nav-link" style="font-weight:700;">Back to app</a>
+        </div>
+    </nav>
+
+    <div class="container fade-in">
+        <!-- tabs moved to left sidebar -->
+
+        <div id="admin-overview" class="tab-content active slide-up">
+            <div class="card">
+                <h2>Overview</h2>
+                <p style="color:#6b7280; margin-bottom:16px;">High-level snapshot of users, tickets and tables across the Automation Hub.</p>
+                <div style="display:grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap:16px; margin-bottom:24px;">
+                    <div style="border:1px solid #e5e7eb; border-radius:12px; padding:16px; background:#f9fafb;">
+                        <div style="font-size:0.8rem; text-transform:uppercase; color:#6b7280; letter-spacing:0.05em; margin-bottom:4px;">Users</div>
+                        <div style="font-size:2rem; font-weight:800;" id="stats-users-total">-</div>
+                        <div style="font-size:0.9rem; color:#6b7280; margin-top:6px;">
+                            Active: <span id="stats-users-active">-</span> • Pending: <span id="stats-users-pending">-</span> • Inactive: <span id="stats-users-inactive">-</span>
+                        </div>
+                    </div>
+                    <div style="border:1px solid #e5e7eb; border-radius:12px; padding:16px; background:#f9fafb;">
+                        <div style="font-size:0.8rem; text-transform:uppercase; color:#6b7280; letter-spacing:0.05em; margin-bottom:4px;">Tickets</div>
+                        <div style="font-size:2rem; font-weight:800;" id="stats-tickets-total">-</div>
+                        <div style="font-size:0.9rem; color:#6b7280; margin-top:6px;">
+                            Open: <span id="stats-tickets-open">-</span> • Closed: <span id="stats-tickets-closed">-</span>
+                        </div>
+                    </div>
+                    <div style="border:1px solid #e5e7eb; border-radius:12px; padding:16px; background:#f9fafb;">
+                        <div style="font-size:0.8rem; text-transform:uppercase; color:#6b7280; letter-spacing:0.05em; margin-bottom:4px;">Tables</div>
+                        <div style="font-size:2rem; font-weight:800;" id="stats-tables-total">-</div>
+                        <div style="font-size:0.9rem; color:#6b7280; margin-top:6px;">
+                            Total Data & Connectors tables in the workspace.
+                        </div>
+                    </div>
+                </div>
+                <div style="display:grid; grid-template-columns: repeat(auto-fit,minmax(260px,1fr)); gap:16px;">
+                    <div style="border:1px solid #e5e7eb; border-radius:12px; padding:16px;">
+                        <h3 style="margin-top:0; font-size:1rem;">Tickets by priority</h3>
+                        <ul id="stats-tickets-priority" style="margin:8px 0 0; padding-left:18px; font-size:0.9rem; color:#4b5563;">
+                            <li>No data yet</li>
+                        </ul>
+                    </div>
+                    <div style="border:1px solid #e5e7eb; border-radius:12px; padding:16px;">
+                        <h3 style="margin-top:0; font-size:1rem;">Tickets by category</h3>
+                        <ul id="stats-tickets-category" style="margin:8px 0 0; padding-left:18px; font-size:0.9rem; color:#4b5563;">
+                            <li>No data yet</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="admin-db-connectors" class="tab-content">
+            <div class="card">
+                <h2>Database Connectors</h2>
+                <p style="color:#6b7280; margin-bottom:16px;">Configure SQL Server connections for Excel sync. Users with the &quot;Database Connectors&quot; module can sync Excel files to these tables.</p>
+                <div id="db-connectors-admin-status" class="status-box" style="margin-bottom:16px;"></div>
+                <h3 style="margin-top:24px; margin-bottom:12px;">Add connector</h3>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;">
+                    <div class="form-group" style="margin:0;">
+                        <label>Name (unique)</label>
+                        <input type="text" id="admin-db-conn-name" class="form-control" placeholder="e.g. HR Turnover" />
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label>Server</label>
+                        <input type="text" id="admin-db-conn-server" class="form-control" placeholder="host\\instance or host,port" />
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label>Database <span style="color:#6b7280; font-size:0.85rem;">(optional)</span></label>
+                        <input type="text" id="admin-db-conn-database" class="form-control" placeholder="Leave empty to use default DB" />
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label>Table name (qualified) <span style="color:#6b7280; font-size:0.85rem;">(optional)</span></label>
+                        <input type="text" id="admin-db-conn-table" class="form-control" placeholder="[db].[dbo].[TableName] (can be set later)" />
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label>Username</label>
+                        <input type="text" id="admin-db-conn-username" class="form-control" placeholder="SQL user" />
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label>Password</label>
+                        <input type="password" id="admin-db-conn-password" class="form-control" placeholder="••••••••" />
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label>Primary key columns (comma-separated) <span style="color:#6b7280; font-size:0.85rem;">(optional)</span></label>
+                    <input type="text" id="admin-db-conn-pks" class="form-control" placeholder="e.g. EmployeeID (can be set later)" />
+                </div>
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label>Extra ODBC params (optional)</label>
+                    <input type="text" id="admin-db-conn-extra" class="form-control" placeholder="e.g. TrustServerCertificate=yes" />
+                </div>
+                <div class="form-group" style="margin-bottom:16px;">
+                    <button type="button" class="btn" onclick="adminTestDbConnection()">Test connection &amp; browse schema</button>
+                    <span id="admin-db-conn-test-status" class="status-box" style="margin-left:12px;"></span>
+                </div>
+                <div id="admin-db-conn-browser" style="display:none; margin-bottom:16px; padding:12px; border:1px solid #e5e7eb; border-radius:8px; background:#f9fafb;">
+                    <div class="form-group">
+                        <label>Select database</label>
+                        <select id="admin-db-conn-database-select" class="form-control" onchange="adminLoadDbTables()">
+                            <option value="">— Select database —</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin-top:8px;">
+                        <label>Select table</label>
+                        <select id="admin-db-conn-table-select" class="form-control" onchange="adminApplySelectedTable()">
+                            <option value="">— Select table —</option>
+                        </select>
+                    </div>
+                    <p style="margin-top:8px; font-size:0.85rem; color:#6b7280;">
+                        When you pick a table, the <strong>Database</strong> and <strong>Table name</strong> fields above will be filled automatically.
+                    </p>
+                </div>
+                <button type="button" class="btn btn-primary" onclick="adminCreateDbConnector()">Create connector</button>
+                <h3 style="margin-top:32px; margin-bottom:12px;">Existing connectors</h3>
+                <div id="admin-db-connectors-list" style="border:1px solid #e5e7eb; border-radius:8px; overflow:hidden;"></div>
+                <div id="admin-db-connector-access" style="margin-top:20px; padding:16px; border:1px solid #e5e7eb; border-radius:8px; display:none;">
+                    <h3 style="margin-top:0; font-size:1rem;">Connector access</h3>
+                    <p id="admin-db-connector-access-title" style="margin:4px 0 12px; font-size:0.9rem; color:#6b7280;"></p>
+                    <div class="form-group" style="margin-bottom:12px; display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;">
+                        <div style="min-width:220px;">
+                            <label>User</label>
+                            <select id="admin-db-conn-access-user" class="form-control">
+                                <option value="">— Select user —</option>
+                            </select>
+                        </div>
+                        <div style="min-width:160px;">
+                            <label>Permission</label>
+                            <select id="admin-db-conn-access-permission" class="form-control">
+                                <option value="view">View</option>
+                                <option value="edit">Edit</option>
+                            </select>
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="adminGrantDbConnectorAccess()">Grant access</button>
+                        <span id="admin-db-conn-access-status" class="status-box" style="margin-left:8px;"></span>
+                    </div>
+                    <div id="admin-db-conn-access-list" style="border-top:1px solid #e5e7eb; padding-top:12px; margin-top:8px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="admin-data-tables" class="tab-content">
+            <div class="card">
+                <h2>Data Tables Review</h2>
+                <p style="color:#6b7280; margin-bottom:16px;">
+                    Tables submitted by users for promotion. Promote will copy current content to SQL Server and then transparently switch future reads/writes to SQL Server.
+                </p>
+                <div id="admin-data-tables-status" class="status-box" style="margin-bottom:16px;"></div>
+                <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:16px;">
+                    <button type="button" class="btn btn-primary" onclick="adminLoadPendingDataTables()">Refresh pending</button>
+                </div>
+                <div id="admin-data-tables-list" style="border:1px solid #e5e7eb; border-radius:8px; overflow:hidden;"></div>
+            </div>
+        </div>
+
+        <div id="admin-users" class="tab-content">
+            <div class="card" style="padding: 0;">
+                <div style="display: flex; height: calc(100vh - 200px); min-height: 600px;">
+                    <!-- Left sidebar: User list (Jira-style) -->
+                    <div style="width: 320px; border-right: 1px solid #e5e7eb; overflow-y: auto; background: #fafafa;">
+                        <div style="padding: 16px; border-bottom: 1px solid #e5e7eb; background: #fff;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                                <h3 style="margin: 0; font-size: 1.1rem;">Users</h3>
+                                <button class="btn btn-primary" type="button" onclick="showCreateUserPanel()" style="padding: 6px 12px; font-size: 0.9rem;">+ New</button>
+                            </div>
+                            <input type="text" id="user-search" class="form-control" placeholder="Search users..." style="width: 100%;" oninput="filterUserList(this.value)" />
+                        </div>
+                        <div id="user-list" style="padding: 8px;"></div>
+                    </div>
+                    
+                    <!-- Right panel: User details / Create form -->
+                    <div style="flex: 1; overflow-y: auto; background: #fff;">
+                        <div id="user-detail-panel" style="padding: 24px;">
+                            <div style="text-align: center; color: #9ca3af; padding: 60px 20px;">
+                                <div style="font-size: 3rem; margin-bottom: 12px;">👤</div>
+                                <div style="font-weight: 600; color: #6b7280;">Select a user from the list</div>
+                                <div style="font-size: 0.9rem; margin-top: 8px;">or create a new user</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="admin-settings" class="tab-content">
+            <div class="card">
+                <h2>Notification Settings</h2>
+                <div id="admin-settings-status" class="status-box" style="margin-bottom: 16px;"></div>
+                
+                <div style="margin-bottom: 24px;">
+                    <label class="form-label">Admin Email (for notifications)</label>
+                    <input type="email" id="settings-admin-email" class="form-control" placeholder="admin@company.com" />
+                </div>
+                
+                <div style="margin-bottom: 24px;">
+                    <h3 style="margin-bottom: 16px;">Notification Toggles</h3>
+                    <div style="display: flex; gap: 24px; flex-wrap: wrap;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="settings-notify-signup" />
+                            <span>Send email on user signup</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="settings-notify-ticket" />
+                            <span>Send email on new ticket</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="settings-notify-ticket-reply" />
+                            <span>Send email to user when admin replies</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 24px;">
+                    <h3 style="margin-bottom: 16px;">Signup Notification Email</h3>
+                    <label class="form-label">Subject</label>
+                    <input type="text" id="settings-signup-subject" class="form-control" placeholder="New user registration request" />
+                    <label class="form-label" style="margin-top: 12px;">HTML Template</label>
+                    <p style="font-size: 0.9rem; color: #6b7280; margin-bottom: 8px;">Available variables: {{username}}, {{email}}, {{first_name}}, {{last_name}}, {{created_at}}</p>
+                    <textarea id="settings-signup-html" class="form-control" rows="10" style="font-family: monospace; font-size: 0.9rem;" placeholder="<html><body><h2>New user registration</h2><p>User: {{username}}</p><p>Email: {{email}}</p><p>Name: {{first_name}} {{last_name}}</p><p>Requested at: {{created_at}}</p></body></html>"></textarea>
+                </div>
+                
+                <div style="margin-bottom: 24px;">
+                    <h3 style="margin-bottom: 16px;">Ticket Notification Email</h3>
+                    <label class="form-label">Subject</label>
+                    <input type="text" id="settings-ticket-subject" class="form-control" placeholder="New support ticket" />
+                    <label class="form-label" style="margin-top: 12px;">HTML Template</label>
+                    <p style="font-size: 0.9rem; color: #6b7280; margin-bottom: 8px;">Available variables: {{user_email}}, {{subject}}, {{body}}, {{ticket_id}}</p>
+                    <textarea id="settings-ticket-html" class="form-control" rows="10" style="font-family: monospace; font-size: 0.9rem;" placeholder="<html><body><h2>New ticket</h2><p>From: {{user_email}}</p><p>Subject: {{subject}}</p><p>{{body}}</p></body></html>"></textarea>
+                </div>
+
+                <div style="margin-bottom: 24px;">
+                    <h3 style="margin-bottom: 16px;">Ticket Reply Email (to user)</h3>
+                    <label class="form-label">Subject</label>
+                    <input type="text" id="settings-ticket-reply-subject" class="form-control" placeholder="Your support ticket has been updated" />
+                    <label class="form-label" style="margin-top: 12px;">HTML Template</label>
+                    <p style="font-size: 0.9rem; color: #6b7280; margin-bottom: 8px;">Available variables: {{user_email}}, {{subject}}, {{reply}}, {{ticket_id}}</p>
+                    <textarea id="settings-ticket-reply-html" class="form-control" rows="8" style="font-family: monospace; font-size: 0.9rem;" placeholder="<html><body><h2>Ticket update</h2><p>Subject: {{subject}}</p><p>{{reply}}</p><p>Ticket ID: {{ticket_id}}</p></body></html>"></textarea>
+                </div>
+                
+                <button class="btn btn-primary" onclick="saveNotificationSettings()">Save Settings</button>
+            </div>
+
+            <div class="card" style="margin-top: 24px;">
+                <h2>Upload Limits</h2>
+                <p style="color: #6b7280; font-size: 0.95rem; margin-bottom: 16px;">Configure maximum file size and number of files per upload. Users will see a clear message when limits are exceeded. Not forced on anyone; admin can relax or tighten as needed.</p>
+                <div id="upload-limits-status" class="status-box" style="margin-bottom: 12px; display: none;"></div>
+                <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end;">
+                    <div class="form-group" style="margin: 0;">
+                        <label class="form-label">Max file size (MB)</label>
+                        <input type="number" id="settings-max-upload-mb" class="form-control" min="1" max="10240" placeholder="100" style="max-width: 120px;" />
+                    </div>
+                    <div class="form-group" style="margin: 0;">
+                        <label class="form-label">Max files per request</label>
+                        <input type="number" id="settings-max-files" class="form-control" min="1" max="1000" placeholder="20" style="max-width: 120px;" />
+                    </div>
+                    <button class="btn btn-primary" onclick="saveUploadLimits()">Save upload limits</button>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top: 24px;">
+                <h2>Authentication &amp; LDAP</h2>
+                <p style="color:#6b7280; font-size:0.95rem; margin-bottom:16px;">
+                    Configure how users authenticate (local database, LDAP/Active Directory, or hybrid).
+                </p>
+                <div id="auth-settings-status" class="status-box" style="margin-bottom:12px; display:none;"></div>
+
+                <div style="display:flex; flex-wrap:wrap; gap:16px; margin-bottom:16px;">
+                    <div class="form-group" style="min-width:220px;">
+                        <label class="form-label">Authentication mode</label>
+                        <select id="auth-mode" class="form-control">
+                            <option value="local">Local only (built-in users)</option>
+                            <option value="ldap">LDAP / Active Directory only</option>
+                            <option value="hybrid">Hybrid (local first, then LDAP)</option>
+                        </select>
+                    </div>
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; margin-top:24px;">
+                        <input type="checkbox" id="ldap-enabled" />
+                        <span>Enable LDAP / Active Directory</span>
+                    </label>
+                </div>
+
+                <div style="display:flex; flex-wrap:wrap; gap:16px; margin-bottom:16px;">
+                    <div class="form-group" style="min-width:260px;">
+                        <label class="form-label">LDAP server</label>
+                        <input type="text" id="ldap-server" class="form-control" placeholder="ldap://dc1.company.local" />
+                    </div>
+                    <div class="form-group" style="max-width:120px;">
+                        <label class="form-label">Port</label>
+                        <input type="number" id="ldap-port" class="form-control" min="1" max="65535" placeholder="389" />
+                    </div>
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; margin-top:24px;">
+                        <input type="checkbox" id="ldap-use-ssl" />
+                        <span>Use SSL (LDAPS)</span>
+                    </label>
+                </div>
+
+                <div style="margin-bottom:16px;">
+                    <label class="form-label">Base DN (OU/CN)</label>
+                    <input type="text" id="ldap-base-dn" class="form-control" placeholder="OU=Users,OU=Tehran,DC=company,DC=local" />
+                </div>
+
+                <div style="display:flex; flex-wrap:wrap; gap:16px; margin-bottom:16px;">
+                    <div class="form-group" style="min-width:260px;">
+                        <label class="form-label">Bind DN (service account)</label>
+                        <input type="text" id="ldap-bind-dn" class="form-control" placeholder="CN=ldap-reader,OU=Service Accounts,DC=company,DC=local" />
+                    </div>
+                    <div class="form-group" style="min-width:220px;">
+                        <label class="form-label">Bind password</label>
+                        <input type="password" id="ldap-bind-password" class="form-control" placeholder="••••••••" />
+                        <small style="color:#6b7280;">Leave empty to keep existing password.</small>
+                    </div>
+                </div>
+
+                <div style="margin-bottom:16px;">
+                    <label class="form-label">User search filter</label>
+                    <p style="font-size:0.85rem; color:#6b7280; margin-bottom:4px;">
+                        Use <code>{username}</code> placeholder. Example:
+                        <code>(&amp;(objectClass=user)(sAMAccountName={username}))</code>
+                    </p>
+                    <input type="text" id="ldap-user-filter" class="form-control" placeholder="(&(objectClass=user)(sAMAccountName={username}))" />
+                </div>
+
+                <button class="btn btn-primary" onclick="saveAuthSettings()">Save auth settings</button>
+            </div>
+        </div>
+
+        <div id="admin-tickets" class="tab-content">
+            <div class="card" style="padding: 0;">
+                <div style="padding: 24px; border-bottom: 1px solid #e5e7eb;">
+                    <h2 style="margin: 0;">Support Tickets</h2>
+                </div>
+                <div id="tickets-list" style="padding: 24px;">
+                    <div style="text-align: center; color: #9ca3af; padding: 40px;">Loading tickets...</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="admin-webhooks" class="tab-content">
+            <div class="card">
+                <h2>Webhooks</h2>
+                <p style="color:#6b7280; margin-bottom:16px;">When a Creative job completes or a ticket gets a reply, a POST request is sent to each registered URL with JSON payload (event, job_id/ticket_id, etc.).</p>
+                <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; margin-bottom:20px;">
+                    <input type="url" id="webhook-url" class="form-control" placeholder="https://your-server.com/webhook" style="max-width:320px;">
+                    <select id="webhook-event-type" class="form-control" style="max-width:180px;">
+                        <option value="job_completed">job_completed</option>
+                        <option value="ticket_replied">ticket_replied</option>
+                    </select>
+                    <button type="button" class="btn btn-primary" onclick="addWebhook()">Add webhook</button>
+                </div>
+                <div id="webhooks-list"></div>
+            </div>
+        </div>
+
+        <div id="admin-audit" class="tab-content">
+            <div class="card" style="padding: 0;">
+                <div style="padding: 24px; border-bottom: 1px solid #e5e7eb;">
+                    <h2 style="margin: 0;">Audit log</h2>
+                    <p style="margin: 8px 0 0; color: #6b7280; font-size: 0.9rem;">Recent actions: login, logout, signup, user/ticket changes. Filter by user, action, date range.</p>
+                </div>
+                <div style="padding: 24px;">
+                    <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 16px;">
+                        <input type="text" id="audit-filter-username" class="form-control" placeholder="Username" style="max-width: 140px;">
+                        <input type="text" id="audit-filter-action" class="form-control" placeholder="Action (e.g. login)" style="max-width: 140px;">
+                        <input type="date" id="audit-filter-from" class="form-control" placeholder="From date" style="max-width: 150px;">
+                        <input type="date" id="audit-filter-to" class="form-control" placeholder="To date" style="max-width: 150px;">
+                        <button type="button" class="btn btn-primary" onclick="loadAuditLog()">Apply & Refresh</button>
+                    </div>
+                    <div id="audit-log-list">
+                        <div style="text-align: center; color: #9ca3af; padding: 40px;">Loading...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="admin-smtp" class="tab-content">
+            <div class="card">
+                <h2>SMTP / Email Settings (coming soon)</h2>
+                <p>Next iterations will include full SMTP configuration forms, connection tests and secure storage.</p>
+            </div>
+        </div>
+
+        <div id="admin-diagnostics" class="tab-content">
+            <div class="card">
+                <h2>Diagnostics & Self‑Tests (coming soon)</h2>
+                <p>Here we will:</p>
+                <ul>
+                    <li>Run sample PSD conversion tests</li>
+                    <li>Test SMTP connectivity</li>
+                    <li>Inspect recent errors and logs</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <script>
+        function switchAdminTab(tab, ev) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+            document.getElementById('admin-' + tab).classList.add('active');
+            if (ev && ev.target) ev.target.classList.add('active');
+            // remember tab across refresh
+            try { window.location.hash = `#${tab}`; } catch (e) {}
+
+            // Lazy-load per-tab data
+            if (tab === 'overview') {
+                loadAdminOverviewStats();
+            } else if (tab === 'users') {
+                adminLoadUsers();
+            } else if (tab === 'settings') {
+                loadNotificationSettings();
+                loadUploadLimits();
+                loadAuthSettings();
+            } else if (tab === 'tickets') {
+                loadTickets();
+            } else if (tab === 'audit') {
+                loadAuditLog();
+            } else if (tab === 'webhooks') {
+                loadWebhooks();
+            } else if (tab === 'db-connectors') {
+                loadAdminDbConnectors();
+            } else if (tab === 'data-tables') {
+                adminLoadPendingDataTables();
+            }
+        }
+
+        const AdminState = {
+            modules: [],
+            users: [],
+            stats: null,
+        };
+
+        function setAdminStatus(msg, type = 'info') {
+            const el = document.getElementById('admin-users-status');
+            if (!el) return;
+            el.textContent = msg || '';
+            el.className = `status-box ${type}`;
+            if (!msg) el.style.display = 'none';
+            else el.style.display = 'block';
+        }
+
+        async function adminLoadModules() {
+            const res = await fetch('/api/admin/modules', { credentials: 'include' });
+            const data = await res.json();
+            if (!data.success) throw new Error(data.error || 'Failed to load modules');
+            AdminState.modules = data.modules || [];
+        }
+
+        AdminState.selectedUser = null;
+        AdminState.filteredUsers = [];
+
+        async function adminLoadUsers() {
+            try {
+                const [modsRes, usersRes] = await Promise.all([
+                    fetch('/api/admin/modules', { credentials: 'include' }),
+                    fetch('/api/admin/users', { credentials: 'include' }),
+                ]);
+                const mods = await modsRes.json();
+                const users = await usersRes.json();
+                if (!mods.success) throw new Error(mods.error || 'Failed to load modules');
+                if (!users.success) throw new Error(users.error || 'Failed to load users');
+                AdminState.modules = mods.modules || [];
+                AdminState.users = users.users || [];
+                AdminState.filteredUsers = AdminState.users;
+                renderUserList();
+                if (AdminState.selectedUser) {
+                    const u = AdminState.users.find(x => x.username === AdminState.selectedUser);
+                    if (u) renderUserDetail(u);
+                    else AdminState.selectedUser = null;
+                }
+            } catch (e) {
+                console.error('Failed to load users:', e);
+            }
+        }
+
+        function filterUserList(query) {
+            const q = (query || '').toLowerCase();
+            AdminState.filteredUsers = AdminState.users.filter(u => 
+                u.username.toLowerCase().includes(q) || 
+                (u.email || '').toLowerCase().includes(q) ||
+                u.role.toLowerCase().includes(q)
+            );
+            renderUserList();
+        }
+
+        function renderUserList() {
+            const root = document.getElementById('user-list');
+            if (!root) return;
+            const users = AdminState.filteredUsers || [];
+            const pending = users.filter(u => u.status === 'pending').sort((a,b) => (b.created_at || '').localeCompare(a.created_at || ''));
+            const active = users.filter(u => u.status === 'active');
+            const inactive = users.filter(u => u.status === 'inactive');
+            
+            let html = '';
+            if (pending.length > 0) {
+                html += `<div style="position: sticky; top: 0; z-index: 2; padding: 10px 12px; font-size: 0.75rem; font-weight: 800; color: #dc2626; text-transform: uppercase; letter-spacing: 0.5px; background:#fafafa; border-bottom:1px solid #e5e7eb;">Requests (${pending.length})</div>`;
+                html += `<div style="padding: 8px 12px; display: flex; gap: 8px; align-items: center; background: #fff; border-bottom: 1px solid #e5e7eb;">
+                    <button type="button" class="btn btn-success" style="padding: 4px 10px; font-size: 0.85rem;" onclick="bulkApproveSelected(event)">Approve selected</button>
+                    <button type="button" class="btn" style="padding: 4px 10px; font-size: 0.85rem; background: #fee2e2; color: #dc2626;" onclick="bulkRejectSelected(event)">Reject selected</button>
+                </div>`;
+                pending.forEach(u => {
+                    const sel = AdminState.selectedUser === u.username ? 'background: #eff6ff; border-left: 3px solid #3b82f6;' : '';
+                    html += `<div onclick="selectUser('${u.username}')" style="padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #f3f4f6; ${sel}" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='${AdminState.selectedUser === u.username ? '#eff6ff' : '#fff'}'">
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                            <input type="checkbox" class="pending-cb" data-username="${String(u.username).replace(/"/g, '&quot;')}" onclick="event.stopPropagation()" />
+                            <div style="flex:1; min-width:0;">
+                                <div style="font-weight: 700; color: #111827;">${escapeHtml(u.username)}</div>
+                                <div style="font-size: 0.85rem; color: #6b7280; margin-top: 2px;">Requested: ${u.created_at ? u.created_at.slice(0,19).replace('T',' ') : '-'}</div>
+                            </div>
+                            <span style="padding: 2px 8px; background: #fee2e2; color: #dc2626; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">Pending</span>
+                        </div>
+                    </div>`;
+                });
+            }
+            if (active.length > 0) {
+                html += `<div style="position: sticky; top: ${pending.length > 0 ? '38px' : '0'}; z-index: 2; padding: 10px 12px; font-size: 0.75rem; font-weight: 800; color: #059669; text-transform: uppercase; letter-spacing: 0.5px; margin-top: ${pending.length > 0 ? '8px' : '0'}; background:#fafafa; border-bottom:1px solid #e5e7eb;">Active (${active.length})</div>`;
+                active.forEach(u => {
+                    const isSelected = AdminState.selectedUser === u.username;
+                    const activeStyle = isSelected ? 'background: #eff6ff; border-left: 3px solid #3b82f6;' : '';
+                    html += `<div onclick="selectUser('${u.username}')" style="padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #f3f4f6; ${activeStyle}" onmouseover="if('${u.username}' !== AdminState.selectedUser) this.style.background='#f9fafb'" onmouseout="if('${u.username}' !== AdminState.selectedUser) this.style.background='#fff'">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <div>
+                                <div style="font-weight: 700; color: #111827;">${u.first_name || ''} ${u.last_name || ''}</div>
+                                <div style="font-size: 0.85rem; color: #6b7280; margin-top: 2px;">${u.username} • ${u.role}</div>
+                            </div>
+                            ${u.role === 'admin' ? '<span style="padding: 2px 8px; background: #dbeafe; color: #1e40af; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">Admin</span>' : ''}
+                        </div>
+                    </div>`;
+                });
+            }
+            if (inactive.length > 0) {
+                html += `<div style="position: sticky; top: 0; z-index: 2; padding: 10px 12px; font-size: 0.75rem; font-weight: 800; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 8px; background:#fafafa; border-bottom:1px solid #e5e7eb;">Inactive (${inactive.length})</div>`;
+                inactive.forEach(u => {
+                    const isSelected = AdminState.selectedUser === u.username;
+                    const activeStyle = isSelected ? 'background: #eff6ff; border-left: 3px solid #3b82f6;' : 'opacity:0.85;';
+                    html += `<div onclick="selectUser('${u.username}')" style="padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #f3f4f6; ${activeStyle}">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <div>
+                                <div style="font-weight: 700; color: #111827;">${u.first_name || ''} ${u.last_name || ''}</div>
+                                <div style="font-size: 0.85rem; color: #6b7280; margin-top: 2px;">${u.username} • ${u.role}</div>
+                            </div>
+                            <span style="padding: 2px 8px; background: #f3f4f6; color: #6b7280; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">Inactive</span>
+                        </div>
+                    </div>`;
+                });
+            }
+            if (users.length === 0) {
+                html = '<div style="padding: 40px 20px; text-align: center; color: #9ca3af;">No users found</div>';
+            }
+            root.innerHTML = html;
+        }
+
+        function selectUser(username) {
+            AdminState.selectedUser = username;
+            const user = AdminState.users.find(u => u.username === username);
+            if (user) {
+                renderUserDetail(user);
+                renderUserList(); // re-render to highlight selected
+            }
+        }
+
+        function renderUserDetail(user) {
+            const panel = document.getElementById('user-detail-panel');
+            if (!panel) return;
+            const modules = AdminState.modules || [];
+            const mods = new Set(user.modules || []);
+            const isPending = user.status === 'pending';
+            
+            let html = `
+                <div style="border-bottom: 1px solid #e5e7eb; padding-bottom: 20px; margin-bottom: 24px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <div>
+                            <h2 style="margin: 0 0 8px 0; font-size: 1.5rem;">${user.first_name || ''} ${user.last_name || ''}</h2>
+                            <div style="color: #6b7280; font-size: 0.95rem;">${user.username} • ${user.role} • ${user.status}</div>
+                            <div style="font-size: 0.85rem; color: #6b7280; margin-top: 4px;">Last login: ${user.last_login_at ? user.last_login_at.slice(0,19).replace('T',' ') : 'Never'}</div>
+                        </div>
+                        ${!isPending ? `<button type="button" class="btn" style="padding: 6px 12px; font-size: 0.9rem; background: #fef3c7; color: #92400e;" onclick="logoutAllSessions('${user.username.replace(/'/g, "\\'")}')">Logout all sessions</button>` : ''}
+                        ${isPending ? `
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn btn-success" onclick="approveUser('${user.username}')">Approve</button>
+                                <button class="btn" style="background: #fee2e2; color: #dc2626;" onclick="rejectUser('${user.username}')">Reject</button>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 24px; padding: 16px; border: 1px solid #e5e7eb; border-radius: 12px; background: #fafafa;">
+                    <h3 style="margin: 0 0 14px 0; font-size: 1.05rem;">User details</h3>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div class="form-group" style="margin:0;">
+                            <label>Email (username)</label>
+                            <input id="edit-email" type="email" class="form-control" value="${user.username}" />
+                            <div style="margin-top:6px; color:#6b7280; font-size:0.85rem;">Changing email will also change username.</div>
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label>Status</label>
+                            <select id="edit-status" class="form-control">
+                                <option value="active" ${user.status === 'active' ? 'selected' : ''}>active</option>
+                                <option value="inactive" ${user.status === 'inactive' ? 'selected' : ''}>inactive</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label>First name</label>
+                            <input id="edit-first-name" class="form-control" value="${user.first_name || ''}" />
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label>Last name</label>
+                            <input id="edit-last-name" class="form-control" value="${user.last_name || ''}" />
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label>Role</label>
+                            <select id="edit-role" class="form-control">
+                                <option value="user" ${user.role === 'user' ? 'selected' : ''}>user</option>
+                                <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>admin</option>
+                            </select>
+                        </div>
+                        <div style="display:flex; align-items:flex-end; gap: 10px;">
+                            <button class="btn btn-primary" type="button" onclick="adminSaveUserEdits('${user.username}')">Save profile</button>
+                            <button class="btn" style="background:#fee2e2; color:#dc2626;" type="button" onclick="adminDeleteUser('${user.username}')">Delete user</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 24px;">
+                    <h3 style="margin: 0 0 16px 0; font-size: 1.1rem;">Reset Password</h3>
+                    <div style="display: flex; gap: 8px; align-items: flex-end;">
+                        <div class="form-group" style="margin: 0; flex: 1;">
+                            <input type="password" id="pw-${user.username}" class="form-control" placeholder="New password (12+ chars, Aa1!)" />
+                        </div>
+                        <button class="btn btn-primary" onclick="adminResetPassword('${user.username}')">Reset</button>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3 style="margin: 0 0 16px 0; font-size: 1.1rem;">Module Access</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin-bottom: 20px;">
+            `;
+            
+            modules.forEach(m => {
+                const checked = mods.has(m.key) ? 'checked' : '';
+                const disabled = user.role === 'admin' ? 'disabled' : '';
+                html += `
+                    <label style="display: flex; align-items: flex-start; gap: 10px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; background: ${checked ? '#f0f9ff' : '#fff'}; cursor: ${disabled ? 'not-allowed' : 'pointer'};">
+                        <input type="checkbox" data-user="${user.username}" data-module="${m.key}" ${checked} ${disabled} style="margin-top: 2px;" />
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; color: #111827;">${m.label}</div>
+                            <div style="font-size: 0.85rem; color: #6b7280; margin-top: 2px;">${m.key}</div>
+                        </div>
+                    </label>
+                `;
+            });
+            
+            html += `
+                    </div>
+                    <button class="btn btn-success" onclick="adminSaveModules('${user.username}')" ${user.role === 'admin' ? 'disabled style="opacity: 0.5;"' : ''}>Save Access Changes</button>
+                </div>
+
+                <div style="margin-top: 24px; padding: 16px; border: 1px solid #e5e7eb; border-radius: 12px; background: #fafafa;">
+                    <h3 style="margin: 0 0 12px 0; font-size: 1.05rem;">Recent logins</h3>
+                    <div id="user-login-log" style="font-size: 0.9rem; color: #4b5563;">Loading...</div>
+                </div>
+            `;
+            
+            panel.innerHTML = html;
+            loadUserLoginLog(user.username);
+        }
+
+        function getPendingSelected() {
+            const checkboxes = document.querySelectorAll('.pending-cb:checked');
+            return Array.from(checkboxes).map(cb => cb.getAttribute('data-username')).filter(Boolean);
+        }
+
+        async function bulkApproveSelected(ev) {
+            ev.stopPropagation();
+            const usernames = getPendingSelected();
+            if (usernames.length === 0) {
+                setAdminStatus('Select at least one pending user.', 'error');
+                return;
+            }
+            try {
+                const res = await fetch('/api/admin/users/bulk-approve', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ usernames }),
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || 'Failed');
+                setAdminStatus(`${data.approved || 0} user(s) approved.`, 'success');
+                await adminLoadUsers();
+            } catch (e) {
+                setAdminStatus('Bulk approve failed: ' + (e.message || e), 'error');
+            }
+        }
+
+        async function bulkRejectSelected(ev) {
+            ev.stopPropagation();
+            const usernames = getPendingSelected();
+            if (usernames.length === 0) {
+                setAdminStatus('Select at least one pending user.', 'error');
+                return;
+            }
+            try {
+                const res = await fetch('/api/admin/users/bulk-reject', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ usernames }),
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || 'Failed');
+                setAdminStatus(`${data.rejected || 0} user(s) rejected.`, 'success');
+                AdminState.selectedUser = null;
+                await adminLoadUsers();
+                document.getElementById('user-detail-panel').innerHTML = '<div style="text-align: center; color: #9ca3af; padding: 60px 20px;"><div style="font-size: 3rem; margin-bottom: 12px;">👤</div><div style="font-weight: 600; color: #6b7280;">Select a user from the list</div></div>';
+            } catch (e) {
+                setAdminStatus('Bulk reject failed: ' + (e.message || e), 'error');
+            }
+        }
+
+        async function loadUserLoginLog(username) {
+            const el = document.getElementById('user-login-log');
+            if (!el) return;
+            try {
+                const res = await fetch(`/api/admin/users/${encodeURIComponent(username)}/login-log?limit=10`, { credentials: 'include' });
+                const data = await res.json();
+                if (!data.success) {
+                    el.textContent = 'Failed to load log.';
+                    return;
+                }
+                const entries = data.entries || [];
+                if (entries.length === 0) {
+                    el.innerHTML = '<span style="color: #9ca3af;">No login history.</span>';
+                    return;
+                }
+                el.innerHTML = entries.map(e => `
+                    <div style="padding: 6px 0; border-bottom: 1px solid #f3f4f6;">
+                        ${e.logged_at ? e.logged_at.slice(0,19).replace('T',' ') : '-'}
+                        ${e.ip_address ? ' • ' + e.ip_address : ''}
+                        ${e.user_agent ? ' <span style="color:#9ca3af; font-size:0.8rem;">' + (e.user_agent.length > 50 ? e.user_agent.slice(0,50) + '...' : e.user_agent) + '</span>' : ''}
+                    </div>
+                `).join('');
+            } catch (e) {
+                el.textContent = 'Error loading log.';
+            }
+        }
+
+        async function logoutAllSessions(username) {
+            try {
+                const res = await fetch(`/api/admin/users/${encodeURIComponent(username)}/logout-all`, {
+                    method: 'POST',
+                    credentials: 'include',
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || 'Failed');
+                setAdminStatus('All sessions for this user have been invalidated.', 'success');
+                const user = AdminState.users.find(u => u.username === username);
+                if (user) renderUserDetail(user);
+            } catch (e) {
+                setAdminStatus('Failed: ' + (e.message || e), 'error');
+            }
+        }
+
+        function showCreateUserPanel() {
+            const panel = document.getElementById('user-detail-panel');
+            if (!panel) return;
+            AdminState.selectedUser = null;
+            renderUserList();
+            
+            const modules = AdminState.modules || [];
+            let modulesHtml = modules.map(m => `
+                <label style="display: flex; align-items: flex-start; gap: 10px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; cursor: pointer;">
+                    <input type="checkbox" data-new-user-module="${m.key}" />
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; color: #111827;">${m.label}</div>
+                        <div style="font-size: 0.85rem; color: #6b7280; margin-top: 2px;">${m.key}</div>
+                    </div>
+                </label>
+            `).join('');
+            
+            panel.innerHTML = `
+                <div style="border-bottom: 1px solid #e5e7eb; padding-bottom: 20px; margin-bottom: 24px;">
+                    <h2 style="margin: 0; font-size: 1.5rem;">Create New User</h2>
+                </div>
+                
+                <form onsubmit="adminCreateUser(event)">
+                    <div class="form-group">
+                    <label>Email (Username)</label>
+                    <input id="new-username" type="email" class="form-control" placeholder="name@company.com" required />
+                    </div>
+                    <div class="form-group">
+                        <label>First name</label>
+                        <input id="new-first-name" class="form-control" placeholder="First name" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Last name</label>
+                        <input id="new-last-name" class="form-control" placeholder="Last name" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input id="new-password" type="password" class="form-control" placeholder="12+ chars, Aa1! (no spaces)" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Role</label>
+                        <select id="new-role" class="form-control">
+                            <option value="user">user</option>
+                            <option value="admin">admin</option>
+                        </select>
+                    </div>
+                    
+                    <div style="margin-top: 24px; margin-bottom: 16px;">
+                        <h3 style="margin: 0 0 12px 0; font-size: 1.1rem;">Module Access</h3>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px;">
+                            ${modulesHtml}
+                        </div>
+                    </div>
+                    
+                    <div id="admin-users-status" class="status-box" style="margin-bottom: 16px;"></div>
+                    
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-success" type="submit">Create User</button>
+                        <button class="btn" type="button" onclick="AdminState.selectedUser = null; renderUserList(); document.getElementById('user-detail-panel').innerHTML = '<div style=\\'text-align: center; color: #9ca3af; padding: 60px 20px;\\'><div style=\\'font-size: 3rem; margin-bottom: 12px;\\'>👤</div><div style=\\'font-weight: 600; color: #6b7280;\\'>Select a user from the list</div></div>';">Cancel</button>
+                    </div>
+                </form>
+            `;
+        }
+
+        async function approveUser(username) {
+            try {
+                const res = await fetch(`/api/admin/users/${encodeURIComponent(username)}/approve`, {
+                    method: 'POST',
+                    credentials: 'include',
+                });
+                const parsed = await readJsonSafe(res);
+                const data = parsed.data || {};
+                if (!parsed.ok || !data.success) {
+                    const msg = data.error || data.detail || `Failed (HTTP ${parsed.status})`;
+                    throw new Error(msg);
+                }
+                setAdminStatus(`User ${username} approved.`, 'success');
+                await adminLoadUsers();
+                const user = AdminState.users.find(u => u.username === username);
+                if (user) renderUserDetail(user);
+            } catch (e) {
+                setAdminStatus(String(e.message || e), 'error');
+            }
+        }
+
+        async function rejectUser(username) {
+            try {
+                const res = await fetch(`/api/admin/users/${encodeURIComponent(username)}/reject`, {
+                    method: 'POST',
+                    credentials: 'include',
+                });
+                const parsed = await readJsonSafe(res);
+                const data = parsed.data || {};
+                if (!parsed.ok || !data.success) {
+                    const msg = data.error || data.detail || `Failed (HTTP ${parsed.status})`;
+                    throw new Error(msg);
+                }
+                AdminState.selectedUser = null;
+                await adminLoadUsers();
+                document.getElementById('user-detail-panel').innerHTML = '<div style="text-align: center; color: #9ca3af; padding: 60px 20px;"><div style="font-size: 3rem; margin-bottom: 12px;">👤</div><div style="font-weight: 600; color: #6b7280;">Select a user from the list</div></div>';
+                setAdminStatus(`User ${username} deleted.`, 'success');
+            } catch (e) {
+                setAdminStatus(String(e.message || e), 'error');
+            }
+        }
+
+        async function adminSaveUserEdits(oldUsername) {
+            try {
+                const newEmail = document.getElementById('edit-email').value.trim().toLowerCase();
+                const first_name = document.getElementById('edit-first-name').value.trim();
+                const last_name = document.getElementById('edit-last-name').value.trim();
+                const role = document.getElementById('edit-role').value;
+                const status = document.getElementById('edit-status').value;
+
+                // Update profile (name/role/status)
+                {
+                    const res = await fetch(`/api/admin/users/${encodeURIComponent(oldUsername)}/update`, {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ first_name, last_name, role, status }),
+                    });
+                    const parsed = await readJsonSafe(res);
+                    const data = parsed.data || {};
+                    if (!parsed.ok || !data.success) {
+                        const msg = data.error || data.detail || `Failed (HTTP ${parsed.status})`;
+                        throw new Error(msg);
+                    }
+                }
+
+                // Change email/username if needed
+                let finalUsername = oldUsername;
+                if (newEmail && newEmail !== oldUsername) {
+                    const res = await fetch(`/api/admin/users/${encodeURIComponent(oldUsername)}/change-email`, {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ new_email: newEmail }),
+                    });
+                    const parsed = await readJsonSafe(res);
+                    const data = parsed.data || {};
+                    if (!parsed.ok || !data.success) {
+                        const msg = data.error || data.detail || `Failed (HTTP ${parsed.status})`;
+                        throw new Error(msg);
+                    }
+                    finalUsername = data.username || newEmail;
+                }
+
+                setAdminStatus('User updated successfully.', 'success');
+                await adminLoadUsers();
+                selectUser(finalUsername);
+            } catch (e) {
+                setAdminStatus(String(e.message || e), 'error');
+            }
+        }
+
+        async function adminDeleteUser(username) {
+            try {
+                const res = await fetch(`/api/admin/users/${encodeURIComponent(username)}`, {
+                    method: 'DELETE',
+                    credentials: 'include',
+                });
+                const parsed = await readJsonSafe(res);
+                const data = parsed.data || {};
+                if (!parsed.ok || !data.success) {
+                    const msg = data.error || data.detail || `Failed (HTTP ${parsed.status})`;
+                    throw new Error(msg);
+                }
+                setAdminStatus(`User ${username} deleted.`, 'success');
+                AdminState.selectedUser = null;
+                await adminLoadUsers();
+                document.getElementById('user-detail-panel').innerHTML = '<div style="text-align: center; color: #9ca3af; padding: 60px 20px;"><div style="font-size: 3rem; margin-bottom: 12px;">👤</div><div style="font-weight: 600; color: #6b7280;">Select a user from the list</div></div>';
+            } catch (e) {
+                setAdminStatus(String(e.message || e), 'error');
+            }
+        }
+
+        function renderUsersTable() {
+            const root = document.getElementById('users-table');
+            if (!root) return;
+            const modules = AdminState.modules || [];
+            const users = AdminState.users || [];
+
+            const headerCells = [
+                `<th style="text-align:left; padding:10px 12px; border-bottom:1px solid #e5e7eb;">User</th>`,
+                `<th style="text-align:left; padding:10px 12px; border-bottom:1px solid #e5e7eb;">Role</th>`,
+                `<th style="text-align:left; padding:10px 12px; border-bottom:1px solid #e5e7eb;">Reset password</th>`,
+                ...modules.map(m => `<th style="text-align:left; padding:10px 12px; border-bottom:1px solid #e5e7eb;">${m.label}</th>`),
+                `<th style="text-align:left; padding:10px 12px; border-bottom:1px solid #e5e7eb;">Save</th>`,
+            ].join('');
+
+            const rowsHtml = users.map(u => {
+                const mods = new Set(u.modules || []);
+                const moduleCells = modules.map(m => {
+                    const checked = mods.has(m.key) ? 'checked' : '';
+                    const disabled = (u.role === 'admin') ? 'disabled' : '';
+                    return `<td style="padding:10px 12px; border-bottom:1px solid #f3f4f6;">
+                        <label style="display:flex; align-items:center; gap:8px;">
+                            <input type="checkbox" data-user="${u.username}" data-module="${m.key}" ${checked} ${disabled} />
+                            <span style="color:#374151; font-size:0.9rem;">Allow</span>
+                        </label>
+                    </td>`;
+                }).join('');
+
+                return `<tr>
+                    <td style="padding:10px 12px; border-bottom:1px solid #f3f4f6; font-weight:700;">${u.username}</td>
+                    <td style="padding:10px 12px; border-bottom:1px solid #f3f4f6;">${u.role}</td>
+                    <td style="padding:10px 12px; border-bottom:1px solid #f3f4f6;">
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <input type="password" class="form-control" style="max-width:180px;" placeholder="new password" id="pw-${u.username}" />
+                            <button class="btn" type="button" onclick="adminResetPassword('${u.username}')">Reset</button>
+                        </div>
+                    </td>
+                    ${moduleCells}
+                    <td style="padding:10px 12px; border-bottom:1px solid #f3f4f6;">
+                        <button class="btn btn-primary" type="button" onclick="adminSaveModules('${u.username}')">Save access</button>
+                    </td>
+                </tr>`;
+            }).join('');
+
+            root.innerHTML = `<table style="width:100%; border-collapse:collapse;">
+                <thead><tr>${headerCells}</tr></thead>
+                <tbody>${rowsHtml}</tbody>
+            </table>`;
+        }
+
+        function renderNewUserModules() {
+            const wrapper = document.getElementById('new-user-modules');
+            const grid = document.getElementById('new-user-modules-grid');
+            if (!wrapper || !grid) return;
+            const modules = AdminState.modules || [];
+            if (!modules.length) {
+                wrapper.style.display = 'none';
+                return;
+            }
+            wrapper.style.display = 'block';
+            grid.innerHTML = modules.map(m => `
+                <label style="display:flex; align-items:flex-start; gap:10px; padding:10px 12px; border:1px solid #f3f4f6; border-radius:10px; background:#fafafa;">
+                    <input type="checkbox" data-new-user-module="${m.key}" />
+                    <div>
+                        <div style="font-weight:700; color:#111827;">${m.label}</div>
+                        <div style="color:#6b7280; font-size:0.9rem;">Key: ${m.key}</div>
+                    </div>
+                </label>
+            `).join('');
+        }
+
+        async function readJsonSafe(res) {
+            const text = await res.text();
+            try {
+                return { ok: res.ok, status: res.status, data: JSON.parse(text) };
+            } catch {
+                return { ok: res.ok, status: res.status, data: { detail: text } };
+            }
+        }
+
+        async function adminCreateUser(event) {
+            if (event) event.preventDefault();
+            try {
+                const username = document.getElementById('new-username').value.trim();
+                const password = document.getElementById('new-password').value;
+                const role = document.getElementById('new-role').value;
+                if (!username) throw new Error('Username is required');
+                const first_name = document.getElementById('new-first-name')?.value.trim() || '';
+                const last_name = document.getElementById('new-last-name')?.value.trim() || '';
+
+                // Collect modules selected for the new user
+                const modules = [];
+                document.querySelectorAll('input[type="checkbox"][data-new-user-module]').forEach(cb => {
+                    if (cb.checked) modules.push(cb.getAttribute('data-module'));
+                });
+
+                setAdminStatus('Creating user...', 'info');
+                const res = await fetch('/api/admin/users', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, role, modules, first_name, last_name }),
+                });
+                const parsed = await readJsonSafe(res);
+                const data = parsed.data || {};
+                if (!parsed.ok || !data.success) {
+                    const msg = data.error || data.detail || `Failed (HTTP ${parsed.status})`;
+                    throw new Error(msg);
+                }
+                await adminLoadUsers();
+                const user = AdminState.users.find(u => u.username === username);
+                if (user) {
+                    selectUser(username);
+                    setAdminStatus('User created.', 'success');
+                }
+            } catch (e) {
+                setAdminStatus(String(e.message || e), 'error');
+            }
+        }
+
+        async function adminResetPassword(username) {
+            try {
+                const input = document.getElementById(`pw-${username}`);
+                const password = input.value;
+                if (!password || password.length < 6) throw new Error('Password must be at least 6 characters');
+                setAdminStatus(`Resetting password for ${username}...`, 'info');
+                const res = await fetch(`/api/admin/users/${encodeURIComponent(username)}/reset-password`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password }),
+                });
+                const parsed = await readJsonSafe(res);
+                const data = parsed.data || {};
+                if (!parsed.ok || !data.success) {
+                    const msg = data.error || data.detail || `Failed (HTTP ${parsed.status})`;
+                    throw new Error(msg);
+                }
+                input.value = '';
+                setAdminStatus(`Password reset for ${username}.`, 'success');
+            } catch (e) {
+                setAdminStatus(String(e.message || e), 'error');
+            }
+        }
+
+        async function adminSaveModules(username) {
+            try {
+                const checkboxes = document.querySelectorAll(`input[type="checkbox"][data-user="${username}"]`);
+                const modules = [];
+                checkboxes.forEach(cb => { if (cb.checked) modules.push(cb.getAttribute('data-module')); });
+                setAdminStatus(`Saving access for ${username}...`, 'info');
+                const res = await fetch(`/api/admin/users/${encodeURIComponent(username)}/modules`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ modules }),
+                });
+                const parsed = await readJsonSafe(res);
+                const data = parsed.data || {};
+                if (!parsed.ok || !data.success) {
+                    const msg = data.error || data.detail || `Failed (HTTP ${parsed.status})`;
+                    throw new Error(msg);
+                }
+                await adminLoadUsers();
+                setAdminStatus(`Access saved for ${username}.`, 'success');
+            } catch (e) {
+                setAdminStatus(String(e.message || e), 'error');
+            }
+        }
+
+        function applyInitialTabFromHash() {
+            const hash = (window.location.hash || '').replace('#', '').trim();
+            const allowed = new Set(['overview', 'users', 'settings', 'tickets', 'audit', 'webhooks', 'smtp', 'diagnostics']);
+            const tab = allowed.has(hash) ? hash : 'overview';
+            // activate correct content
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+            const content = document.getElementById('admin-' + tab);
+            if (content) content.classList.add('active');
+            const btn = document.querySelector(`.tab-button[onclick*="switchAdminTab('${tab}'"]`);
+            if (btn) btn.classList.add('active');
+            
+            // Load data for specific tabs
+            if (tab === 'overview') {
+                loadAdminOverviewStats();
+            } else if (tab === 'users') {
+                adminLoadUsers();
+            } else if (tab === 'settings') {
+                loadNotificationSettings();
+                loadUploadLimits();
+            } else if (tab === 'tickets') {
+                loadTickets();
+            } else if (tab === 'audit') {
+                loadAuditLog();
+            } else if (tab === 'webhooks') {
+                loadWebhooks();
+            } else if (tab === 'db-connectors') {
+                loadAdminDbConnectors();
+            } else if (tab === 'data-tables') {
+                adminLoadPendingDataTables();
+            }
+        }
+
+        async function loadAdminOverviewStats() {
+            try {
+                const res = await fetch('/api/admin/stats/summary', { credentials: 'include' });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || 'Failed to load stats');
+
+                AdminState.stats = data;
+
+                const users = data.users || {};
+                const tickets = data.tickets || {};
+                const tables = data.tables || {};
+
+                const byPriority = tickets.by_priority || {};
+                const byCategory = tickets.by_category || {};
+
+                const setText = (id, value) => {
+                    const el = document.getElementById(id);
+                    if (el) el.textContent = value;
+                };
+
+                setText('stats-users-total', users.total ?? 0);
+                setText('stats-users-active', users.active ?? 0);
+                setText('stats-users-pending', users.pending ?? 0);
+                setText('stats-users-inactive', users.inactive ?? 0);
+
+                setText('stats-tickets-total', tickets.total ?? 0);
+                setText('stats-tickets-open', tickets.open ?? 0);
+                setText('stats-tickets-closed', tickets.closed ?? 0);
+
+                setText('stats-tables-total', tables.total ?? 0);
+
+                const priRoot = document.getElementById('stats-tickets-priority');
+                if (priRoot) {
+                    const keys = Object.keys(byPriority);
+                    if (keys.length === 0) {
+                        priRoot.innerHTML = '<li>No tickets yet</li>';
+                    } else {
+                        priRoot.innerHTML = keys
+                            .sort()
+                            .map(k => `<li><strong>${k}</strong>: ${byPriority[k]}</li>`)
+                            .join('');
+                    }
+                }
+
+                const catRoot = document.getElementById('stats-tickets-category');
+                if (catRoot) {
+                    const keys = Object.keys(byCategory);
+                    if (keys.length === 0) {
+                        catRoot.innerHTML = '<li>No tickets yet</li>';
+                    } else {
+                        catRoot.innerHTML = keys
+                            .sort()
+                            .map(k => `<li><strong>${k}</strong>: ${byCategory[k]}</li>`)
+                            .join('');
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to load admin stats:', e);
+            }
+        }
+
+        // Notification Settings
+        async function loadNotificationSettings() {
+            try {
+                const res = await fetch('/api/admin/notifications/config', { credentials: 'include' });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || 'Failed to load settings');
+                
+                const config = data.config || {};
+                document.getElementById('settings-admin-email').value = config.admin_email || '';
+                document.getElementById('settings-notify-signup').checked = config.notify_signup || false;
+                document.getElementById('settings-notify-ticket').checked = config.notify_ticket || false;
+                document.getElementById('settings-notify-ticket-reply').checked = config.notify_ticket_reply !== false;
+                document.getElementById('settings-signup-subject').value = config.signup_subject || '';
+                document.getElementById('settings-signup-html').value = config.signup_html_template || '';
+                document.getElementById('settings-ticket-subject').value = config.ticket_subject || '';
+                document.getElementById('settings-ticket-html').value = config.ticket_html_template || '';
+                document.getElementById('settings-ticket-reply-subject').value = config.ticket_reply_subject || '';
+                document.getElementById('settings-ticket-reply-html').value = config.ticket_reply_html_template || '';
+            } catch (e) {
+                setAdminStatus('Failed to load settings: ' + (e.message || e), 'error');
+            }
+        }
+
+        async function loadAuthSettings() {
+            const statusEl = document.getElementById('auth-settings-status');
+            if (statusEl) {
+                statusEl.style.display = 'none';
+                statusEl.textContent = '';
+            }
+            try {
+                const res = await fetch('/api/admin/auth/config', { credentials: 'include' });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || 'Failed to load auth settings');
+                const cfg = data.config || {};
+                document.getElementById('auth-mode').value = cfg.auth_mode || 'local';
+                document.getElementById('ldap-enabled').checked = !!cfg.ldap_enabled;
+                document.getElementById('ldap-server').value = cfg.ldap_server || '';
+                document.getElementById('ldap-port').value = cfg.ldap_port != null ? cfg.ldap_port : 389;
+                document.getElementById('ldap-use-ssl').checked = !!cfg.ldap_use_ssl;
+                document.getElementById('ldap-base-dn').value = cfg.ldap_base_dn || '';
+                document.getElementById('ldap-bind-dn').value = cfg.ldap_bind_dn || '';
+                // bind password را برای امنیت پر نمی‌کنیم؛ فقط اگر خالی گذاشت، یعنی تغییر نده
+                document.getElementById('ldap-bind-password').value = '';
+                document.getElementById('ldap-user-filter').value = cfg.ldap_user_filter || '(&(objectClass=user)(sAMAccountName={username}))';
+            } catch (e) {
+                if (statusEl) {
+                    statusEl.textContent = 'Failed to load auth settings: ' + (e.message || e);
+                    statusEl.className = 'status-box error';
+                    statusEl.style.display = 'block';
+                }
+                console.error('Failed to load auth settings:', e);
+            }
+        }
+
+        async function saveAuthSettings() {
+            const statusEl = document.getElementById('auth-settings-status');
+            if (!statusEl) return;
+            statusEl.style.display = 'none';
+            statusEl.textContent = '';
+            try {
+                const payload = {
+                    auth_mode: document.getElementById('auth-mode').value || 'local',
+                    ldap_enabled: document.getElementById('ldap-enabled').checked,
+                    ldap_server: document.getElementById('ldap-server').value.trim(),
+                    ldap_port: parseInt(document.getElementById('ldap-port').value || '389', 10),
+                    ldap_use_ssl: document.getElementById('ldap-use-ssl').checked,
+                    ldap_base_dn: document.getElementById('ldap-base-dn').value.trim(),
+                    ldap_bind_dn: document.getElementById('ldap-bind-dn').value.trim(),
+                    ldap_user_filter: document.getElementById('ldap-user-filter').value.trim(),
+                };
+                const pwd = document.getElementById('ldap-bind-password').value;
+                // اگر کاربر چیزی تایپ کرده، آن را هم بفرست؛ اگر خالی است، پسورد را تغییر نده
+                if (pwd !== '') {
+                    payload.ldap_bind_password = pwd;
+                }
+                const res = await fetch('/api/admin/auth/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify(payload),
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || 'Failed to save auth settings');
+                statusEl.textContent = 'Auth settings saved successfully';
+                statusEl.className = 'status-box success';
+                statusEl.style.display = 'block';
+                document.getElementById('ldap-bind-password').value = '';
+            } catch (e) {
+                statusEl.textContent = 'Failed to save auth settings: ' + (e.message || e);
+                statusEl.className = 'status-box error';
+                statusEl.style.display = 'block';
+                console.error('Failed to save auth settings:', e);
+            }
+        }
+
+        async function saveNotificationSettings() {
+            const statusEl = document.getElementById('admin-settings-status');
+            try {
+                const config = {
+                    admin_email: document.getElementById('settings-admin-email').value.trim(),
+                    notify_signup: document.getElementById('settings-notify-signup').checked,
+                    notify_ticket: document.getElementById('settings-notify-ticket').checked,
+                    notify_ticket_reply: document.getElementById('settings-notify-ticket-reply').checked,
+                    signup_subject: document.getElementById('settings-signup-subject').value.trim(),
+                    signup_html_template: document.getElementById('settings-signup-html').value.trim(),
+                    ticket_subject: document.getElementById('settings-ticket-subject').value.trim(),
+                    ticket_html_template: document.getElementById('settings-ticket-html').value.trim(),
+                    ticket_reply_subject: document.getElementById('settings-ticket-reply-subject').value.trim(),
+                    ticket_reply_html_template: document.getElementById('settings-ticket-reply-html').value.trim(),
+                };
+                
+                const res = await fetch('/api/admin/notifications/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify(config),
+                });
+                
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || 'Failed to save settings');
+                
+                setAdminStatus('Settings saved successfully', 'success');
+            } catch (e) {
+                setAdminStatus('Failed to save settings: ' + (e.message || e), 'error');
+            }
+        }
+
+        async function loadUploadLimits() {
+            const statusEl = document.getElementById('upload-limits-status');
+            try {
+                const res = await fetch('/api/admin/settings/upload-limits', { credentials: 'include' });
+                const data = await res.json();
+                if (data.success) {
+                    const mbEl = document.getElementById('settings-max-upload-mb');
+                    const filesEl = document.getElementById('settings-max-files');
+                    if (mbEl) mbEl.value = data.max_upload_mb ?? '';
+                    if (filesEl) filesEl.value = data.max_files_per_request ?? '';
+                }
+            } catch (e) {
+                if (statusEl) { statusEl.textContent = 'Failed to load upload limits'; statusEl.style.display = 'block'; statusEl.className = 'status-box error'; }
+            }
+        }
+
+        async function saveUploadLimits() {
+            const statusEl = document.getElementById('upload-limits-status');
+            statusEl.style.display = 'block';
+            statusEl.className = 'status-box info';
+            statusEl.textContent = 'Saving...';
+            try {
+                const maxMb = document.getElementById('settings-max-upload-mb').value;
+                const maxFiles = document.getElementById('settings-max-files').value;
+                const body = {};
+                if (maxMb !== '' && maxMb !== undefined) body.max_upload_mb = parseInt(maxMb, 10);
+                if (maxFiles !== '' && maxFiles !== undefined) body.max_files_per_request = parseInt(maxFiles, 10);
+                const res = await fetch('/api/admin/settings/upload-limits', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    statusEl.textContent = 'Upload limits saved.';
+                    statusEl.className = 'status-box success';
+                } else {
+                    statusEl.textContent = data.error || data.detail || 'Failed';
+                    statusEl.className = 'status-box error';
+                }
+            } catch (e) {
+                statusEl.textContent = 'Failed: ' + (e.message || e);
+                statusEl.className = 'status-box error';
+            }
+        }
+
+        async function adminLoadPendingDataTables() {
+            const statusEl = document.getElementById('admin-data-tables-status');
+            const listEl = document.getElementById('admin-data-tables-list');
+            if (!listEl) return;
+            try {
+                if (statusEl) { statusEl.textContent = 'Loading…'; statusEl.className = 'status-box info'; statusEl.style.display = 'block'; }
+                const res = await fetch('/api/admin/data-tables/pending', { credentials: 'include' });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || 'Failed to load pending tables');
+                const tables = data.tables || [];
+                if (tables.length === 0) {
+                    listEl.innerHTML = '<div style="padding:16px; color:#6b7280;">No tables pending review.</div>';
+                    if (statusEl) { statusEl.textContent = 'Up to date.'; statusEl.className = 'status-box success'; }
+                    return;
+                }
+                listEl.innerHTML = tables.map(t => `
+                    <div style="display:flex; gap:12px; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid #e5e7eb;">
+                        <div style="min-width:0;">
+                            <div style="font-weight:800; color:#111827;">${escapeHtml(t.title || t.table_id)}</div>
+                            <div style="font-size:0.9rem; color:#6b7280; overflow:hidden; text-overflow:ellipsis;">
+                                <span style="font-family:monospace;">${escapeHtml(t.table_id)}</span>
+                                • Owner: ${escapeHtml(t.owner_username || '')}
+                                • Status: ${escapeHtml(t.promote_status || '')}
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            <button class="btn btn-success" style="padding:6px 12px;" onclick="adminPromoteDataTable('${encodeURIComponent(t.table_id)}')">Promote</button>
+                        </div>
+                    </div>
+                `).join('');
+                if (statusEl) { statusEl.textContent = `Pending: ${tables.length}`; statusEl.className = 'status-box info'; }
+            } catch (e) {
+                if (statusEl) { statusEl.textContent = e.message || 'Error'; statusEl.className = 'status-box error'; statusEl.style.display = 'block'; }
+                if (listEl) listEl.innerHTML = '<div style="padding:16px; color:#ef4444;">Failed to load.</div>';
+            }
+        }
+
+        async function adminPromoteDataTable(tableIdEncoded) {
+            const statusEl = document.getElementById('admin-data-tables-status');
+            const tableId = decodeURIComponent(tableIdEncoded || '');
+            if (!tableId) return;
+            try {
+                if (statusEl) { statusEl.textContent = `Promoting ${tableId}…`; statusEl.className = 'status-box info'; statusEl.style.display = 'block'; }
+                const res = await fetch(`/api/admin/data-tables/${encodeURIComponent(tableId)}/promote`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                const out = await res.json();
+                if (!out.success) throw new Error(out.error || 'Promote failed');
+                if (statusEl) { statusEl.textContent = out.message || 'Promoted.'; statusEl.className = 'status-box success'; }
+                adminLoadPendingDataTables();
+            } catch (e) {
+                if (statusEl) { statusEl.textContent = e.message || 'Promote failed'; statusEl.className = 'status-box error'; statusEl.style.display = 'block'; }
+            }
+        }
+
+        async function loadAdminDbConnectors() {
+            const statusEl = document.getElementById('db-connectors-admin-status');
+            const listEl = document.getElementById('admin-db-connectors-list');
+            if (!listEl) return;
+            try {
+                const res = await fetch('/api/db-connectors', { credentials: 'include' });
+                if (res.status === 403) {
+                    listEl.innerHTML = '<div style="padding:16px; color:#6b7280;">You need Database Connectors module to manage connectors.</div>';
+                    return;
+                }
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || 'Failed to load connectors');
+                const connectors = data.connectors || [];
+                if (connectors.length === 0) {
+                    listEl.innerHTML = '<div style="padding:16px; color:#6b7280;">No connectors yet. Add one above.</div>';
+                    return;
+                }
+                listEl.innerHTML = '<table style="width:100%; border-collapse:collapse;"><thead><tr style="background:#f9fafb; text-align:left;"><th style="padding:10px 12px; border-bottom:1px solid #e5e7eb;">Name</th><th style="padding:10px 12px; border-bottom:1px solid #e5e7eb;">Server</th><th style="padding:10px 12px; border-bottom:1px solid #e5e7eb;">Database</th><th style="padding:10px 12px; border-bottom:1px solid #e5e7eb;">Table</th><th style="padding:10px 12px; border-bottom:1px solid #e5e7eb;">Primary keys</th><th style="padding:10px 12px; border-bottom:1px solid #e5e7eb; text-align:right;">Actions</th></tr></thead><tbody>' +
+                    connectors.map(c => `<tr><td style="padding:10px 12px; border-bottom:1px solid #e5e7eb;">${escapeHtml(c.name)}</td><td style="padding:10px 12px; border-bottom:1px solid #e5e7eb;">${escapeHtml(c.server)}</td><td style="padding:10px 12px; border-bottom:1px solid #e5e7eb;">${escapeHtml(c.database || '')}</td><td style="padding:10px 12px; border-bottom:1px solid #e5e7eb;">${escapeHtml(c.table_name || '')}</td><td style="padding:10px 12px; border-bottom:1px solid #e5e7eb;">${escapeHtml((c.primary_key_columns || []).join(', '))}</td><td style="padding:10px 12px; border-bottom:1px solid #e5e7eb; text-align:right;"><button class="btn" style="padding:4px 10px; margin-right:8px;" onclick="adminShowDbConnectorAccess(${c.id}, '${escapeHtml(c.name)}')">Access…</button><button class="btn" style="padding:4px 10px; background:#fee2e2; color:#b91c1c;" onclick="adminDeleteDbConnector(${c.id})">Delete</button></td></tr>`).join('') +
+                    '</tbody></table>';
+                if (statusEl) statusEl.textContent = '';
+            } catch (e) {
+                listEl.innerHTML = '<div style="padding:16px; color:#dc2626;">' + escapeHtml(e.message || 'Failed to load') + '</div>';
+                if (statusEl) { statusEl.textContent = e.message || 'Error'; statusEl.className = 'status-box error'; }
+            }
+        }
+
+        async function adminCreateDbConnector() {
+            const statusEl = document.getElementById('db-connectors-admin-status');
+            const name = document.getElementById('admin-db-conn-name').value.trim();
+            const server = document.getElementById('admin-db-conn-server').value.trim();
+            const database = document.getElementById('admin-db-conn-database').value.trim();
+            const table_name = document.getElementById('admin-db-conn-table').value.trim();
+            const username = document.getElementById('admin-db-conn-username').value.trim();
+            const password = document.getElementById('admin-db-conn-password').value;
+            const pksStr = document.getElementById('admin-db-conn-pks').value.trim();
+            const extra = document.getElementById('admin-db-conn-extra').value.trim();
+            if (!name || !server || !username) {
+                if (statusEl) { statusEl.textContent = 'Name, server and username are required.'; statusEl.className = 'status-box error'; }
+                return;
+            }
+            const primary_key_columns = pksStr ? pksStr.split(',').map(s => s.trim()).filter(Boolean) : [];
+            try {
+                const res = await fetch('/api/admin/db-connectors', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, server, database, username, password, table_name, primary_key_columns, extra_params: extra || null }),
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || 'Failed to create connector');
+                if (statusEl) { statusEl.textContent = data.message || 'Connector created.'; statusEl.className = 'status-box success'; }
+                document.getElementById('admin-db-conn-name').value = '';
+                document.getElementById('admin-db-conn-server').value = '';
+                document.getElementById('admin-db-conn-database').value = '';
+                document.getElementById('admin-db-conn-table').value = '';
+                document.getElementById('admin-db-conn-username').value = '';
+                document.getElementById('admin-db-conn-password').value = '';
+                document.getElementById('admin-db-conn-pks').value = '';
+                document.getElementById('admin-db-conn-extra').value = '';
+                loadAdminDbConnectors();
+            } catch (e) {
+                if (statusEl) { statusEl.textContent = e.message || 'Error'; statusEl.className = 'status-box error'; }
+            }
+        }
+
+        async function adminDeleteDbConnector(id) {
+            const statusEl = document.getElementById('db-connectors-admin-status');
+            if (!id) return;
+            if (!confirm('Delete this connector? This will not touch the remote database, only this connection config.')) {
+                return;
+            }
+            try {
+                const res = await fetch(`/api/admin/db-connectors/${id}`, {
+                    method: 'DELETE',
+                    credentials: 'include',
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || 'Failed to delete connector');
+                if (statusEl) { statusEl.textContent = 'Connector deleted.'; statusEl.className = 'status-box success'; }
+                loadAdminDbConnectors();
+            } catch (e) {
+                if (statusEl) { statusEl.textContent = e.message || 'Error'; statusEl.className = 'status-box error'; }
+            }
+        }
+
+        let AdminDbConnectorsState = {
+            selectedConnectorId: null,
+            selectedConnectorName: '',
+            users: [],
+        };
+
+        async function adminEnsureUsersLoaded() {
+            if (AdminDbConnectorsState.users.length > 0) return;
+            const res = await fetch('/api/admin/users', { credentials: 'include' });
+            const data = await res.json();
+            if (!data.success || !data.users) return;
+            AdminDbConnectorsState.users = data.users;
+            const userSelect = document.getElementById('admin-db-conn-access-user');
+            if (userSelect) {
+                userSelect.innerHTML = '<option value="">— Select user —</option>' +
+                    data.users.map(u => `<option value="${escapeHtml(u.username)}">${escapeHtml(u.username)}</option>`).join('');
+            }
+        }
+
+        async function adminShowDbConnectorAccess(id, name) {
+            AdminDbConnectorsState.selectedConnectorId = id;
+            AdminDbConnectorsState.selectedConnectorName = name;
+            const panel = document.getElementById('admin-db-connector-access');
+            const title = document.getElementById('admin-db-connector-access-title');
+            const statusEl = document.getElementById('admin-db-conn-access-status');
+            if (panel) panel.style.display = 'block';
+            if (title) title.textContent = `Connector: ${name}`;
+            if (statusEl) { statusEl.textContent = ''; statusEl.className = 'status-box'; }
+            await adminEnsureUsersLoaded();
+            await adminLoadDbConnectorGrants();
+        }
+
+        async function adminLoadDbConnectorGrants() {
+            const id = AdminDbConnectorsState.selectedConnectorId;
+            const listEl = document.getElementById('admin-db-conn-access-list');
+            const statusEl = document.getElementById('admin-db-conn-access-status');
+            if (!id || !listEl) return;
+            listEl.innerHTML = '<div style="padding:8px; color:#6b7280;">Loading access…</div>';
+            try {
+                const res = await fetch(`/api/admin/db-connectors/${id}/grants`, {
+                    credentials: 'include',
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || 'Failed to load access');
+                const grants = data.grants || [];
+                if (grants.length === 0) {
+                    listEl.innerHTML = '<div style="padding:8px; color:#6b7280;">No explicit access grants. Only owner/admin can see this connector.</div>';
+                } else {
+                    listEl.innerHTML = '<table style="width:100%; border-collapse:collapse;"><thead><tr style="background:#f9fafb; text-align:left;"><th style="padding:8px 10px; border-bottom:1px solid #e5e7eb;">User</th><th style="padding:8px 10px; border-bottom:1px solid #e5e7eb;">Permission</th><th style="padding:8px 10px; border-bottom:1px solid #e5e7eb; text-align:right;">Actions</th></tr></thead><tbody>' +
+                        grants.map(g => `<tr><td style="padding:8px 10px; border-bottom:1px solid #e5e7eb;">${escapeHtml(g.username)}</td><td style="padding:8px 10px; border-bottom:1px solid #e5e7eb;">${escapeHtml(g.permission || 'view')}</td><td style="padding:8px 10px; border-bottom:1px solid #e5e7eb; text-align:right;"><button class="btn" style="padding:4px 10px; background:#fee2e2; color:#b91c1c;" onclick="adminRevokeDbConnectorAccess('${encodeURIComponent(g.username)}')">Remove</button></td></tr>`).join('') +
+                        '</tbody></table>';
+                }
+                if (statusEl) { statusEl.textContent = ''; statusEl.className = 'status-box'; }
+            } catch (e) {
+                listEl.innerHTML = '<div style="padding:8px; color:#dc2626;">' + escapeHtml(e.message || 'Failed to load') + '</div>';
+                if (statusEl) { statusEl.textContent = e.message || 'Failed to load access'; statusEl.className = 'status-box error'; }
+            }
+        }
+
+        async function adminGrantDbConnectorAccess() {
+            const id = AdminDbConnectorsState.selectedConnectorId;
+            const statusEl = document.getElementById('admin-db-conn-access-status');
+            const userSelect = document.getElementById('admin-db-conn-access-user');
+            const permSelect = document.getElementById('admin-db-conn-access-permission');
+            if (!id || !userSelect || !permSelect) return;
+            const username = userSelect.value.trim();
+            const permission = permSelect.value || 'view';
+            if (!username) {
+                if (statusEl) { statusEl.textContent = 'Select a user.'; statusEl.className = 'status-box error'; }
+                return;
+            }
+            try {
+                if (statusEl) { statusEl.textContent = 'Saving access…'; statusEl.className = 'status-box info'; }
+                const res = await fetch(`/api/db-connectors/${id}/grants`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ grantee_username: username, permission }),
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || 'Failed to grant access');
+                if (statusEl) { statusEl.textContent = 'Access granted.'; statusEl.className = 'status-box success'; }
+                await adminLoadDbConnectorGrants();
+            } catch (e) {
+                if (statusEl) { statusEl.textContent = e.message || 'Failed to grant access'; statusEl.className = 'status-box error'; }
+            }
+        }
+
+        async function adminRevokeDbConnectorAccess(usernameEncoded) {
+            const id = AdminDbConnectorsState.selectedConnectorId;
+            const statusEl = document.getElementById('admin-db-conn-access-status');
+            if (!id || !usernameEncoded) return;
+            const username = decodeURIComponent(usernameEncoded);
+            if (!confirm(`Remove access for ${username}?`)) return;
+            try {
+                if (statusEl) { statusEl.textContent = 'Removing access…'; statusEl.className = 'status-box info'; }
+                const res = await fetch(`/api/db-connectors/${id}/grants/${encodeURIComponent(username)}`, {
+                    method: 'DELETE',
+                    credentials: 'include',
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || 'Failed to remove access');
+                if (statusEl) { statusEl.textContent = 'Access removed.'; statusEl.className = 'status-box success'; }
+                await adminLoadDbConnectorGrants();
+            } catch (e) {
+                if (statusEl) { statusEl.textContent = e.message || 'Failed to remove access'; statusEl.className = 'status-box error'; }
+            }
+        }
+
+        async function adminTestDbConnection() {
+            const statusEl = document.getElementById('admin-db-conn-test-status');
+            const browserEl = document.getElementById('admin-db-conn-browser');
+            const dbSelect = document.getElementById('admin-db-conn-database-select');
+            const tableSelect = document.getElementById('admin-db-conn-table-select');
+            const server = document.getElementById('admin-db-conn-server').value.trim();
+            const username = document.getElementById('admin-db-conn-username').value.trim();
+            const password = document.getElementById('admin-db-conn-password').value;
+            const extra = document.getElementById('admin-db-conn-extra').value.trim();
+            if (!server || !username) {
+                if (statusEl) { statusEl.textContent = 'Enter server and username first.'; statusEl.className = 'status-box error'; }
+                return;
+            }
+            if (statusEl) { statusEl.textContent = 'Testing connection and loading databases…'; statusEl.className = 'status-box info'; }
+            if (browserEl) browserEl.style.display = 'none';
+            if (dbSelect) dbSelect.innerHTML = '<option value="">— Select database —</option>';
+            if (tableSelect) tableSelect.innerHTML = '<option value="">— Select table —</option>';
+            try {
+                const res = await fetch('/api/admin/db-connectors/list-databases', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        server,
+                        username,
+                        password,
+                        extra_params: extra || null,
+                        database: document.getElementById('admin-db-conn-database').value.trim() || null,
+                    }),
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || 'Connection failed');
+                const dbs = data.databases || [];
+                if (dbs.length === 0) {
+                    if (statusEl) { statusEl.textContent = 'Connection OK but no user databases found.'; statusEl.className = 'status-box info'; }
+                    return;
+                }
+                if (dbSelect) {
+                    dbSelect.innerHTML = '<option value="">— Select database —</option>' +
+                        dbs.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+                }
+                if (browserEl) browserEl.style.display = 'block';
+                if (statusEl) { statusEl.textContent = 'Connection OK. Select a database.'; statusEl.className = 'status-box success'; }
+            } catch (e) {
+                if (statusEl) { statusEl.textContent = e.message || 'Connection failed'; statusEl.className = 'status-box error'; }
+            }
+        }
+
+        async function adminLoadDbTables() {
+            const statusEl = document.getElementById('admin-db-conn-test-status');
+            const dbSelect = document.getElementById('admin-db-conn-database-select');
+            const tableSelect = document.getElementById('admin-db-conn-table-select');
+            const dbInput = document.getElementById('admin-db-conn-database');
+            const server = document.getElementById('admin-db-conn-server').value.trim();
+            const username = document.getElementById('admin-db-conn-username').value.trim();
+            const password = document.getElementById('admin-db-conn-password').value;
+            const extra = document.getElementById('admin-db-conn-extra').value.trim();
+            if (!dbSelect || !dbSelect.value) {
+                if (tableSelect) tableSelect.innerHTML = '<option value="">— Select table —</option>';
+                return;
+            }
+            const database = dbSelect.value;
+            if (dbInput) dbInput.value = database;
+            if (statusEl) { statusEl.textContent = 'Loading tables…'; statusEl.className = 'status-box info'; }
+            if (tableSelect) tableSelect.innerHTML = '<option value="">— Select table —</option>';
+            try {
+                const res = await fetch('/api/admin/db-connectors/list-tables', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        server,
+                        username,
+                        password,
+                        database,
+                        extra_params: extra || null,
+                    }),
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || 'Failed to list tables');
+                const tables = data.tables || [];
+                if (tableSelect) {
+                    tableSelect.innerHTML = '<option value="">— Select table —</option>' +
+                        tables.map(t => `<option value="${escapeHtml(t.full_name)}">${escapeHtml(t.schema)}.${escapeHtml(t.name)}</option>`).join('');
+                }
+                if (statusEl) { statusEl.textContent = 'Select a table to apply.'; statusEl.className = 'status-box success'; }
+            } catch (e) {
+                if (statusEl) { statusEl.textContent = e.message || 'Failed to list tables'; statusEl.className = 'status-box error'; }
+            }
+        }
+
+        function adminApplySelectedTable() {
+            const tableSelect = document.getElementById('admin-db-conn-table-select');
+            const tableInput = document.getElementById('admin-db-conn-table');
+            if (!tableSelect || !tableInput || !tableSelect.value) return;
+            tableInput.value = tableSelect.value;
+        }
+
+        // Tickets Management
+        async function loadTickets() {
+            const listEl = document.getElementById('tickets-list');
+            try {
+                const res = await fetch('/api/tickets', { credentials: 'include' });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || 'Failed to load tickets');
+                
+                const tickets = data.tickets || [];
+                if (tickets.length === 0) {
+                    listEl.innerHTML = '<div style="text-align: center; color: #9ca3af; padding: 40px;">No tickets yet</div>';
+                    return;
+                }
+                
+                listEl.innerHTML = tickets.map(t => `
+                    <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-bottom: 16px; background: #fff;">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                            <div>
+                                <div style="font-weight: 600; font-size: 1.1rem; margin-bottom: 4px;">${escapeHtml(t.subject)}</div>
+                                <div style="font-size: 0.9rem; color: #6b7280;">From: ${escapeHtml(t.user_email)} • ${formatDate(t.created_at)}</div>
+                                <div style="font-size: 0.85rem; color:#4b5563; margin-top:4px;">
+                                    Priority: <span style="font-weight:600;">${escapeHtml(t.priority || 'medium')}</span>
+                                    • Category: <span style="font-weight:600;">${escapeHtml(t.category || 'general')}</span>
+                                </div>
+                            </div>
+                            <div>
+                                <span style="padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; background: ${t.status === 'open' ? '#fef3c7' : '#d1fae5'}; color: ${t.status === 'open' ? '#92400e' : '#065f46'};">${t.status}</span>
+                            </div>
+                        </div>
+                        <div style="background: #f9fafb; padding: 12px; border-radius: 6px; margin-bottom: 12px; white-space: pre-wrap; font-size: 0.95rem;">${escapeHtml(t.body)}</div>
+                        ${t.admin_reply ? `
+                            <div style="background: #eff6ff; padding: 12px; border-radius: 6px; margin-bottom: 12px; border-left: 3px solid #3b82f6;">
+                                <div style="font-weight: 600; margin-bottom: 6px; color: #1e40af;">Admin Reply (${formatDate(t.admin_replied_at)})</div>
+                                <div style="white-space: pre-wrap; font-size: 0.95rem;">${escapeHtml(t.admin_reply)}</div>
+                            </div>
+                        ` : ''}
+                        ${t.status === 'open' ? `
+                            <div style="margin-top: 12px;">
+                                <textarea id="ticket-reply-${t.id}" class="form-control" rows="3" placeholder="Type your reply..."></textarea>
+                                <div style="display: flex; gap: 8px; margin-top: 8px;">
+                                    <button class="btn btn-primary" onclick="replyTicket(${t.id})" style="padding: 6px 16px;">Reply & Close</button>
+                                    <button class="btn" onclick="updateTicketStatus(${t.id}, 'closed')" style="padding: 6px 16px; background: #f3f4f6;">Close without reply</button>
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                `).join('');
+            } catch (e) {
+                listEl.innerHTML = `<div style="text-align: center; color: #ef4444; padding: 40px;">Failed to load tickets: ${escapeHtml(e.message || e)}</div>`;
+            }
+        }
+
+        async function replyTicket(ticketId) {
+            const replyText = document.getElementById(`ticket-reply-${ticketId}`).value.trim();
+            if (!replyText || replyText.length < 5) {
+                alert('Reply must be at least 5 characters');
+                return;
+            }
+            
+            try {
+                const res = await fetch(`/api/admin/tickets/${ticketId}/reply`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ reply: replyText }),
+                });
+                
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || 'Failed to reply');
+                
+                await loadTickets();
+            } catch (e) {
+                alert('Failed to reply: ' + (e.message || e));
+            }
+        }
+
+        async function updateTicketStatus(ticketId, status) {
+            try {
+                const res = await fetch(`/api/admin/tickets/${ticketId}/status`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ status }),
+                });
+                
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || 'Failed to update status');
+                
+                await loadTickets();
+            } catch (e) {
+                alert('Failed to update status: ' + (e.message || e));
+            }
+        }
+
+        async function loadAuditLog() {
+            const el = document.getElementById('audit-log-list');
+            if (!el) return;
+            el.innerHTML = '<div style="text-align: center; color: #9ca3af; padding: 20px;">Loading...</div>';
+            const username = document.getElementById('audit-filter-username') && document.getElementById('audit-filter-username').value.trim();
+            const action = document.getElementById('audit-filter-action') && document.getElementById('audit-filter-action').value.trim();
+            const fromDate = document.getElementById('audit-filter-from') && document.getElementById('audit-filter-from').value;
+            const toDate = document.getElementById('audit-filter-to') && document.getElementById('audit-filter-to').value;
+            let url = '/api/admin/audit-log?limit=100';
+            if (username) url += '&username=' + encodeURIComponent(username);
+            if (action) url += '&action=' + encodeURIComponent(action);
+            if (fromDate) url += '&from_date=' + encodeURIComponent(fromDate);
+            if (toDate) url += '&to_date=' + encodeURIComponent(toDate);
+            try {
+                const res = await fetch(url, { credentials: 'include' });
+                const data = await res.json();
+                if (!data.success) {
+                    el.innerHTML = '<div style="color: #ef4444;">Failed to load audit log.</div>';
+                    return;
+                }
+                const entries = data.entries || [];
+                if (entries.length === 0) {
+                    el.innerHTML = '<div style="text-align: center; color: #9ca3af; padding: 40px;">No entries yet.</div>';
+                    return;
+                }
+                el.innerHTML = `
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                            <thead>
+                                <tr style="background: #f9fafb; border-bottom: 2px solid #e5e7eb;">
+                                    <th style="text-align: left; padding: 10px 12px;">Time</th>
+                                    <th style="text-align: left; padding: 10px 12px;">User</th>
+                                    <th style="text-align: left; padding: 10px 12px;">Action</th>
+                                    <th style="text-align: left; padding: 10px 12px;">Target</th>
+                                    <th style="text-align: left; padding: 10px 12px;">Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${entries.map(e => `
+                                    <tr style="border-bottom: 1px solid #f3f4f6;">
+                                        <td style="padding: 10px 12px; color: #6b7280;">${e.at ? e.at.slice(0,19).replace('T',' ') : '-'}</td>
+                                        <td style="padding: 10px 12px;">${escapeHtml(e.username)}</td>
+                                        <td style="padding: 10px 12px; font-weight: 600;">${escapeHtml(e.action)}</td>
+                                        <td style="padding: 10px 12px;">${escapeHtml(e.target_type)} ${e.target_id ? ': ' + escapeHtml(e.target_id) : ''}</td>
+                                        <td style="padding: 10px 12px; font-size: 0.85rem; color: #6b7280;">${e.details ? escapeHtml(JSON.stringify(e.details)) : ''}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            } catch (e) {
+                el.innerHTML = '<div style="color: #ef4444;">Error: ' + escapeHtml(e.message || e) + '</div>';
+            }
+        }
+
+        async function loadWebhooks() {
+            const el = document.getElementById('webhooks-list');
+            if (!el) return;
+            el.innerHTML = '<div style="color:#9ca3af;">Loading...</div>';
+            try {
+                const res = await fetch('/api/admin/webhooks', { credentials: 'include' });
+                const data = await res.json();
+                if (!data.success) {
+                    el.innerHTML = '<div style="color:#ef4444;">Failed to load webhooks.</div>';
+                    return;
+                }
+                const list = data.webhooks || [];
+                if (list.length === 0) {
+                    el.innerHTML = '<p style="color:#6b7280;">No webhooks. Add one above.</p>';
+                    return;
+                }
+                el.innerHTML = '<table style="width:100%; border-collapse:collapse;"><thead><tr style="border-bottom:2px solid #e5e7eb;"><th style="text-align:left; padding:10px;">URL</th><th style="text-align:left; padding:10px;">Event</th><th style="text-align:left; padding:10px;">Created</th><th></th></tr></thead><tbody>' +
+                    list.map(w => `
+                        <tr style="border-bottom:1px solid #f3f4f6;">
+                            <td style="padding:10px; word-break:break-all;">${escapeHtml(w.url)}</td>
+                            <td style="padding:10px;">${escapeHtml(w.event_type)}</td>
+                            <td style="padding:10px; color:#6b7280;">${escapeHtml((w.created_at || '').slice(0,19))}</td>
+                            <td style="padding:10px;"><button type="button" class="btn" style="background:#fee2e2;" onclick="deleteWebhook(${w.id})">Delete</button></td>
+                        </tr>
+                    `).join('') + '</tbody></table>';
+            } catch (e) {
+                el.innerHTML = '<div style="color:#ef4444;">Error loading webhooks.</div>';
+            }
+        }
+
+        async function addWebhook() {
+            const urlEl = document.getElementById('webhook-url');
+            const typeEl = document.getElementById('webhook-event-type');
+            if (!urlEl || !typeEl) return;
+            const url = urlEl.value.trim();
+            const event_type = typeEl.value;
+            if (!url) {
+                alert('Enter a URL.');
+                return;
+            }
+            try {
+                const res = await fetch('/api/admin/webhooks', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url, event_type })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    urlEl.value = '';
+                    loadWebhooks();
+                } else {
+                    alert(data.error || 'Failed to add webhook.');
+                }
+            } catch (e) {
+                alert('Error: ' + (e.message || e));
+            }
+        }
+
+        async function deleteWebhook(id) {
+            if (!confirm('Delete this webhook?')) return;
+            try {
+                await fetch('/api/admin/webhooks/' + id, { method: 'DELETE', credentials: 'include' });
+                loadWebhooks();
+            } catch (e) {
+                alert('Error deleting webhook.');
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatDate(iso) {
+            if (!iso) return 'Unknown';
+            try {
+                const d = new Date(iso);
+                return d.toLocaleString();
+            } catch {
+                return iso;
+            }
+        }
+
+        // Preload users when admin page opens
+        applyInitialTabFromHash();
+        adminLoadUsers().catch(() => {});
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,99 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Data & Connectors – Automation Hub{% endblock %}
+
+{% block subtitle %}Manage data pools and database connectors{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/tabulator.min.css">
+{% endblock %}
+
+{% block content %}
+<header>
+    <h1>Data & Connectors</h1>
+    <p class="subtitle">Spreadsheet-like grid for managing HR data pools (e.g. 180, evaluations, databases).</p>
+</header>
+
+<div class="card">
+    <h2>Data & Connectors</h2>
+    <p>Spreadsheet-like grid for managing HR data pools (e.g. 180, evaluations, databases).</p>
+    <div id="tables-hub" style="margin-top: 10px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px;">
+            <div>
+                <div style="font-weight:800; font-size:1.05rem; color:#111827;">Start a new table</div>
+                <div style="color:#6b7280; font-size:0.9rem;">Create and manage multiple data pools like Sheets.</div>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+                <input id="tables-search" class="form-control" style="max-width:260px; padding:10px 12px;" placeholder="Search tables..." />
+            </div>
+        </div>
+        <div id="tables-start-row" style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:18px;">
+            <button class="btn" type="button"
+                    onclick="createNewDataTable()"
+                    style="width:220px; height:110px; border:1px solid #e5e7eb; border-radius:14px; background:#fff; text-align:left; padding:14px; cursor:pointer;">
+                <div style="font-weight:900; color:#111827; margin-bottom:6px;">+ Blank table</div>
+                <div style="color:#6b7280; font-size:0.9rem;">Create a new empty table</div>
+            </button>
+        </div>
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin:10px 0 6px;">
+            <div style="font-weight:800; font-size:1.05rem; color:#111827;">Recent tables</div>
+            <div style="color:#6b7280; font-size:0.9rem;">Open a table to edit or view based on access.</div>
+        </div>
+        <div id="tables-list" style="border:1px solid #e5e7eb; border-radius:12px; overflow:hidden; background:#fff;"></div>
+    </div>
+
+    <div id="grid-panel" style="display:none;">
+        <div class="form-group" style="margin-top: 15px;">
+            <button class="btn btn-primary" onclick="loadDataGrid()">Load sample data</button>
+            <button class="btn" style="margin-inline-start:8px;" onclick="deleteSelectedRows()">Delete selected</button>
+            <button class="btn btn-success" style="margin-inline-start:8px;" onclick="saveDataGrid()">Save</button>
+            <button class="btn" style="margin-inline-start:8px;" onclick="exportTableToExcel()">Download as Excel</button>
+            <button class="btn" style="margin-inline-start:8px;" onclick="exportTableToJson()">Export as JSON</button>
+            <input type="file" id="import-json-file" accept=".json" style="display:none;" onchange="importTableFromJsonFile(event)">
+            <button class="btn" type="button" style="margin-inline-start:8px;" onclick="document.getElementById('import-json-file').click()">Import from JSON</button>
+            <button class="btn" style="margin-inline-start:8px;" onclick="toggleTableVersionsPanel()">Versions</button>
+            <button class="btn" style="margin-inline-start:8px;" onclick="submitCurrentTableForReview()">Submit for review</button>
+            <button class="btn" style="margin-inline-start:8px;" onclick="showTablesHub()">Back to tables</button>
+        </div>
+        <div id="table-versions-panel" style="display:none; margin-top:10px; padding:12px; border:1px solid #e5e7eb; border-radius:8px; background:#f9fafb;">
+            <div style="font-weight:700; margin-bottom:8px;">Backup versions (last 5)</div>
+            <div id="table-versions-list"></div>
+        </div>
+        <div class="form-group" style="margin-top: 10px; display:flex; align-items:center; gap:8px;">
+            <input type="text" id="data-grid-search" class="form-control" style="max-width:260px;" placeholder="Search in all columns..." oninput="searchDataGrid(this.value)">
+            <span id="data-grid-status" class="status-box info"></span>
+        </div>
+        <div class="form-group" style="margin-top: 4px; display:flex; align-items:center; gap:8px;">
+            <span style="font-weight:600; color:#555;">Column:</span>
+            <span id="data-grid-column-label" style="min-width:120px; font-size:0.95em; color:#374151;">None</span>
+            <button class="btn" style="padding:6px 12px;" onclick="renameSelectedColumn()">Rename</button>
+            <button class="btn" style="padding:6px 12px; background:#fee2e2;" onclick="deleteSelectedColumn()">Delete</button>
+            <button class="btn" style="padding:6px 12px; margin-inline-start:8px;" onclick="addDataColumn()">+ Column</button>
+            <button class="btn" style="padding:6px 12px;" onclick="addDataRow()">+ Row</button>
+        </div>
+        <div style="margin-top: 8px; padding: 10px 14px; background: #f0f9ff; border-left: 4px solid #0ea5e9; border-radius: 6px; font-size: 0.9em; color: #0369a1; line-height: 1.6;">
+            <strong>💡 How to use:</strong><br>
+            • <strong>Click</strong> a cell to edit it<br>
+            • <strong>Hold Shift/Ctrl and drag</strong> to select multiple cells (they will turn blue)<br>
+            • <strong>Arrow keys</strong> to move between cells after editing<br>
+            • <strong>Ctrl+C</strong> to copy selected cells • <strong>Ctrl+V</strong> to paste<br>
+            • <strong>Ctrl+Z</strong> to undo changes
+        </div>
+        <div id="data-grid" style="margin-top: 10px;"></div>
+    </div>
+</div>
+
+{# External database sync moved to dedicated External database page #}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    if (typeof ensureTabulatorLoaded === 'function') {
+        ensureTabulatorLoaded(() => {
+            if (typeof initDataGrid === 'function') {
+                initDataGrid();
+            }
+        });
+    }
+</script>
+{% endblock %}
