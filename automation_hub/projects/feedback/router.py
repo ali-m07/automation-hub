@@ -232,7 +232,9 @@ def _sanitize_project(
     clean["cycle"] = str(clean.get("cycle") or "")[:80]
     clean["status"] = str(clean.get("status") or "")[:80]
     clean["category"] = str(clean.get("category") or "Common Requests")[:120]
-    clean["icon"] = str(clean.get("icon") or "question")[:80]
+    clean["icon"] = str(clean.get("icon") or "❓")[:80]
+    key_val = clean.get("key") or clean.get("title") or "PROJ"
+    clean["key"] = _slug(key_val, "PROJ").upper()[:10]
     clean["owner_username"] = (
         (existing or {}).get("owner_username") or user.get("username") or ""
     )
@@ -668,8 +670,25 @@ async def create_feedback_ticket(project_id: str, request: Request):
                     status_code=400, detail=f"{field.get('label')} is required"
                 )
     statuses = project.get("workflow", {}).get("statuses") or []
+    project_key = _slug(
+        project.get("key") or project.get("title") or "PROJ", "PROJ"
+    ).upper()[:10]
+    tickets = project.setdefault("tickets", [])
+    max_num = 100
+    for t in tickets:
+        tid = t.get("id", "")
+        if "-" in tid:
+            try:
+                num = int(tid.split("-")[-1])
+                if num > max_num:
+                    max_num = num
+            except ValueError:
+                pass
+    next_num = max_num + 1
+    ticket_id = f"{project_key}-{next_num}"
+
     ticket = {
-        "id": f"ticket_{secrets.token_hex(6)}",
+        "id": ticket_id,
         "title": str(incoming.get("title") or "Untitled ticket")[:200],
         "description": str(incoming.get("description") or "")[:10000],
         "description_html": _safe_html(incoming.get("description_html")),
@@ -810,6 +829,172 @@ async def update_feedback_ticket(project_id: str, ticket_id: str, request: Reque
             "at": _now(),
             "by": user.get("username"),
             "action": "updated",
+        }
+    )
+    _save_store(store)
+    return JSONResponse({"success": True, "ticket": ticket})
+
+
+def _find_ticket_and_project(
+    store: Dict[str, Any], ticket_id: str
+) -> tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
+    for project in store.get("projects", []):
+        for ticket in project.get("tickets", []):
+            if ticket.get("id") == ticket_id:
+                return ticket, project
+    return None, None
+
+
+@router.get("/tickets/{ticket_id}")
+async def get_ticket_by_id(ticket_id: str, request: Request):
+    user = _require_feedback_access(request)
+    store = _load_store()
+    ticket, project = _find_ticket_and_project(store, ticket_id)
+    if not ticket or not project:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    if not _ticket_visible(project, ticket, user):
+        raise HTTPException(status_code=403, detail="Access denied")
+    return JSONResponse(
+        {
+            "success": True,
+            "ticket": ticket,
+            "project": {
+                "id": project.get("id"),
+                "title": project.get("title"),
+                "key": project.get("key"),
+                "icon": project.get("icon"),
+                "workflow": project.get("workflow"),
+                "form_fields": project.get("form_fields"),
+            },
+        }
+    )
+
+
+@router.post("/tickets/{ticket_id}/update")
+async def update_ticket_direct(ticket_id: str, request: Request):
+    user = _require_feedback_access(request)
+    payload = await request.json()
+    incoming = payload.get("ticket")
+    if not isinstance(incoming, dict):
+        raise HTTPException(
+            status_code=400, detail="Ticket payload is required"
+        )
+    store = _load_store()
+    ticket, project = _find_ticket_and_project(store, ticket_id)
+    if not ticket or not project:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    if not _ticket_visible(project, ticket, user):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    # Check edit permission
+    username = user.get("username")
+    can_edit = (
+        user.get("role") == "admin"
+        or ticket.get("created_by") == username
+        or ticket.get("assigned_to") == username
+        or ticket.get("manager_username") == username
+    )
+    if not can_edit:
+        raise HTTPException(status_code=403, detail="Permission denied")
+
+    if "title" in incoming:
+        ticket["title"] = str(incoming["title"])[:200]
+    if "description" in incoming:
+        ticket["description"] = str(incoming["description"])[:10000]
+    if "description_html" in incoming:
+        ticket["description_html"] = _safe_html(incoming["description_html"])
+    if "assigned_to" in incoming:
+        ticket["assigned_to"] = str(incoming["assigned_to"])[:160]
+    if "manager_username" in incoming:
+        ticket["manager_username"] = str(incoming["manager_username"])[:160]
+    if "field_values" in incoming and isinstance(
+        incoming["field_values"], dict
+    ):
+        ticket.setdefault("field_values", {}).update(incoming["field_values"])
+
+    ticket["updated_at"] = _now()
+    ticket.setdefault("history", []).append(
+        {
+            "at": _now(),
+            "by": user.get("username"),
+            "action": "updated",
+        }
+    )
+    _save_store(store)
+    return JSONResponse({"success": True, "ticket": ticket})
+
+
+@router.post("/tickets/{ticket_id}/comments")
+async def add_comment_direct(ticket_id: str, request: Request):
+    user = _require_feedback_access(request)
+    payload = await request.json()
+    store = _load_store()
+    ticket, project = _find_ticket_and_project(store, ticket_id)
+    if not ticket or not project:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    if not _ticket_visible(project, ticket, user):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    comment = {
+        "id": f"comment_{secrets.token_hex(5)}",
+        "author": user.get("username"),
+        "body": str(payload.get("body") or "")[:10000],
+        "body_html": _safe_html(payload.get("body_html")),
+        "created_at": _now(),
+    }
+    if not comment["body"] and not comment["body_html"]:
+        raise HTTPException(status_code=400, detail="Comment cannot be empty")
+    ticket.setdefault("comments", []).append(comment)
+    ticket["updated_at"] = _now()
+    _save_store(store)
+    return JSONResponse({"success": True, "comment": comment})
+
+
+@router.post("/tickets/{ticket_id}/transition")
+async def transition_ticket_direct(ticket_id: str, request: Request):
+    user = _require_feedback_access(request)
+    payload = await request.json()
+    store = _load_store()
+    ticket, project = _find_ticket_and_project(store, ticket_id)
+    if not ticket or not project:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    if not _ticket_visible(project, ticket, user):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    transition = next(
+        (
+            item
+            for item in project.get("workflow", {}).get("transitions", [])
+            if item.get("id") == payload.get("transition_id")
+            and item.get("from_status") == ticket.get("status")
+        ),
+        None,
+    )
+    if not transition:
+        raise HTTPException(
+            status_code=400, detail="Transition is not available"
+        )
+    if not _condition_matches(transition, ticket.get("field_values") or {}):
+        raise HTTPException(
+            status_code=400, detail="Transition condition is not met"
+        )
+    if not _can_transition(transition, ticket, user):
+        raise HTTPException(
+            status_code=403,
+            detail="Approval is required from the configured approver",
+        )
+
+    previous = ticket.get("status")
+    ticket["status"] = transition.get("to_status")
+    ticket["updated_at"] = _now()
+    ticket.setdefault("history", []).append(
+        {
+            "at": _now(),
+            "by": user.get("username"),
+            "action": "transition",
+            "transition": transition.get("name"),
+            "from": previous,
+            "to": ticket.get("status"),
         }
     )
     _save_store(store)

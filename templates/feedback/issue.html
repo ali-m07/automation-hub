@@ -1,0 +1,342 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Ticket Detail - Servexa{% endblock %}
+{% block subtitle %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Autocomplete User Picker Styles */
+    .user-picker-wrapper {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        width: 100%;
+    }
+    .user-picker-box {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding: 8px 12px;
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        min-height: 44px;
+        align-items: center;
+    }
+    .user-picker-box:focus-within {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px var(--accent);
+    }
+    .user-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--accent-soft);
+        color: var(--on-accent-soft);
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 0.85rem;
+        font-weight: 700;
+    }
+    .user-pill-remove {
+        cursor: pointer;
+        font-size: 1.1rem;
+        line-height: 1;
+        font-weight: 800;
+        color: var(--on-accent-soft);
+        opacity: 0.7;
+        margin-left: 2px;
+    }
+    .user-pill-remove:hover {
+        opacity: 1;
+    }
+    .user-picker-input {
+        border: none !important;
+        outline: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        flex: 1;
+        min-width: 120px;
+        background: transparent !important;
+        box-shadow: none !important;
+        color: var(--text-primary);
+    }
+    .user-autocomplete-list {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 100%;
+        margin-top: 4px;
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        box-shadow: 0 10px 30px var(--shadow);
+        z-index: 2100;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+    .user-autocomplete-item {
+        padding: 8px 14px;
+        cursor: pointer;
+        font-size: 0.88rem;
+        color: var(--text-primary);
+        transition: background 0.15s;
+    }
+    .user-autocomplete-item:hover {
+        background: var(--bg-secondary);
+    }
+
+    /* Workflow Visualizer in Modal */
+    .workflow-canvas-container {
+        position: relative;
+        width: 100%;
+        height: 500px;
+        background-color: var(--bg-primary);
+        background-image: radial-gradient(var(--border-color) 1.5px, transparent 1.5px);
+        background-size: 24px 24px;
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        overflow: auto;
+        margin-bottom: 24px;
+        user-select: none;
+    }
+    .workflow-canvas-svg {
+        position: absolute;
+        inset: 0;
+        width: 1250px;
+        height: 480px;
+        pointer-events: none;
+        z-index: 1;
+    }
+    .workflow-canvas-nodes {
+        position: absolute;
+        inset: 0;
+        width: 1250px;
+        height: 480px;
+        z-index: 2;
+        pointer-events: auto;
+    }
+    .workflow-node {
+        position: absolute;
+        width: 175px;
+        height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-size: 0.76rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        z-index: 10;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+        border: 1.5px solid transparent;
+        transition: border-color 0.15s, box-shadow 0.15s, opacity 0.2s;
+        text-align: center;
+        padding: 0 12px;
+    }
+    .workflow-node.todo-node {
+        background: var(--bg-tertiary);
+        border-color: var(--border-color);
+        color: var(--text-primary);
+    }
+    .workflow-node.doing-node {
+        background: #0284c7;
+        border-color: #0369a1;
+        color: #ffffff;
+    }
+    [data-theme="dark"] .workflow-node.doing-node {
+        background: #0369a1;
+        border-color: #0284c7;
+    }
+    .workflow-node.done-node {
+        background: #16a34a;
+        border-color: #15803d;
+        color: #ffffff;
+    }
+    [data-theme="dark"] .workflow-node.done-node {
+        background: #15803d;
+        border-color: #16a34a;
+    }
+    .workflow-node-start {
+        position: absolute;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: #9ca3af;
+        border: 2px solid #6b7280;
+        z-index: 15;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .workflow-svg-path {
+        fill: none;
+        stroke: var(--text-secondary);
+        stroke-width: 2;
+        stroke-linecap: round;
+        transition: stroke 0.15s, stroke-width 0.15s;
+    }
+    .workflow-svg-path.active-link {
+        stroke: var(--accent);
+        stroke-width: 3;
+    }
+    .workflow-link-label {
+        position: absolute;
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        padding: 2px 8px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--text-secondary);
+        box-shadow: 0 2px 6px var(--shadow);
+        transform: translate(-50%, -50%);
+        z-index: 30;
+        white-space: nowrap;
+        pointer-events: auto;
+    }
+    .workflow-node.active-flow-node {
+        border-color: var(--accent) !important;
+        border-width: 2px !important;
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 35%, transparent) !important;
+        transform: scale(1.02);
+        z-index: 100 !important;
+        opacity: 1 !important;
+    }
+    .workflow-node.inactive-flow-node {
+        opacity: 0.45 !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<input type="hidden" id="fb-page-ticket-id" value="{{ ticket_id }}">
+
+<header class="feedback-hero">
+    <div>
+        <div class="eyebrow" id="fb-issue-eyebrow">Ticket Detail</div>
+        <h1 id="fb-drawer-ticket-id" style="font-family:monospace; font-weight:800; letter-spacing:0.02em;">{{ ticket_id }}</h1>
+        <p class="subtitle" id="fb-issue-subtitle">Manage properties, transitions, and comments for this request.</p>
+    </div>
+</header>
+
+<nav class="feedback-view-nav" aria-label="Ticket detail navigation">
+    <a class="btn" id="fb-issue-back-link" href="/projects" style="text-decoration:none; display:inline-flex; align-items:center; gap:6px;">⬅️ Back</a>
+    <button class="btn" type="button" onclick="fbOpenWorkflowModal(true)" style="font-weight:700; margin-left:12px;">View Workflow Diagram</button>
+</nav>
+
+<div class="feedback-shell single-view">
+    <main class="feedback-main">
+        <div id="fb-status" class="status-box info" style="display:none;"></div>
+        
+        <div class="card feedback-card" style="padding: 28px;">
+            <div style="display: grid; grid-template-columns: 1.7fr 1fr; gap: 40px;">
+                <!-- Left Column -->
+                <div style="display:flex; flex-direction:column; gap:24px;">
+                    <div style="display:flex; flex-direction:column; gap:6px;">
+                        <span style="font-size:0.8rem; color:var(--text-secondary); font-weight:700; text-transform:uppercase; letter-spacing:0.05em;">Summary</span>
+                        <h2 id="fb-drawer-title" style="font-size:1.4rem; margin:0; font-weight:800; color:var(--text-primary);">Ticket summary</h2>
+                    </div>
+                    
+                    <div style="display:flex; flex-direction:column; gap:6px;">
+                        <span style="font-size:0.8rem; color:var(--text-secondary); font-weight:700; text-transform:uppercase; letter-spacing:0.05em;">Description</span>
+                        <div id="fb-drawer-description" style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:10px; padding:16px; font-size:0.95rem; line-height:1.6; white-space:pre-wrap; min-height:80px; color:var(--text-primary);">Description content</div>
+                    </div>
+                    
+                    <div id="fb-drawer-html-wrap" style="display:flex; flex-direction:column; gap:6px;">
+                        <span style="font-size:0.8rem; color:var(--text-secondary); font-weight:700; text-transform:uppercase; letter-spacing:0.05em;">Formatted details</span>
+                        <div id="fb-drawer-html" style="border:1px solid var(--border-color); border-radius:10px; padding:16px; font-size:0.95rem; background:var(--bg-primary);"></div>
+                    </div>
+
+                    <div style="display:flex; flex-direction:column; gap:14px; border-top:1px solid var(--border-color); padding-top:20px;">
+                        <span style="font-size:0.8rem; color:var(--text-secondary); font-weight:700; text-transform:uppercase; letter-spacing:0.05em;">Process fields</span>
+                        <div id="fb-drawer-fields-container" style="display:flex; flex-direction:column; gap:14px;">
+                            <!-- fields -->
+                        </div>
+                    </div>
+
+                    <div style="display:flex; flex-direction:column; gap:14px; border-top:1px solid var(--border-color); padding-top:20px;">
+                        <span style="font-size:0.8rem; color:var(--text-secondary); font-weight:700; text-transform:uppercase; letter-spacing:0.05em;">Timeline &amp; Comments</span>
+                        <div id="fb-drawer-comments" class="comments-stream" style="display:flex; flex-direction:column; gap:12px; max-height:350px; overflow-y:auto; padding-right:6px;">
+                            <!-- comments -->
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
+                            <textarea id="fb-drawer-new-comment" class="form-control" rows="3" placeholder="Write a reply..."></textarea>
+                            <div style="text-align:right;">
+                                <button class="btn btn-primary" type="button" onclick="fbSubmitDrawerComment()" style="padding:8px 18px; font-size:0.92rem;">Send Reply</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Sidebar Properties -->
+                <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:14px; padding:20px; display:flex; flex-direction:column; gap:20px; align-self:start;">
+                    <div style="font-weight:800; font-size:0.85rem; text-transform:uppercase; color:var(--text-secondary); border-bottom:1px solid var(--border-color); padding-bottom:8px; margin-bottom:4px; letter-spacing:0.05em;">Properties</div>
+                    
+                    <div style="display:grid; grid-template-columns:auto 1fr; gap:16px 14px; font-size:0.9rem; align-items:center;">
+                        <div style="font-weight:700; color:var(--text-secondary);">Status</div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span id="fb-drawer-status-badge" class="badge badge-medium">Draft</span>
+                            <a href="#" onclick="fbOpenWorkflowModal(true); return false;" style="font-size:0.75rem; font-weight:700; color:var(--accent); text-decoration:underline;">View Flow</a>
+                        </div>
+
+                        <div style="font-weight:700; color:var(--text-secondary);">Assignee</div>
+                        <div id="fb-drawer-assignee-container" class="user-picker-wrapper"></div>
+
+                        <div style="font-weight:700; color:var(--text-secondary);">Manager</div>
+                        <div id="fb-drawer-manager-container" class="user-picker-wrapper"></div>
+
+                        <div style="font-weight:700; color:var(--text-secondary);">Reporter</div>
+                        <div id="fb-drawer-reporter" style="font-weight:700; font-size:0.85rem; word-break:break-all;">-</div>
+
+                        <div style="font-weight:700; color:var(--text-secondary);">Created</div>
+                        <div id="fb-drawer-created" style="font-size:0.75rem; color:var(--text-secondary);">-</div>
+                    </div>
+
+                    <div style="border-top:1px solid var(--border-color); padding-top:16px; margin-top:4px;">
+                        <div style="font-weight:800; font-size:0.8rem; text-transform:uppercase; color:var(--text-secondary); margin-bottom:10px; letter-spacing:0.05em;">Workflow Actions</div>
+                        <div id="fb-drawer-transitions-container" style="display:flex; flex-direction:column; gap:8px;">
+                            <!-- transitions -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- View Workflow Modal -->
+<div id="fb-workflow-modal" class="modal-overlay" style="display:none; z-index: 2500;">
+    <div class="modal-content" style="max-width: 1100px; width: 95%; height: 620px; display: flex; flex-direction: column;">
+        <div class="modal-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+            <h3>Workflow Diagram: <span id="fb-workflow-modal-title" style="color:var(--accent);">Workflow</span></h3>
+            <button type="button" class="btn-close-modal" onclick="fbCloseWorkflowModal()">&times;</button>
+        </div>
+        <div class="modal-body" style="flex: 1; overflow: auto; padding: 16px; background: var(--bg-tertiary); position: relative;">
+            <div id="fb-modal-canvas-container" class="workflow-canvas-container" style="height: 100%; border: none; margin: 0; background: var(--bg-primary);">
+                <svg id="fb-modal-workflow-svg" class="workflow-canvas-svg" style="width:1250px; height:500px;">
+                    <defs>
+                        <marker id="modal-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                            <path d="M 0 1 L 10 5 L 0 9 z" fill="#6b7280"/>
+                        </marker>
+                        <marker id="modal-arrow-active" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                            <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--accent)"/>
+                        </marker>
+                    </defs>
+                </svg>
+                <div id="fb-modal-workflow-nodes" class="workflow-canvas-nodes" style="width:1250px; height:500px;"></div>
+            </div>
+        </div>
+        <div style="padding: 12px 20px; border-top: 1px solid var(--border-color); text-align: right; background: var(--bg-secondary);">
+            <button class="btn btn-primary" onclick="fbCloseWorkflowModal()">Close Diagram</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/feedback.js?v=20260610-process-builder"></script>
+{% endblock %}

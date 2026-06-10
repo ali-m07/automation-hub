@@ -1,0 +1,386 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Admin Panel - Servexa{% endblock %}
+{% block subtitle %}Define request types, custom fields, and transition workflows{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Visual Workflow Canvas Styles */
+    .workflow-canvas-container {
+        position: relative;
+        width: 100%;
+        height: 500px;
+        background-color: var(--bg-primary);
+        background-image: radial-gradient(var(--border-color) 1.5px, transparent 1.5px);
+        background-size: 24px 24px;
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        overflow: auto;
+        margin-bottom: 24px;
+        user-select: none;
+    }
+    .workflow-canvas-svg {
+        position: absolute;
+        inset: 0;
+        width: 1250px;
+        height: 480px;
+        pointer-events: none;
+        z-index: 1;
+    }
+    .workflow-canvas-nodes {
+        position: absolute;
+        inset: 0;
+        width: 1250px;
+        height: 480px;
+        z-index: 2;
+        pointer-events: auto;
+    }
+    .workflow-node {
+        position: absolute;
+        width: 175px;
+        height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-size: 0.76rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        cursor: grab;
+        z-index: 10;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+        border: 1.5px solid transparent;
+        transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s, opacity 0.2s;
+        text-align: center;
+        padding: 0 12px;
+    }
+    .workflow-node:active {
+        cursor: grabbing;
+        transform: scale(0.97);
+    }
+    .workflow-node.todo-node {
+        background: var(--bg-tertiary);
+        border-color: var(--border-color);
+        color: var(--text-primary);
+    }
+    .workflow-node.active-node {
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent);
+    }
+    .workflow-node.doing-node {
+        background: #0284c7;
+        border-color: #0369a1;
+        color: #ffffff;
+    }
+    [data-theme="dark"] .workflow-node.doing-node {
+        background: #0369a1;
+        border-color: #0284c7;
+    }
+    .workflow-node.done-node {
+        background: #16a34a;
+        border-color: #15803d;
+        color: #ffffff;
+    }
+    [data-theme="dark"] .workflow-node.done-node {
+        background: #15803d;
+        border-color: #16a34a;
+    }
+    .workflow-node-start {
+        position: absolute;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: #9ca3af;
+        border: 2px solid #6b7280;
+        z-index: 15;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .workflow-node-hover-actions {
+        position: absolute;
+        top: -26px;
+        right: 0;
+        display: none;
+        gap: 4px;
+        z-index: 50;
+    }
+    .workflow-node:hover .workflow-node-hover-actions {
+        display: flex;
+    }
+    .workflow-node-hover-actions button {
+        padding: 2px 8px;
+        font-size: 0.65rem;
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 700;
+        box-shadow: 0 2px 6px var(--shadow);
+    }
+    .workflow-node-hover-actions button:hover {
+        background: var(--bg-tertiary);
+        border-color: var(--accent);
+        color: var(--accent);
+    }
+    .workflow-node-connector {
+        position: absolute;
+        right: -8px;
+        top: calc(50% - 8px);
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--bg-primary);
+        border: 1.5px solid var(--accent);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 800;
+        cursor: crosshair;
+        z-index: 20;
+        color: var(--accent);
+        opacity: 0;
+        transition: opacity 0.15s, transform 0.1s;
+    }
+    .workflow-node:hover .workflow-node-connector {
+        opacity: 1;
+    }
+    .workflow-node-connector:hover {
+        transform: scale(1.25);
+        background: var(--accent);
+        color: #ffffff;
+    }
+    .workflow-svg-path {
+        fill: none;
+        stroke: var(--text-secondary);
+        stroke-width: 2;
+        stroke-linecap: round;
+        transition: stroke 0.15s, stroke-width 0.15s;
+    }
+    .workflow-svg-path.active-link {
+        stroke: var(--accent);
+        stroke-width: 3;
+    }
+    .workflow-link-label {
+        position: absolute;
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        padding: 2px 8px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--text-secondary);
+        box-shadow: 0 2px 6px var(--shadow);
+        cursor: pointer;
+        transform: translate(-50%, -50%);
+        z-index: 30;
+        white-space: nowrap;
+        pointer-events: auto;
+        transition: border-color 0.15s, color 0.15s;
+    }
+    .workflow-link-label:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+    }
+
+    /* Sub-navigation bar specific style */
+    .designer-subnav {
+        margin-bottom: 24px;
+        padding: 6px;
+        border-radius: 12px;
+        background: var(--bg-secondary);
+        box-shadow: 0 4px 12px var(--shadow);
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+    .designer-subnav button {
+        min-height: 38px;
+        padding: 0 14px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        background: transparent;
+        color: var(--text-primary);
+        font-weight: 700;
+        border: none;
+        cursor: pointer;
+        transition: background 0.15s, color 0.15s;
+    }
+    .designer-subnav button:hover, .designer-subnav button.active {
+        background: var(--accent-soft);
+        color: var(--on-accent-soft);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<header class="feedback-hero">
+    <div>
+        <div class="eyebrow">Settings &amp; Workflows</div>
+        <h1>Admin Panel</h1>
+        <p class="subtitle">Configure project details, custom fields, Visual Workflows, transitions and members.</p>
+    </div>
+    <div class="feedback-hero-panel">
+        <div class="metric"><span id="fb-metric-subjects">0</span><small>Subjects</small></div>
+        <div class="metric"><span id="fb-metric-reviewers">0</span><small>Reviewers</small></div>
+        <div class="metric"><span id="fb-metric-progress">Draft</span><small>Status</small></div>
+    </div>
+</header>
+
+<nav class="feedback-view-nav" aria-label="Admin navigation">
+    <a class="btn" href="/projects" style="text-decoration:none; display:inline-flex; align-items:center; gap:6px;">📂 Projects Dashboard</a>
+    <a class="btn active" href="/projects/admin" style="text-decoration:none; display:inline-flex; align-items:center; gap:6px; margin-left:auto;">⚙️ Admin Panel</a>
+</nav>
+
+<div class="feedback-shell">
+    <aside class="feedback-sidebar card">
+        <button class="btn btn-primary" type="button" onclick="fbNewProject()">+ New project template</button>
+        <div class="feedback-list-title">Saved projects</div>
+        <div id="fb-project-list" class="feedback-project-list"></div>
+    </aside>
+
+    <main class="feedback-main">
+        <!-- Sub-Navigation for setting categories -->
+        <nav class="designer-subnav" id="fb-designer-subnav">
+            <button type="button" class="active" onclick="fbShowDesignerSubTab('details')">📝 Request Details</button>
+            <button type="button" onclick="fbShowDesignerSubTab('fields')">🗂️ Fields &amp; Forms</button>
+            <button type="button" onclick="fbShowDesignerSubTab('workflow')">🔄 Workflow Builder</button>
+            <button type="button" onclick="fbShowDesignerSubTab('transitions')">🔀 Transitions &amp; Approvals</button>
+            <button type="button" onclick="fbShowDesignerSubTab('assessments')">📊 Assessment Fields</button>
+            <button type="button" onclick="fbShowDesignerSubTab('participants')">👥 Participants Matrix</button>
+        </nav>
+
+        <div id="fb-status" class="status-box info" style="display:none;"></div>
+
+        <!-- 1. Request Details -->
+        <section class="card feedback-card" data-designer-tab="details">
+            <div class="feedback-card-head">
+                <div><h2>Request details</h2><p>Provide a title, project key, category and description for this request type.</p></div>
+                <div class="feedback-actions">
+                    <button class="btn" type="button" onclick="fbExportProject()">Export JSON</button>
+                    <button class="btn btn-success" type="button" onclick="fbSaveProject()">Save Project</button>
+                </div>
+            </div>
+            <div class="feedback-grid two">
+                <label>Project / Request title<input id="fb-title" class="form-control" placeholder="Computer request approval"></label>
+                <label>Project Key (e.g. COMP, APP)<input id="fb-key" class="form-control" placeholder="COMP" max="10"></label>
+            </div>
+            <div class="feedback-grid two" style="margin-top: 12px;">
+                <label>Optional period or cycle<input id="fb-cycle" class="form-control" placeholder="2026 Q2"></label>
+                <label>Optional deadline (days)<input id="fb-deadline" type="number" min="0" max="365" class="form-control"></label>
+            </div>
+            <div class="feedback-grid two" style="margin-top: 12px;">
+                <label>Portal Category / Group<input id="fb-category" class="form-control" placeholder="e.g. Computers, Hardware" value="Common Requests"></label>
+                <label>Portal Icon
+                    <select id="fb-icon" class="form-control">
+                        <option value="💻">💻 Computer / Hardware</option>
+                        <option value="📶">📶 Wi-Fi / Network</option>
+                        <option value="✈️">✈️ Flight / Travel</option>
+                        <option value="🔑">🔑 Password / Access</option>
+                        <option value="👤">👤 User Account</option>
+                        <option value="❓" selected>❓ General Help / QA</option>
+                        <option value="🛠️">🛠️ IT Support / Maintenance</option>
+                        <option value="💰">💰 Expense / Finance</option>
+                        <option value="📋">📋 General Request</option>
+                    </select>
+                </label>
+            </div>
+            <div class="feedback-grid two" style="margin-top: 12px; display:none;">
+                <!-- scale remains for compatibility but hidden since we do ticketing -->
+                <label>Rating scale<select id="fb-scale" class="form-control"><option value="1-5">1 to 5</option><option value="1-10">1 to 10</option><option value="0-100">0 to 100</option></select></label>
+            </div>
+            <label style="margin-top: 12px;">Description<textarea id="fb-description" class="form-control" rows="3" placeholder="Explain who can use this request and what steps it goes through."></textarea></label>
+            <label class="feedback-toggle"><input id="fb-anonymous" type="checkbox"> Keep reviewer identity anonymous in performance summaries</label>
+        </section>
+
+        <!-- 2. Fields & Forms -->
+        <section class="card feedback-card" data-designer-tab="fields" style="display:none;">
+            <div class="feedback-card-head">
+                <div><h2>Ticket form builder</h2><p>Define custom fields for intake or import reusable fields from the shared Process Designer.</p></div>
+                <div class="feedback-actions">
+                    <button class="btn" type="button" data-admin-only onclick="fbImportSharedFields()">Import shared fields</button>
+                    <button class="btn btn-primary" type="button" data-admin-only onclick="fbAddFormField()">+ Add field</button>
+                    <button class="btn btn-success" type="button" onclick="fbSaveProject()">Save Project</button>
+                </div>
+            </div>
+            <div id="fb-form-fields" class="question-builder"></div>
+        </section>
+
+        <!-- 3. Workflow Builder -->
+        <section class="card feedback-card" data-designer-tab="workflow" style="display:none;">
+            <div class="feedback-card-head">
+                <div><h2>Workflow builder</h2><p>Configure stages/statuses and screen fields that display when a ticket is in that status.</p></div>
+                <div class="feedback-actions">
+                    <button class="btn" type="button" data-admin-only onclick="fbAddWorkflowStatus()">+ Add status</button>
+                    <button class="btn btn-success" type="button" onclick="fbSaveProject()">Save Project</button>
+                </div>
+            </div>
+            <div id="fb-admin-lock" class="feedback-empty" style="display:none;">Configuration is locked to admins.</div>
+            
+            <div id="fb-workflow-canvas-container" class="workflow-canvas-container" style="display:none;">
+                <svg id="fb-workflow-svg" class="workflow-canvas-svg">
+                    <defs>
+                        <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                            <path d="M 0 1 L 10 5 L 0 9 z" fill="#6b7280"/>
+                        </marker>
+                        <marker id="arrow-active" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                            <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--accent)"/>
+                        </marker>
+                    </defs>
+                    <path id="fb-temp-connection-path" stroke="var(--accent)" stroke-width="3" stroke-dasharray="5,5" fill="none" style="display:none;"></path>
+                </svg>
+                <div id="fb-workflow-nodes" class="workflow-canvas-nodes"></div>
+            </div>
+            
+            <div id="fb-screen-builder" class="screen-builder"></div>
+        </section>
+
+        <!-- 4. Transitions & Approvals -->
+        <section class="card feedback-card" data-designer-tab="transitions" style="display:none;">
+            <div class="feedback-card-head">
+                <div><h2>Approvals and transitions</h2><p>Define rules regulating who can perform transitions and require form validations.</p></div>
+                <div class="feedback-actions">
+                    <button class="btn btn-primary" type="button" data-admin-only onclick="fbAddTransition()">+ Add transition</button>
+                    <button class="btn btn-success" type="button" onclick="fbSaveProject()">Save Project</button>
+                </div>
+            </div>
+            <div id="fb-transitions" class="question-builder"></div>
+        </section>
+
+        <!-- 5. Assessment Fields -->
+        <section class="card feedback-card" data-designer-tab="assessments" style="display:none;">
+            <div class="feedback-card-head">
+                <div><h2>Assessment fields</h2><p>Optional. Add performance review questions if this project involves assessments.</p></div>
+                <div class="feedback-actions">
+                    <button class="btn btn-primary" type="button" onclick="fbAddQuestion()">+ Add field</button>
+                    <button class="btn btn-success" type="button" onclick="fbSaveProject()">Save Project</button>
+                </div>
+            </div>
+            <div id="fb-questions" class="question-builder"></div>
+        </section>
+
+        <!-- 6. Participants Matrix -->
+        <section class="card feedback-card" data-designer-tab="participants" style="display:none;">
+            <div class="feedback-card-head">
+                <div><h2>Participants matrix</h2><p>Configure team members, reviewers and subjects involved in this project workflow.</p></div>
+                <div class="feedback-actions">
+                    <button class="btn" type="button" onclick="fbBuildMatrix()">Refresh matrix</button>
+                    <button class="btn btn-success" type="button" onclick="fbSaveProject()">Save Project</button>
+                </div>
+            </div>
+            <div class="feedback-grid two">
+                <label>Subjects / Operators<textarea id="fb-subjects" class="form-control" rows="7" placeholder="Sara Manager&#10;Omid Lead"></textarea></label>
+                <label>Reviewers / Approvers<textarea id="fb-reviewers" class="form-control" rows="7" placeholder="Direct manager&#10;Team member&#10;Peer reviewer"></textarea></label>
+            </div>
+            <div id="fb-matrix" class="feedback-matrix"></div>
+        </section>
+    </main>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/feedback.js?v=20260610-process-builder"></script>
+{% endblock %}

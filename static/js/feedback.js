@@ -106,6 +106,7 @@ function fbCollectProject() {
     const scale = (document.getElementById('fb-scale')?.value || '1-5').split('-').map(Number);
     if (fbPermissions.can_manage_workflow) {
         fbCurrent.title = document.getElementById('fb-title')?.value.trim() || 'Untitled form';
+        fbCurrent.key = document.getElementById('fb-key')?.value.trim().toUpperCase() || 'PROJ';
         fbCurrent.cycle = document.getElementById('fb-cycle')?.value.trim() || '';
         fbCurrent.description = document.getElementById('fb-description')?.value.trim() || '';
         fbCurrent.category = document.getElementById('fb-category')?.value.trim() || 'Common Requests';
@@ -183,12 +184,7 @@ function fbSetAdminMode() {
     document.querySelectorAll('[data-admin-only]').forEach((el) => { el.style.display = isAdmin ? '' : 'none'; });
     document.querySelectorAll('[data-agent-admin-only]').forEach((el) => { el.style.display = isAgentOrAdmin ? '' : 'none'; });
     
-    const adminHeadings = ['Application setup', 'Workflow builder', 'Participants', 'Assessment fields', 'Ticket form builder', 'Approvals and transitions'];
-    document.querySelectorAll('.feedback-card').forEach(card => {
-        const heading = card.querySelector('h2')?.textContent.trim();
-        if (adminHeadings.includes(heading)) card.style.display = isAdmin ? '' : 'none';
-    });
-    ['fb-title', 'fb-cycle', 'fb-description', 'fb-deadline', 'fb-scale', 'fb-anonymous', 'fb-subjects', 'fb-reviewers', 'fb-category', 'fb-icon'].forEach((id) => {
+    ['fb-title', 'fb-key', 'fb-cycle', 'fb-description', 'fb-deadline', 'fb-scale', 'fb-anonymous', 'fb-subjects', 'fb-reviewers', 'fb-category', 'fb-icon'].forEach((id) => {
         const el = document.getElementById(id);
         if (el) el.disabled = !isAdmin;
     });
@@ -231,43 +227,13 @@ function fbRenderPublishedState() {
 }
 
 function fbShowView(view, updateUrl = true) {
-    const isAdmin = fbPermissions.can_manage_workflow;
-    const selected = ['portal', 'my_requests', 'tickets', 'designer', 'assessments', 'performance'].includes(view) ? view : 'portal';
-    
-    document.querySelectorAll('[data-fb-view]').forEach(section => {
-        section.style.display = section.dataset.fbView === selected ? '' : 'none';
-    });
-    const adminHeadings = ['Application setup', 'Workflow builder', 'Participants', 'Assessment fields', 'Ticket form builder', 'Approvals and transitions'];
-    document.querySelectorAll('.feedback-card').forEach(card => {
-        const heading = card.querySelector('h2')?.textContent.trim();
-        if (adminHeadings.includes(heading)) card.style.display = isAdmin && selected === 'designer' ? '' : 'none';
-    });
-    
-    const sidebar = document.querySelector('.feedback-sidebar');
-    if (sidebar) sidebar.style.display = isAdmin && selected === 'designer' ? '' : 'none';
-    
-    const shell = document.querySelector('.feedback-shell');
-    if (shell) shell.classList.toggle('single-view', !(isAdmin && selected === 'designer'));
-    
-    document.querySelectorAll('.feedback-view-nav button').forEach(button => {
-        button.classList.toggle('active', button.getAttribute('onclick')?.includes(`'${selected}'`));
-    });
-    
-    if (selected === 'portal') {
-        fbRenderPortal();
-    } else if (selected === 'my_requests') {
-        fbRenderMyRequests();
-    } else if (selected === 'tickets') {
-        if (!fbSelectedBoardProjectId && fbCurrent.id) {
-            fbSelectedBoardProjectId = fbCurrent.id;
-        }
-        fbRenderTickets();
+    if (view === 'portal') {
+        window.location.href = '/projects';
+    } else if (view === 'designer') {
+        window.location.href = '/projects/admin';
+    } else if (view === 'my_requests') {
+        window.location.href = '/projects';
     }
-    
-    if (updateUrl) {
-        history.replaceState(null, '', `/feedback?view=${encodeURIComponent(selected)}`);
-    }
-    window.scrollTo({ top: 0, behavior: 'auto' });
 }
 
 function fbRenderPerformanceOverview() {
@@ -1057,6 +1023,7 @@ function fbCloseTicketDrawer() {
 
 function fbRenderSetup() {
     document.getElementById('fb-title').value = fbCurrent.title || '';
+    if (document.getElementById('fb-key')) document.getElementById('fb-key').value = fbCurrent.key || '';
     document.getElementById('fb-cycle').value = fbCurrent.cycle || '';
     document.getElementById('fb-description').value = fbCurrent.description || '';
     if (document.getElementById('fb-category')) document.getElementById('fb-category').value = fbCurrent.category || 'Common Requests';
@@ -1204,10 +1171,9 @@ function fbStartConnectionDrag(e, statusId) {
 }
 
 function fbRenderWorkflowBoard() {
-    const navBtn = document.querySelector('.feedback-view-nav button.active');
-    const isDesigner = navBtn && navBtn.getAttribute('onclick')?.includes('designer');
+    const isDesigner = window.location.pathname === '/projects/admin';
     
-    if (!isDesigner || !fbPermissions.can_manage_workflow) {
+    if (!isDesigner || !fbPermissions.can_manage_workflow || fbActiveDesignerSubTab !== 'workflow') {
         const container = document.getElementById('fb-workflow-canvas-container');
         if (container) container.style.display = 'none';
         return;
@@ -1412,6 +1378,7 @@ function fbNewProject() {
     fbCurrent.id = '';
     // Seed new project with Jira Epics Workflow by default
     fbCurrent.title = 'Service Request Portal';
+    fbCurrent.key = 'SRP';
     fbCurrent.category = 'Common Requests';
     fbCurrent.icon = '📋';
     fbCurrent.workflow.statuses = structuredCloneSafe(FB_JIRA_EPICS_WORKFLOW.statuses);
@@ -1558,7 +1525,7 @@ function fbRenderRequestTypesList(projects) {
     }
     
     grid.innerHTML = projects.map(p => `
-        <div class="portal-request-card" onclick="fbOpenPortalRequestForm('${fbEscape(p.id)}')">
+        <div class="portal-request-card" onclick="window.location.href='/projects/${fbEscape(p.key || p.id)}'">
             <div class="portal-request-card-icon">${fbEscape(p.icon || '📋')}</div>
             <div class="portal-request-card-content">
                 <div class="portal-request-card-title">${fbEscape(p.title)}</div>
@@ -1726,7 +1693,8 @@ function fbRenderMyRequests() {
                     ...ticket,
                     projectTitle: project.title,
                     projectIcon: project.icon || '📋',
-                    projectId: project.id
+                    projectId: project.id,
+                    projectKey: project.key || project.id
                 });
             }
         });
@@ -1744,10 +1712,9 @@ function fbRenderMyRequests() {
     tbody.innerHTML = myTickets.map(t => {
         const createdStr = new Date(t.created_at).toLocaleDateString();
         const updatedStr = new Date(t.updated_at).toLocaleDateString();
-        const shortId = t.id.substring(7, 13).toUpperCase();
         return `
-            <tr onclick="fbOpenTicketFromMyRequests('${fbEscape(t.projectId)}', '${fbEscape(t.id)}')">
-                <td style="font-family:monospace; font-weight:700; color:var(--text-secondary);">REQ-${fbEscape(shortId)}</td>
+            <tr onclick="window.location.href='/issues/${fbEscape(t.id)}'">
+                <td style="font-family:monospace; font-weight:700; color:var(--text-secondary);">${fbEscape(t.id)}</td>
                 <td>
                     <span style="margin-right:6px;">${fbEscape(t.projectIcon)}</span>
                     <strong>${fbEscape(t.projectTitle)}</strong>
@@ -2040,4 +2007,375 @@ function fbRenderWorkflowCanvas(project, isEditable, containerId, nodesId, svgId
     }
 }));
 
-document.addEventListener('DOMContentLoaded', fbLoadProjects);
+// Re-architected multi-page initializations
+async function fbInitPage() {
+    const path = window.location.pathname;
+    
+    try {
+        const metaRes = await fetch('/api/feedback/meta', { credentials: 'include' });
+        const meta = await metaRes.json();
+        if (!meta.success) throw new Error(meta.detail || meta.error || 'Could not load module metadata');
+        fbPermissions = meta.permissions || fbPermissions;
+
+        const res = await fetch('/api/feedback/projects', { credentials: 'include' });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.detail || data.error || 'Could not load projects');
+        fbPermissions = data.permissions || fbPermissions;
+        fbProjects = data.projects || [];
+    } catch (error) {
+        fbSetStatus(error.message || 'Could not load projects data.', 'error');
+        return;
+    }
+
+    const isAdmin = fbPermissions.can_manage_workflow;
+    document.querySelectorAll('[data-admin-only]').forEach(el => {
+        el.style.display = isAdmin ? '' : 'none';
+    });
+
+    if (path === '/projects') {
+        fbInitProjectsPage();
+    } else if (path === '/projects/admin') {
+        fbInitAdminPage();
+    } else if (path.startsWith('/projects/')) {
+        const parts = path.split('/');
+        const projectKey = parts[parts.length - 1];
+        fbInitBoardPage(projectKey);
+    } else if (path.startsWith('/issues/')) {
+        const parts = path.split('/');
+        const ticketId = parts[parts.length - 1];
+        fbInitIssuePage(ticketId);
+    }
+}
+
+function fbInitProjectsPage() {
+    fbRenderPortal();
+    fbRenderMyRequests();
+}
+
+function fbInitBoardPage(projectKey) {
+    fbCurrent = fbProjects.find(p => (p.key || '').toUpperCase() === projectKey.toUpperCase() || p.id === projectKey);
+    if (!fbCurrent) {
+        fbSetStatus('Project not found.', 'error');
+        return;
+    }
+    fbSelectedBoardProjectId = fbCurrent.id;
+    
+    const titleEl = document.getElementById('fb-board-title');
+    if (titleEl) titleEl.textContent = `${fbCurrent.icon || '📋'} ${fbCurrent.title}`;
+    
+    const subEl = document.getElementById('fb-board-subtitle');
+    if (subEl) subEl.textContent = fbCurrent.description || 'View and transition tickets on the Kanban board.';
+    
+    fbRenderTickets();
+    fbSetAdminMode();
+    
+    // Setup export link
+    const exportBtn = document.getElementById('fb-export-mine-csv');
+    if (exportBtn) {
+        exportBtn.href = `/api/feedback/tickets/report.csv?scope=mine&project_id=${encodeURIComponent(fbCurrent.id)}`;
+    }
+    
+    // Set settings link
+    const settingsBtn = document.getElementById('fb-board-settings-link');
+    if (settingsBtn) {
+        settingsBtn.href = `/projects/admin?project_id=${encodeURIComponent(fbCurrent.id)}`;
+    }
+}
+
+async function fbInitIssuePage(ticketId) {
+    fbActiveTicketId = ticketId;
+    
+    try {
+        const res = await fetch(`/api/feedback/tickets/${encodeURIComponent(ticketId)}`, { credentials: 'include' });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.detail || 'Could not load ticket details');
+        
+        const ticket = data.ticket;
+        const project = data.project;
+        
+        fbSelectedBoardProjectId = project.id;
+        fbCurrent = project;
+        
+        // Render ticket details
+        document.getElementById('fb-drawer-ticket-id').textContent = ticket.id;
+        document.getElementById('fb-drawer-title').textContent = ticket.title;
+        document.getElementById('fb-drawer-description').textContent = ticket.description || 'No description';
+        
+        const htmlWrap = document.getElementById('fb-drawer-html-wrap');
+        const htmlContent = document.getElementById('fb-drawer-html');
+        if (ticket.description_html) {
+            htmlWrap.style.display = 'flex';
+            htmlContent.innerHTML = ticket.description_html;
+        } else {
+            htmlWrap.style.display = 'none';
+        }
+        
+        document.getElementById('fb-drawer-reporter').textContent = ticket.created_by;
+        document.getElementById('fb-drawer-created').textContent = new Date(ticket.created_at).toLocaleString();
+        
+        const statusObj = (project.workflow?.statuses || []).find(s => s.id === ticket.status);
+        const statusName = statusObj ? statusObj.name : ticket.status;
+        const badge = document.getElementById('fb-drawer-status-badge');
+        badge.textContent = statusName;
+        
+        // Render pickers and properties
+        const currentUsername = document.querySelector('.sidebar-user div')?.textContent.trim() || '';
+        const isEditable = fbPermissions.can_manage_workflow ||
+                           ticket.created_by === currentUsername ||
+                           ticket.assigned_to === currentUsername ||
+                           ticket.manager_username === currentUsername;
+                           
+        const assigneeContainer = document.getElementById('fb-drawer-assignee-container');
+        fbRenderUserPicker(assigneeContainer, { key: 'assigned_to', type: 'single_user_picker', user_source: 'database' }, ticket.assigned_to, isEditable, (val) => {
+            fbUpdateTicketDirect(ticketId, 'assigned_to', val);
+        });
+        
+        const managerContainer = document.getElementById('fb-drawer-manager-container');
+        fbRenderUserPicker(managerContainer, { key: 'manager_username', type: 'single_user_picker', user_source: 'database' }, ticket.manager_username, isEditable, (val) => {
+            fbUpdateTicketDirect(ticketId, 'manager_username', val);
+        });
+        
+        // Render transitions
+        const transContainer = document.getElementById('fb-drawer-transitions-container');
+        const transitions = (project.workflow?.transitions || []).filter(t => t.from_status === ticket.status);
+        transContainer.innerHTML = transitions.map(t => `
+            <button class="btn btn-sm text-start" type="button" style="width: 100%;" onclick="fbRunDirectTransition('${fbEscape(t.id)}')">
+                &rarr; ${fbEscape(t.name)}
+            </button>
+        `).join('') || '<span class="text-muted" style="font-size: 0.8rem;">No transitions available</span>';
+        
+        // Render comments
+        const commentsContainer = document.getElementById('fb-drawer-comments');
+        commentsContainer.innerHTML = (ticket.comments || []).map(c => `
+            <div class="comment-card" style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:8px; padding:10px; margin-bottom:8px;">
+                <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-secondary); margin-bottom:4px; font-weight:700;">
+                    <span>${fbEscape(c.author)}</span>
+                    <span>${new Date(c.created_at).toLocaleString()}</span>
+                </div>
+                <div style="font-size:0.9rem; color:var(--text-primary); white-space:pre-wrap;">${fbEscape(c.body)}</div>
+            </div>
+        `).join('') || '<div class="text-muted" style="font-size:0.85rem;">No comments yet.</div>';
+        
+        // Custom fields rendering
+        const fieldsContainer = document.getElementById('fb-drawer-fields-container');
+        fieldsContainer.innerHTML = '';
+        let fieldsToShow = project.form_fields || [];
+        if (statusObj && statusObj.screen_id) {
+            const screen = project.workflow?.screens?.find(s => s.id === statusObj.screen_id);
+            if (screen && screen.fields && screen.fields.length) {
+                fieldsToShow = project.form_fields.filter(field => 
+                    screen.fields.includes(field.key) || screen.fields.includes(field.id)
+                );
+            }
+        }
+        
+        if (fieldsToShow.length === 0) {
+            fieldsContainer.innerHTML = '<span class="text-muted" style="font-size: 0.85rem;">No custom fields shown in this status.</span>';
+        } else {
+            fieldsToShow.forEach(field => {
+                const val = ticket.field_values ? ticket.field_values[field.key] : undefined;
+                const fieldEl = fbRenderDirectCustomField(ticketId, field, val, isEditable);
+                fieldsContainer.appendChild(fieldEl);
+            });
+        }
+        
+        // Update back button destination to lead back to its project board
+        const backLink = document.getElementById('fb-issue-back-link');
+        if (backLink) {
+            backLink.href = `/projects/${project.key || project.id}`;
+        }
+        
+        const eyebrow = document.getElementById('fb-issue-eyebrow');
+        if (eyebrow) {
+            eyebrow.textContent = `Ticket in project: ${project.title}`;
+        }
+    } catch (err) {
+        fbSetStatus(err.message || 'Could not load ticket details', 'error');
+    }
+}
+
+async function fbUpdateTicketDirect(ticketId, field, value) {
+    fbSetStatus('Updating ticket property...', 'info');
+    try {
+        const payload = {
+            ticket: {
+                [field]: value
+            }
+        };
+        const res = await fetch(`/api/feedback/tickets/${encodeURIComponent(ticketId)}/update`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.detail || 'Update failed');
+        fbSetStatus('Property updated successfully.', 'success');
+        fbInitIssuePage(ticketId); // reload details
+    } catch (err) {
+        fbSetStatus(err.message || 'Update failed', 'error');
+    }
+}
+
+async function fbUpdateTicketCustomFieldDirect(ticketId, key, value) {
+    fbSetStatus('Updating custom field...', 'info');
+    try {
+        const payload = {
+            ticket: {
+                field_values: {
+                    [key]: value
+                }
+            }
+        };
+        const res = await fetch(`/api/feedback/tickets/${encodeURIComponent(ticketId)}/update`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.detail || 'Update failed');
+        fbSetStatus('Field updated successfully.', 'success');
+        fbInitIssuePage(ticketId); // reload details
+    } catch (err) {
+        fbSetStatus(err.message || 'Update failed', 'error');
+    }
+}
+
+async function fbRunDirectTransition(transitionId) {
+    fbSetStatus('Executing transition...', 'info');
+    try {
+        const res = await fetch(`/api/feedback/tickets/${encodeURIComponent(fbActiveTicketId)}/transition`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ transition_id: transitionId })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.detail || 'Transition failed');
+        fbSetStatus('Workflow transition completed.', 'success');
+        fbInitIssuePage(fbActiveTicketId); // reload details
+    } catch (err) {
+        fbSetStatus(err.message || 'Transition failed', 'error');
+        alert(`Transition failed: ${err.message}`);
+    }
+}
+
+function fbRenderDirectCustomField(ticketId, field, value, isEditable) {
+    const wrapper = document.createElement('div');
+    wrapper.style.display = 'flex';
+    wrapper.style.flexDirection = 'column';
+    wrapper.style.gap = '4px';
+    wrapper.style.marginBottom = '12px';
+    
+    const label = document.createElement('span');
+    label.style.fontSize = '0.78rem';
+    label.style.color = 'var(--text-secondary)';
+    label.style.fontWeight = '700';
+    label.style.textTransform = 'uppercase';
+    label.style.letterSpacing = '0.05em';
+    label.textContent = field.label;
+    wrapper.appendChild(label);
+    
+    if (field.type === 'single_user_picker' || field.type === 'user_picker' || field.type === 'multi_user_picker') {
+        const container = document.createElement('div');
+        container.className = 'user-picker-wrapper';
+        wrapper.appendChild(container);
+        fbRenderUserPicker(container, field, value, isEditable, (newVal) => {
+            fbUpdateTicketCustomFieldDirect(ticketId, field.key, newVal);
+        });
+    } else {
+        if (isEditable) {
+            let input;
+            if (field.type === 'multi_line') {
+                input = document.createElement('textarea');
+                input.className = 'form-control';
+                input.rows = 2;
+                input.value = value || '';
+                input.onchange = () => fbUpdateTicketCustomFieldDirect(ticketId, field.key, input.value);
+            } else if (field.type === 'single_select') {
+                input = document.createElement('select');
+                input.className = 'form-control';
+                input.innerHTML = `<option value="">Select...</option>` + (field.options || []).map(o => `
+                    <option value="${fbEscape(o)}" ${o === value ? 'selected' : ''}>${fbEscape(o)}</option>
+                `).join('');
+                input.onchange = () => fbUpdateTicketCustomFieldDirect(ticketId, field.key, input.value);
+            } else if (field.type === 'checkbox') {
+                input = document.createElement('input');
+                input.type = 'checkbox';
+                input.checked = Boolean(value);
+                input.onchange = () => fbUpdateTicketCustomFieldDirect(ticketId, field.key, input.checked);
+            } else {
+                input = document.createElement('input');
+                input.type = field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text';
+                input.className = 'form-control';
+                input.value = value || '';
+                input.onchange = () => fbUpdateTicketCustomFieldDirect(ticketId, field.key, input.value);
+            }
+            wrapper.appendChild(input);
+        } else {
+            const display = document.createElement('div');
+            display.style.fontSize = '0.95rem';
+            display.style.color = 'var(--text-primary)';
+            display.style.padding = '4px 0';
+            display.textContent = value !== undefined && value !== null ? String(value) : 'None';
+            wrapper.appendChild(display);
+        }
+    }
+    
+    return wrapper;
+}
+
+function fbInitAdminPage() {
+    const urlParams = new URLSearchParams(location.search);
+    const projId = urlParams.get('project_id');
+    
+    if (projId) {
+        const project = fbProjects.find(p => p.id === projId);
+        if (project) {
+            fbCurrent = structuredCloneSafe(project);
+        }
+    } else if (fbProjects.length > 0) {
+        fbCurrent = structuredCloneSafe(fbProjects[0]);
+    } else {
+        fbCurrent = structuredCloneSafe(FB_DEFAULT_PROJECT);
+    }
+    
+    fbRenderAll();
+    fbInitCanvasDragging();
+    
+    const requestedTab = urlParams.get('tab') || 'details';
+    fbShowDesignerSubTab(requestedTab, false);
+}
+
+let fbActiveDesignerSubTab = 'details';
+function fbShowDesignerSubTab(tab, updateUrl = true) {
+    const validTabs = ['details', 'fields', 'workflow', 'transitions', 'assessments', 'participants'];
+    fbActiveDesignerSubTab = validTabs.includes(tab) ? tab : 'details';
+    
+    document.querySelectorAll('#fb-designer-subnav button').forEach(button => {
+        const onclickAttr = button.getAttribute('onclick') || '';
+        button.classList.toggle('active', onclickAttr.includes(`'${fbActiveDesignerSubTab}'`));
+    });
+    
+    document.querySelectorAll('.feedback-card[data-designer-tab]').forEach(card => {
+        const cardTab = card.dataset.designerTab;
+        if (cardTab === fbActiveDesignerSubTab) {
+            card.style.display = 'block';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+    
+    if (fbActiveDesignerSubTab === 'workflow') {
+        fbRenderWorkflowBoard();
+    }
+    
+    if (updateUrl) {
+        const urlParams = new URLSearchParams(location.search);
+        urlParams.set('tab', fbActiveDesignerSubTab);
+        history.replaceState(null, '', `/projects/admin?${urlParams.toString()}`);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', fbInitPage);

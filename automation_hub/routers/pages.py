@@ -98,7 +98,13 @@ async def creative_page(request: Request):
 
 @pages_router.get("/feedback", response_class=HTMLResponse, response_model=None)
 async def feedback_page(request: Request):
-    """180 Feedback Studio page."""
+    """Redirect legacy feedback page to projects dashboard."""
+    return RedirectResponse(url="/projects", status_code=302)
+
+
+@pages_router.get("/projects", response_class=HTMLResponse, response_model=None)
+async def projects_dashboard(request: Request):
+    """Projects & Request Types Dashboard."""
     user = auth.get_current_user(request)
     if not user:
         return RedirectResponse(url="/login", status_code=302)
@@ -109,7 +115,69 @@ async def feedback_page(request: Request):
         and "feedback_180_admin" not in modules
     ):
         return RedirectResponse(url="/summary", status_code=302)
-    return _render_page(request, "feedback/index.html", user=user)
+    return _render_page(request, "feedback/projects.html", user=user)
+
+
+@pages_router.get("/projects/admin", response_class=HTMLResponse, response_model=None)
+async def projects_admin(request: Request):
+    """Projects Configuration & Workflow Admin Panel."""
+    user = auth.get_current_user(request)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    modules = user.get("modules") or []
+    if user.get("role") != "admin" and "feedback_180_admin" not in modules:
+        return RedirectResponse(url="/projects", status_code=302)
+    return _render_page(request, "feedback/admin.html", user=user)
+
+
+@pages_router.get(
+    "/projects/{project_key}", response_class=HTMLResponse, response_model=None
+)
+async def project_board(project_key: str, request: Request):
+    """Project Details & Kanban Board page."""
+    user = auth.get_current_user(request)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    modules = user.get("modules") or []
+    if (
+        user.get("role") != "admin"
+        and "feedback_180" not in modules
+        and "feedback_180_admin" not in modules
+    ):
+        return RedirectResponse(url="/summary", status_code=302)
+    templates = _get_templates(request)
+    if not templates:
+        return JSONResponse({"error": "Templates not available"}, status_code=500)
+    return templates.TemplateResponse(
+        request=request,
+        name="feedback/board.html",
+        context={"request": request, "user": user, "project_key": project_key},
+    )
+
+
+@pages_router.get(
+    "/issues/{ticket_id}", response_class=HTMLResponse, response_model=None
+)
+async def ticket_detail(ticket_id: str, request: Request):
+    """Jira-style Ticket Detail page."""
+    user = auth.get_current_user(request)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    modules = user.get("modules") or []
+    if (
+        user.get("role") != "admin"
+        and "feedback_180" not in modules
+        and "feedback_180_admin" not in modules
+    ):
+        return RedirectResponse(url="/summary", status_code=302)
+    templates = _get_templates(request)
+    if not templates:
+        return JSONResponse({"error": "Templates not available"}, status_code=500)
+    return templates.TemplateResponse(
+        request=request,
+        name="feedback/issue.html",
+        context={"request": request, "user": user, "ticket_id": ticket_id},
+    )
 
 
 @pages_router.get("/messaging", response_class=HTMLResponse, response_model=None)
@@ -290,11 +358,13 @@ async def get_user_tickets(request: Request):
     """Retrieve support tickets for the current user (or all tickets if admin)."""
     user = auth.get_current_user(request)
     if not user:
-        return JSONResponse({"success": False, "error": "Authentication required"}, status_code=401)
-    
+        return JSONResponse(
+            {"success": False, "error": "Authentication required"}, status_code=401
+        )
+
     username = user.get("username") or ""
     is_admin = user.get("role") == "admin"
-    
+
     conn = _db()
     try:
         if is_admin:
@@ -304,28 +374,34 @@ async def get_user_tickets(request: Request):
         else:
             rows = conn.execute(
                 "SELECT * FROM tickets WHERE user_email = ? ORDER BY created_at DESC",
-                (username,)
+                (username,),
             ).fetchall()
-        
+
         tickets = []
         for r in rows:
-            tickets.append({
-                "id": r["id"],
-                "user_email": r["user_email"],
-                "subject": r["subject"],
-                "body": r["body"],
-                "status": r["status"] or "open",
-                "created_at": r["created_at"],
-                "admin_reply": r["admin_reply"],
-                "admin_replied_at": r["admin_replied_at"],
-                "priority": r["priority"] or "medium",
-                "category": r["category"] or "general",
-                "assigned_admin": r["assigned_admin"],
-                "first_response_at": r["first_response_at"],
-                "resolved_at": r["resolved_at"],
-                "comments_json": json.loads(r["comments_json"] or "[]") if "comments_json" in r else []
-            })
-        
+            tickets.append(
+                {
+                    "id": r["id"],
+                    "user_email": r["user_email"],
+                    "subject": r["subject"],
+                    "body": r["body"],
+                    "status": r["status"] or "open",
+                    "created_at": r["created_at"],
+                    "admin_reply": r["admin_reply"],
+                    "admin_replied_at": r["admin_replied_at"],
+                    "priority": r["priority"] or "medium",
+                    "category": r["category"] or "general",
+                    "assigned_admin": r["assigned_admin"],
+                    "first_response_at": r["first_response_at"],
+                    "resolved_at": r["resolved_at"],
+                    "comments_json": (
+                        json.loads(r["comments_json"] or "[]")
+                        if "comments_json" in r
+                        else []
+                    ),
+                }
+            )
+
         return JSONResponse({"success": True, "tickets": tickets})
     except Exception as e:
         return JSONResponse({"success": False, "error": str(e)}, status_code=500)
@@ -338,20 +414,25 @@ async def create_user_ticket(request: Request):
     """Create a new support ticket."""
     user = auth.get_current_user(request)
     if not user:
-        return JSONResponse({"success": False, "error": "Authentication required"}, status_code=401)
-    
+        return JSONResponse(
+            {"success": False, "error": "Authentication required"}, status_code=401
+        )
+
     username = user.get("username") or ""
-    
+
     try:
         body = await request.json()
         subject = (body.get("subject") or "").strip()
         body_text = (body.get("body") or "").strip()
         priority = (body.get("priority") or "medium").strip().lower()
         category = (body.get("category") or "general").strip().lower()
-        
+
         if not subject or not body_text:
-            return JSONResponse({"success": False, "error": "Subject and message are required"}, status_code=400)
-            
+            return JSONResponse(
+                {"success": False, "error": "Subject and message are required"},
+                status_code=400,
+            )
+
         conn = _db()
         try:
             now = db.utc_now_iso()
@@ -360,13 +441,15 @@ async def create_user_ticket(request: Request):
                 INSERT INTO tickets (user_email, subject, body, status, created_at, priority, category, comments_json)
                 VALUES (?, ?, ?, 'open', ?, ?, ?, '[]')
                 """,
-                (username, subject, body_text, now, priority, category)
+                (username, subject, body_text, now, priority, category),
             )
             ticket_id = cursor.lastrowid
             conn.commit()
-            
+
             # Retrieve the newly created ticket to return
-            row = conn.execute("SELECT * FROM tickets WHERE id = ?", (ticket_id,)).fetchone()
+            row = conn.execute(
+                "SELECT * FROM tickets WHERE id = ?", (ticket_id,)
+            ).fetchone()
             ticket = {
                 "id": row["id"],
                 "user_email": row["user_email"],
@@ -381,14 +464,16 @@ async def create_user_ticket(request: Request):
                 "assigned_admin": row["assigned_admin"],
                 "first_response_at": row["first_response_at"],
                 "resolved_at": row["resolved_at"],
-                "comments_json": []
+                "comments_json": [],
             }
         finally:
             conn.close()
-            
+
         # Send notification
-        _send_ticket_creation_notification(request, username, subject, body_text, ticket_id)
-        
+        _send_ticket_creation_notification(
+            request, username, subject, body_text, ticket_id
+        )
+
         return JSONResponse({"success": True, "ticket": ticket})
     except Exception as e:
         return JSONResponse({"success": False, "error": str(e)}, status_code=500)
@@ -404,6 +489,7 @@ def _send_ticket_creation_notification(
     try:
         from automation_hub.core import notifications as notif
         import os
+
         config = notif.get_notification_config()
         if not config.get("notify_ticket", True) or not config.get("admin_email"):
             return
@@ -443,63 +529,75 @@ async def add_support_ticket_comment(ticket_id: int, request: Request):
     """Add a comment/reply to a support ticket."""
     user = auth.get_current_user(request)
     if not user:
-        return JSONResponse({"success": False, "error": "Authentication required"}, status_code=401)
-    
+        return JSONResponse(
+            {"success": False, "error": "Authentication required"}, status_code=401
+        )
+
     username = user.get("username") or ""
     is_admin = user.get("role") == "admin"
-    
+
     try:
         body = await request.json()
         comment_text = (body.get("body") or "").strip()
         if not comment_text:
-            return JSONResponse({"success": False, "error": "Comment text is required"}, status_code=400)
-        
+            return JSONResponse(
+                {"success": False, "error": "Comment text is required"}, status_code=400
+            )
+
         import secrets
+
         conn = _db()
         try:
             # Check if ticket exists and user has access
-            row = conn.execute("SELECT * FROM tickets WHERE id = ?", (ticket_id,)).fetchone()
+            row = conn.execute(
+                "SELECT * FROM tickets WHERE id = ?", (ticket_id,)
+            ).fetchone()
             if not row:
-                return JSONResponse({"success": False, "error": "Ticket not found"}, status_code=404)
-            
+                return JSONResponse(
+                    {"success": False, "error": "Ticket not found"}, status_code=404
+                )
+
             if not is_admin and row["user_email"] != username:
-                return JSONResponse({"success": False, "error": "Permission denied"}, status_code=403)
-            
+                return JSONResponse(
+                    {"success": False, "error": "Permission denied"}, status_code=403
+                )
+
             comments = json.loads(row["comments_json"] or "[]")
             new_comment = {
                 "id": f"comment_{secrets.token_hex(4)}",
                 "author": username,
                 "body": comment_text,
-                "created_at": db.utc_now_iso()
+                "created_at": db.utc_now_iso(),
             }
             comments.append(new_comment)
-            
+
             now = db.utc_now_iso()
             if is_admin:
                 conn.execute(
                     "UPDATE tickets SET admin_reply = ?, admin_replied_at = ?, comments_json = ? WHERE id = ?",
-                    (comment_text, now, json.dumps(comments), ticket_id)
+                    (comment_text, now, json.dumps(comments), ticket_id),
                 )
             else:
                 conn.execute(
                     "UPDATE tickets SET comments_json = ? WHERE id = ?",
-                    (json.dumps(comments), ticket_id)
+                    (json.dumps(comments), ticket_id),
                 )
             conn.commit()
-            
+
             # Create a user notification if this was an admin reply
             if is_admin:
                 from automation_hub.core import notifications as notif
+
                 notif.create_notification(
                     row["user_email"],
                     "ticket_reply",
                     "Your ticket got a reply",
-                    f"Ticket #{ticket_id}: {row['subject']}"
+                    f"Ticket #{ticket_id}: {row['subject']}",
                 )
-                
+
         finally:
             conn.close()
-            
+
         return JSONResponse({"success": True, "comment": new_comment})
     except Exception as e:
         return JSONResponse({"success": False, "error": str(e)}, status_code=500)
@@ -510,43 +608,60 @@ async def update_support_ticket_status(ticket_id: int, request: Request):
     """Update support ticket status."""
     user = auth.get_current_user(request)
     if not user:
-        return JSONResponse({"success": False, "error": "Authentication required"}, status_code=401)
-    
+        return JSONResponse(
+            {"success": False, "error": "Authentication required"}, status_code=401
+        )
+
     username = user.get("username") or ""
     is_admin = user.get("role") == "admin"
-    
+
     try:
         body = await request.json()
         status = (body.get("status") or "").strip().lower()
         if status not in ("open", "in_progress", "closed"):
-            return JSONResponse({"success": False, "error": "Invalid status"}, status_code=400)
-        
+            return JSONResponse(
+                {"success": False, "error": "Invalid status"}, status_code=400
+            )
+
         conn = _db()
         try:
-            row = conn.execute("SELECT * FROM tickets WHERE id = ?", (ticket_id,)).fetchone()
+            row = conn.execute(
+                "SELECT * FROM tickets WHERE id = ?", (ticket_id,)
+            ).fetchone()
             if not row:
-                return JSONResponse({"success": False, "error": "Ticket not found"}, status_code=404)
-            
+                return JSONResponse(
+                    {"success": False, "error": "Ticket not found"}, status_code=404
+                )
+
             if not is_admin:
                 if row["user_email"] != username:
-                    return JSONResponse({"success": False, "error": "Permission denied"}, status_code=403)
+                    return JSONResponse(
+                        {"success": False, "error": "Permission denied"},
+                        status_code=403,
+                    )
                 if status == "in_progress":
-                    return JSONResponse({"success": False, "error": "Only admins can set tickets to in_progress"}, status_code=403)
-            
+                    return JSONResponse(
+                        {
+                            "success": False,
+                            "error": "Only admins can set tickets to in_progress",
+                        },
+                        status_code=403,
+                    )
+
             resolved_at = row["resolved_at"]
             if status == "closed" and not resolved_at:
                 resolved_at = db.utc_now_iso()
             elif status != "closed":
                 resolved_at = None
-                
+
             conn.execute(
                 "UPDATE tickets SET status = ?, resolved_at = ? WHERE id = ?",
-                (status, resolved_at, ticket_id)
+                (status, resolved_at, ticket_id),
             )
             conn.commit()
         finally:
             conn.close()
-            
+
         return JSONResponse({"success": True})
     except Exception as e:
         return JSONResponse({"success": False, "error": str(e)}, status_code=500)

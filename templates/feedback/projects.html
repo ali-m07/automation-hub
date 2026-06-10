@@ -1,0 +1,367 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Projects Dashboard - Servexa{% endblock %}
+{% block subtitle %}Jira-style Ticketing and Project Management{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Autocomplete User Picker Styles */
+    .user-picker-wrapper {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        width: 100%;
+    }
+    .user-picker-box {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding: 8px 12px;
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        min-height: 44px;
+        align-items: center;
+    }
+    .user-picker-box:focus-within {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px var(--accent);
+    }
+    .user-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--accent-soft);
+        color: var(--on-accent-soft);
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 0.85rem;
+        font-weight: 700;
+    }
+    .user-pill-remove {
+        cursor: pointer;
+        font-size: 1.1rem;
+        line-height: 1;
+        font-weight: 800;
+        color: var(--on-accent-soft);
+        opacity: 0.7;
+        margin-left: 2px;
+    }
+    .user-pill-remove:hover {
+        opacity: 1;
+    }
+    .user-picker-input {
+        border: none !important;
+        outline: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        flex: 1;
+        min-width: 120px;
+        background: transparent !important;
+        box-shadow: none !important;
+        color: var(--text-primary);
+    }
+    .user-autocomplete-list {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 100%;
+        margin-top: 4px;
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        box-shadow: 0 10px 30px var(--shadow);
+        z-index: 2100;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+    .user-autocomplete-item {
+        padding: 8px 14px;
+        cursor: pointer;
+        font-size: 0.88rem;
+        color: var(--text-primary);
+        transition: background 0.15s;
+    }
+    .user-autocomplete-item:hover {
+        background: var(--bg-secondary);
+    }
+
+    /* Jira Portal / Help Center Aesthetics */
+    .portal-search-banner {
+        background: radial-gradient(circle at 10% 20%, color-mix(in srgb, var(--accent) 7%, var(--bg-secondary)) 0%, var(--bg-secondary) 90%);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 36px;
+        text-align: center;
+        margin-bottom: 24px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+    }
+    .portal-search-banner h2 {
+        font-size: 1.8rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        margin: 0;
+    }
+    .portal-search-banner p {
+        font-size: 0.95rem;
+        color: var(--text-secondary);
+        margin: 0;
+    }
+    .portal-search-wrapper {
+        position: relative;
+        max-width: 500px;
+        width: 100%;
+        margin-top: 4px;
+    }
+    .portal-search-input {
+        width: 100%;
+        padding: 12px 16px 12px 42px !important;
+        border-radius: 999px !important;
+        font-size: 1rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        border: 1.5px solid var(--border-color) !important;
+        background: var(--bg-primary) !important;
+    }
+    .portal-search-input:focus {
+        border-color: var(--accent) !important;
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent) !important;
+    }
+    .portal-search-icon {
+        position: absolute;
+        left: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 1.1rem;
+        color: var(--text-secondary);
+        pointer-events: none;
+    }
+    
+    .portal-layout {
+        display: grid;
+        grid-template-columns: 240px 1fr;
+        gap: 28px;
+        align-items: start;
+        margin-top: 8px;
+    }
+    .portal-sidebar {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 14px;
+        padding: 12px;
+    }
+    .portal-categories-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    .portal-category-item {
+        padding: 10px 14px;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-weight: 650;
+        color: var(--text-primary);
+        cursor: pointer;
+        transition: background 0.15s, color 0.15s;
+    }
+    .portal-category-item:hover {
+        background: var(--bg-tertiary);
+    }
+    .portal-category-item.active {
+        background: var(--accent-soft);
+        color: var(--on-accent-soft);
+    }
+    
+    .portal-section-title {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        margin-bottom: 18px;
+        border-bottom: 2px solid var(--border-color);
+        padding-bottom: 8px;
+    }
+    
+    .portal-request-types-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    .portal-request-card {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        padding: 18px 24px;
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        cursor: pointer;
+        box-shadow: 0 4px 10px var(--shadow);
+        transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+    }
+    .portal-request-card:hover {
+        transform: translateY(-2px);
+        border-color: var(--accent);
+        box-shadow: 0 8px 20px var(--shadow);
+    }
+    .portal-request-card-icon {
+        font-size: 2.2rem;
+        min-width: 54px;
+        height: 54px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-secondary);
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+    }
+    .portal-request-card-content {
+        flex: 1;
+    }
+    .portal-request-card-title {
+        font-size: 1.08rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        margin-bottom: 4px;
+    }
+    .portal-request-card-description {
+        font-size: 0.88rem;
+        color: var(--text-secondary);
+        line-height: 1.4;
+    }
+    .portal-request-card-arrow {
+        font-size: 1.25rem;
+        color: var(--text-secondary);
+        font-weight: bold;
+        transition: transform 0.15s;
+    }
+    .portal-request-card:hover .portal-request-card-arrow {
+        transform: translateX(4px);
+        color: var(--accent);
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .table th, .table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .table tbody tr {
+        cursor: pointer;
+        transition: background 0.15s;
+    }
+    .table tbody tr:hover {
+        background: var(--bg-secondary);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<header class="feedback-hero">
+    <div>
+        <div class="eyebrow">Jira Studio</div>
+        <h1>Projects Dashboard</h1>
+        <p class="subtitle">Select a project board to manage, or submit service requests in the Help Center.</p>
+    </div>
+</header>
+
+<nav class="feedback-view-nav" aria-label="Projects navigation">
+    <a class="btn active" href="/projects" style="text-decoration:none; display:inline-flex; align-items:center; gap:6px;">📂 Projects Dashboard</a>
+    <a class="btn" href="/projects/admin" data-admin-only style="text-decoration:none; display:inline-flex; align-items:center; gap:6px; margin-left:auto;">⚙️ Admin Panel</a>
+</nav>
+
+<div class="feedback-shell single-view">
+    <main class="feedback-main">
+        <!-- Help Center / Projects List -->
+        <section class="card feedback-card">
+            <div class="portal-search-banner">
+                <h2>Help Center</h2>
+                <p>Welcome! You can raise a request from the options provided below.</p>
+                <div class="portal-search-wrapper">
+                    <input type="text" id="fb-portal-search" class="form-control portal-search-input" placeholder="What do you need help with?" oninput="fbFilterPortal()">
+                    <span class="portal-search-icon">🔍</span>
+                </div>
+            </div>
+            
+            <div class="portal-layout">
+                <aside class="portal-sidebar">
+                    <ul id="fb-portal-categories-list" class="portal-categories-list">
+                        <!-- Categories will load dynamically -->
+                    </ul>
+                </aside>
+                
+                <div class="portal-content">
+                    <h3 id="fb-portal-active-category-title" class="portal-section-title">Common Requests</h3>
+                    <div id="fb-portal-request-types" class="portal-request-types-grid">
+                        <!-- Projects will load dynamically -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- User's My Requests list -->
+        <section class="card feedback-card" style="margin-top:24px;">
+            <div class="feedback-card-head">
+                <div>
+                    <h2>My Requests</h2>
+                    <p>Track your submitted requests, status, and communication history.</p>
+                </div>
+            </div>
+            <div style="overflow-x: auto; margin-top: 16px;">
+                <table class="table" style="width:100%; border-collapse: collapse; text-align: left;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid var(--border-color); color: var(--text-secondary); font-size: 0.85rem; font-weight: 700;">
+                            <th style="padding: 12px 16px; width: 120px;">Key</th>
+                            <th style="padding: 12px 16px; width: 200px;">Project</th>
+                            <th style="padding: 12px 16px;">Summary</th>
+                            <th style="padding: 12px 16px; width: 130px;">Status</th>
+                            <th style="padding: 12px 16px; width: 150px;">Created</th>
+                            <th style="padding: 12px 16px; width: 150px;">Last Update</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fb-my-requests-tbody" style="font-size: 0.92rem;">
+                        <!-- requests rows -->
+                    </tbody>
+                </table>
+                <div id="fb-my-requests-empty" class="feedback-empty" style="display:none;">
+                    You have not submitted any service requests yet.
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<!-- Portal Request Submission Form Modal -->
+<div id="fb-portal-request-modal" class="modal-overlay" style="display:none; z-index: 2100;">
+    <div class="modal-content" style="max-width: 680px; width: 95%;">
+        <div class="modal-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
+            <h3 style="display:flex; align-items:center; gap:8px;">
+                <span id="fb-portal-form-icon" style="font-size:1.6rem;">💻</span>
+                <span id="fb-portal-form-title">Raise a Request</span>
+            </h3>
+            <button type="button" class="btn-close-modal" onclick="fbClosePortalRequestForm()">&times;</button>
+        </div>
+        <div style="margin-bottom: 16px; font-size: 0.9rem; color: var(--text-secondary);" id="fb-portal-form-desc">
+            Request type description...
+        </div>
+        <div id="fb-portal-form-fields-container" style="display:flex; flex-direction:column; gap:14px; max-height: 55vh; overflow-y: auto; padding-right: 6px;">
+            <!-- dynamic fields here -->
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px; border-top: 1px solid var(--border-color); padding-top:16px;">
+            <button class="btn" style="background:var(--bg-tertiary);" onclick="fbClosePortalRequestForm()">Cancel</button>
+            <button class="btn btn-primary" type="button" onclick="fbSubmitPortalRequest()">Create request</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/feedback.js?v=20260610-process-builder"></script>
+{% endblock %}
