@@ -106,67 +106,121 @@
     <div id="toast-container" class="toast-container" aria-live="polite"></div>
 
     <!-- Profile / Settings panel -->
-    <div id="profile-panel" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000; align-items: center; justify-content: center;">
-        <div style="background: #fff; border-radius: 12px; padding: 24px; max-width: 440px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3 style="margin: 0;">Profile &amp; Settings</h3>
-                <button type="button" onclick="toggleProfilePanel()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280;">×</button>
+    <div id="profile-panel" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(8px); z-index: 1000; align-items: center; justify-content: center;">
+        <div style="background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 16px; padding: 28px; max-width: 760px; width: 95%; box-shadow: 0 20px 50px var(--shadow); max-height: 90vh; overflow-y: auto; color: var(--text-primary); display: flex; flex-direction: column; gap: 20px; animation: modalFadeIn 0.25s ease-out;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 16px;">
+                <h3 style="margin: 0; font-size: 1.35rem; font-weight: 700;">Profile &amp; Security Settings</h3>
+                <button type="button" onclick="toggleProfilePanel()" style="background: none; border: none; font-size: 1.75rem; cursor: pointer; color: var(--text-secondary); line-height: 1;">&times;</button>
             </div>
-            <div class="form-group">
-                <label>Username (email)</label>
-                <input type="text" id="profile-username" class="form-control" readonly style="background: #f3f4f6;">
+            
+            <div style="display: grid; grid-template-columns: 1.1fr 1fr; gap: 32px; align-items: start;">
+                <!-- Left: Profile Details -->
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                    <h4 style="margin: 0 0 4px 0; font-size: 1.05rem; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                        <span>👤</span> Profile Information
+                    </h4>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 6px; display: block;">Username (email)</label>
+                        <input type="text" id="profile-username" class="form-control" readonly style="background: var(--bg-tertiary); border-color: var(--border-color); color: var(--text-secondary); cursor: not-allowed;">
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 6px; display: block;">First Name</label>
+                            <input type="text" id="profile-first-name" class="form-control" placeholder="First name">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 6px; display: block;">Last Name</label>
+                            <input type="text" id="profile-last-name" class="form-control" placeholder="Last name">
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 6px; display: block;">Contact Email</label>
+                        <input type="email" id="profile-email" class="form-control" placeholder="email@example.com">
+                    </div>
+                    <div style="margin-top: 8px;">
+                        <button type="button" class="btn btn-primary" onclick="saveProfile()" style="padding: 10px 20px; font-weight: 600;">Save Profile Details</button>
+                    </div>
+                </div>
+                
+                <!-- Right: Password and 2FA -->
+                <div style="display: flex; flex-direction: column; gap: 20px; border-left: 1px solid var(--border-color); padding-left: 32px;">
+                    <div>
+                        <h4 style="margin: 0 0 16px 0; font-size: 1.05rem; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                            <span>🔑</span> Change Password
+                        </h4>
+                        <div class="form-group" style="margin-bottom: 12px;">
+                            <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 6px; display: block;">Current Password</label>
+                            <input type="password" id="profile-current-password" class="form-control" placeholder="Current password">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 16px;">
+                            <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 6px; display: block;">New Password</label>
+                            <input type="password" id="profile-new-password" class="form-control" placeholder="New password (min. 12 chars)">
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="changePassword()" style="padding: 10px 20px; font-weight: 600;">Update Password</button>
+                    </div>
+                    
+                    <div style="margin-top: 8px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+                        <h4 style="margin: 0 0 12px 0; font-size: 1.05rem; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                            <span>🛡️</span> Security &amp; Access
+                        </h4>
+                        <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.4; margin-bottom: 14px;">
+                            Enhance your account's security by enabling Two-Factor Authentication (2FA) via verification codes.
+                        </p>
+                        <a href="#" onclick="toggleProfilePanel(); toggleSecurityPanel(); return false;" class="btn" style="display: inline-flex; align-items: center; gap: 8px; background: var(--bg-tertiary); color: var(--text-primary); text-decoration: none; padding: 10px 20px; border-radius: 8px; border: 1px solid var(--border-color); font-weight: 600; font-size: 0.9rem; transition: background 0.2s;">
+                            Configure Two-Factor Auth (2FA) &rarr;
+                        </a>
+                    </div>
+                </div>
             </div>
-            <div class="form-group">
-                <label>First name</label>
-                <input type="text" id="profile-first-name" class="form-control" placeholder="First name">
-            </div>
-            <div class="form-group">
-                <label>Last name</label>
-                <input type="text" id="profile-last-name" class="form-control" placeholder="Last name">
-            </div>
-            <div class="form-group">
-                <label>Email</label>
-                <input type="email" id="profile-email" class="form-control" placeholder="email@example.com">
-            </div>
-            <button type="button" class="btn btn-primary" onclick="saveProfile()" style="margin-bottom: 16px;">Save profile</button>
-            <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
-            <h4 style="margin-bottom: 12px;">Change password</h4>
-            <div class="form-group">
-                <label>Current password</label>
-                <input type="password" id="profile-current-password" class="form-control" placeholder="Current password">
-            </div>
-            <div class="form-group">
-                <label>New password</label>
-                <input type="password" id="profile-new-password" class="form-control" placeholder="New password">
-            </div>
-            <button type="button" class="btn btn-primary" onclick="changePassword()">Change password</button>
-            <div style="margin-top: 20px;">
-                <a href="#" onclick="toggleProfilePanel(); toggleSecurityPanel(); return false;" class="top-nav-link">→ Two-Factor Authentication (2FA)</a>
-            </div>
-            <div id="profile-message" class="status-box" style="margin-top: 12px; display: none;"></div>
+            
+            <div id="profile-message" class="status-box" style="margin-top: 8px; display: none;"></div>
         </div>
     </div>
 
     <!-- Security (2FA) panel -->
-    <div id="security-panel" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000; align-items: center; justify-content: center;">
-        <div style="background: #fff; border-radius: 12px; padding: 24px; max-width: 420px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                <h3 style="margin: 0;">Security – Two-Factor Authentication</h3>
-                <button type="button" onclick="toggleSecurityPanel()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280;">×</button>
+    <div id="security-panel" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(8px); z-index: 1000; align-items: center; justify-content: center;">
+        <div style="background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 16px; padding: 28px; max-width: 480px; width: 90%; box-shadow: 0 20px 50px var(--shadow); max-height: 90vh; overflow-y: auto; color: var(--text-primary); display: flex; flex-direction: column; gap: 20px; animation: modalFadeIn 0.25s ease-out;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 16px;">
+                <h3 style="margin: 0; font-size: 1.25rem; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                    <span>🛡️</span> Two-Factor Authentication
+                </h3>
+                <button type="button" onclick="toggleSecurityPanel()" style="background: none; border: none; font-size: 1.75rem; cursor: pointer; color: var(--text-secondary); line-height: 1;">&times;</button>
             </div>
-            <div id="2fa-status" style="margin-bottom: 16px; color: #6b7280;">Loading…</div>
-            <div id="2fa-setup" style="display: none;">
-                <p style="color: #6b7280; font-size: 0.9rem; margin-bottom: 12px;">Generate a QR code and scan it with Google Authenticator, then enter the 6-digit code to enable.</p>
-                <button type="button" class="btn btn-primary" onclick="setup2FA()" style="margin-bottom: 12px;">Generate QR code</button>
-                <div id="2fa-qr" style="margin-bottom: 12px;"></div>
-                <input type="text" id="2fa-verify-code" class="form-control" placeholder="Enter 6-digit code" maxlength="8" style="margin-bottom: 8px;">
-                <button type="button" class="btn btn-primary" onclick="enable2FA()">Enable 2FA</button>
+            
+            <div id="2fa-status" style="margin-bottom: 8px; color: var(--text-secondary); font-weight: 600; font-size: 0.95rem; text-align: center; padding: 12px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-color);">Loading…</div>
+            
+            <div id="2fa-setup" style="display: none; display: flex; flex-direction: column; gap: 16px;">
+                <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.45; margin: 0;">
+                    Generate a QR code and scan it with Google Authenticator or any TOTP app, then enter the 6-digit code to enable security.
+                </p>
+                <div style="text-align: center;">
+                    <button type="button" class="btn btn-primary" onclick="setup2FA()" style="padding: 10px 20px; font-weight: 600;">Generate Secure QR Code</button>
+                </div>
+                <div id="2fa-qr" style="margin: 12px auto; display: flex; justify-content: center; background: #fff; padding: 16px; border-radius: 12px; border: 1px solid var(--border-color); width: fit-content;"></div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 6px; display: block;">Verification Code</label>
+                    <input type="text" id="2fa-verify-code" class="form-control" placeholder="Enter 6-digit code" maxlength="8" style="text-align: center; font-size: 1.1rem; letter-spacing: 0.25em;">
+                </div>
+                <button type="button" class="btn btn-primary" onclick="enable2FA()" style="padding: 10px; font-weight: 600;">Enable 2FA</button>
             </div>
-            <div id="2fa-disable" style="display: none;">
-                <input type="text" id="2fa-disable-code" class="form-control" placeholder="Enter current 6-digit code" maxlength="8" style="margin-bottom: 8px;">
-                <button type="button" class="btn" style="background: #fee2e2;" onclick="disable2FA()">Disable 2FA</button>
+            
+            <div id="2fa-disable" style="display: none; display: flex; flex-direction: column; gap: 16px;">
+                <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.45; margin: 0;">
+                    Enter the current 6-digit code from your authenticator app to disable Two-Factor Authentication.
+                </p>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 6px; display: block;">Verification Code</label>
+                    <input type="text" id="2fa-disable-code" class="form-control" placeholder="Enter current 6-digit code" maxlength="8" style="text-align: center; font-size: 1.1rem; letter-spacing: 0.25em;">
+                </div>
+                <button type="button" class="btn" style="background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; font-weight: 600; padding: 10px;" onclick="disable2FA()">Disable 2FA Security</button>
             </div>
-            <div id="2fa-message" class="status-box" style="margin-top: 12px; display: none;"></div>
+            
+            <div id="2fa-message" class="status-box" style="margin-top: 8px; display: none;"></div>
+            
+            <div style="border-top: 1px solid var(--border-color); padding-top: 16px; display: flex; justify-content: space-between; align-items: center;">
+                <a href="#" onclick="toggleSecurityPanel(); toggleProfilePanel(); return false;" style="font-size: 0.9rem; color: var(--text-secondary); text-decoration: none; font-weight: 600;">&larr; Back to Profile</a>
+                <button type="button" class="btn" style="background: var(--bg-tertiary); padding: 8px 16px; font-size: 0.9rem;" onclick="toggleSecurityPanel()">Close</button>
+            </div>
         </div>
     </div>
 

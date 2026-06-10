@@ -1204,7 +1204,7 @@ async def admin_update_ticket_status(ticket_id: int, request: Request):
     body = await request.json()
     status = (body.get("status") or "").strip()
 
-    if status not in ("open", "closed"):
+    if status not in ("open", "in_progress", "closed"):
         return JSONResponse(
             {"success": False, "error": "Invalid status"}, status_code=400
         )
@@ -1231,6 +1231,39 @@ async def admin_update_ticket_status(ticket_id: int, request: Request):
         conn.commit()
     finally:
         conn.close()
+
+    return JSONResponse({"success": True})
+
+
+@admin_router.post("/tickets/{ticket_id}/assign")
+async def admin_assign_ticket(ticket_id: int, request: Request):
+    auth.require_admin(request, auth.get_current_user)
+    body = await request.json()
+    assigned_admin = (body.get("assigned_admin") or "").strip()
+
+    conn = _db()
+    try:
+        row = conn.execute("SELECT id FROM tickets WHERE id = ?", (ticket_id,)).fetchone()
+        if not row:
+            return JSONResponse({"success": False, "error": "Ticket not found"}, status_code=404)
+        
+        val = assigned_admin if assigned_admin else None
+        conn.execute(
+            "UPDATE tickets SET assigned_admin = ? WHERE id = ?",
+            (val, ticket_id)
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    admin_user = auth.get_current_user(request)
+    audit.audit_log(
+        admin_user.get("username") if admin_user else "",
+        "ticket_assigned",
+        target_type="ticket",
+        target_id=str(ticket_id),
+        details={"assigned_to": assigned_admin}
+    )
 
     return JSONResponse({"success": True})
 

@@ -283,3 +283,270 @@ async def api_summary(request: Request):
             "last_ticket": last_ticket,
         }
     )
+
+
+@pages_router.get("/api/tickets")
+async def get_user_tickets(request: Request):
+    """Retrieve support tickets for the current user (or all tickets if admin)."""
+    user = auth.get_current_user(request)
+    if not user:
+        return JSONResponse({"success": False, "error": "Authentication required"}, status_code=401)
+    
+    username = user.get("username") or ""
+    is_admin = user.get("role") == "admin"
+    
+    conn = _db()
+    try:
+        if is_admin:
+            rows = conn.execute(
+                "SELECT * FROM tickets ORDER BY created_at DESC"
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM tickets WHERE user_email = ? ORDER BY created_at DESC",
+                (username,)
+            ).fetchall()
+        
+        tickets = []
+        for r in rows:
+            tickets.append({
+                "id": r["id"],
+                "user_email": r["user_email"],
+                "subject": r["subject"],
+                "body": r["body"],
+                "status": r["status"] or "open",
+                "created_at": r["created_at"],
+                "admin_reply": r["admin_reply"],
+                "admin_replied_at": r["admin_replied_at"],
+                "priority": r["priority"] or "medium",
+                "category": r["category"] or "general",
+                "assigned_admin": r["assigned_admin"],
+                "first_response_at": r["first_response_at"],
+                "resolved_at": r["resolved_at"],
+                "comments_json": json.loads(r["comments_json"] or "[]") if "comments_json" in r else []
+            })
+        
+        return JSONResponse({"success": True, "tickets": tickets})
+    except Exception as e:
+        return JSONResponse({"success": False, "error": str(e)}, status_code=500)
+    finally:
+        conn.close()
+
+
+@pages_router.post("/api/tickets")
+async def create_user_ticket(request: Request):
+    """Create a new support ticket."""
+    user = auth.get_current_user(request)
+    if not user:
+        return JSONResponse({"success": False, "error": "Authentication required"}, status_code=401)
+    
+    username = user.get("username") or ""
+    
+    try:
+        body = await request.json()
+        subject = (body.get("subject") or "").strip()
+        body_text = (body.get("body") or "").strip()
+        priority = (body.get("priority") or "medium").strip().lower()
+        category = (body.get("category") or "general").strip().lower()
+        
+        if not subject or not body_text:
+            return JSONResponse({"success": False, "error": "Subject and message are required"}, status_code=400)
+            
+        conn = _db()
+        try:
+            now = db.utc_now_iso()
+            cursor = conn.execute(
+                """
+                INSERT INTO tickets (user_email, subject, body, status, created_at, priority, category, comments_json)
+                VALUES (?, ?, ?, 'open', ?, ?, ?, '[]')
+                """,
+                (username, subject, body_text, now, priority, category)
+            )
+            ticket_id = cursor.lastrowid
+            conn.commit()
+            
+            # Retrieve the newly created ticket to return
+            row = conn.execute("SELECT * FROM tickets WHERE id = ?", (ticket_id,)).fetchone()
+            ticket = {
+                "id": row["id"],
+                "user_email": row["user_email"],
+                "subject": row["subject"],
+                "body": row["body"],
+                "status": row["status"] or "open",
+                "created_at": row["created_at"],
+                "admin_reply": row["admin_reply"],
+                "admin_replied_at": row["admin_replied_at"],
+                "priority": row["priority"] or "medium",
+                "category": row["category"] or "general",
+                "assigned_admin": row["assigned_admin"],
+                "first_response_at": row["first_response_at"],
+                "resolved_at": row["resolved_at"],
+                "comments_json": []
+            }
+        finally:
+            conn.close()
+            
+        # Send notification
+        _send_ticket_creation_notification(request, username, subject, body_text, ticket_id)
+        
+        return JSONResponse({"success": True, "ticket": ticket})
+    except Exception as e:
+        return JSONResponse({"success": False, "error": str(e)}, status_code=500)
+
+
+def _send_ticket_creation_notification(
+    request: Request,
+    user_email: str,
+    subject: str,
+    body_text: str,
+    ticket_id: int,
+) -> None:
+    try:
+        from automation_hub.core import notifications as notif
+        import os
+        config = notif.get_notification_config()
+        if not config.get("notify_ticket", True) or not config.get("admin_email"):
+            return
+        email_svc = getattr(request.app.state, "email_service", None)
+        if not email_svc:
+            return
+        smtp_user = os.getenv("SMTP_USER", "")
+        smtp_password = os.getenv("SMTP_PASSWORD", "")
+        smtp_server = os.getenv("SMTP_SERVER", "smtp.example.com")
+        smtp_port = int(os.getenv("SMTP_PORT", "587"))
+        if not smtp_user or not smtp_password:
+            return
+        html_body = notif.render_html_template(
+            config.get("ticket_html_template", ""),
+            {
+                "user_email": user_email,
+                "subject": subject,
+                "body": body_text.replace("\n", "<br>"),
+                "ticket_id": ticket_id,
+            },
+        )
+        email_svc.send_notification_email(
+            smtp_user,
+            smtp_password,
+            config.get("admin_email"),
+            config.get("ticket_subject", "New support ticket"),
+            html_body,
+            smtp_server,
+            smtp_port,
+        )
+    except Exception as e:
+        print(f"Ticket creation notification failed: {e}")
+
+
+@pages_router.post("/api/tickets/{ticket_id}/comment")
+async def add_support_ticket_comment(ticket_id: int, request: Request):
+    """Add a comment/reply to a support ticket."""
+    user = auth.get_current_user(request)
+    if not user:
+        return JSONResponse({"success": False, "error": "Authentication required"}, status_code=401)
+    
+    username = user.get("username") or ""
+    is_admin = user.get("role") == "admin"
+    
+    try:
+        body = await request.json()
+        comment_text = (body.get("body") or "").strip()
+        if not comment_text:
+            return JSONResponse({"success": False, "error": "Comment text is required"}, status_code=400)
+        
+        import secrets
+        conn = _db()
+        try:
+            # Check if ticket exists and user has access
+            row = conn.execute("SELECT * FROM tickets WHERE id = ?", (ticket_id,)).fetchone()
+            if not row:
+                return JSONResponse({"success": False, "error": "Ticket not found"}, status_code=404)
+            
+            if not is_admin and row["user_email"] != username:
+                return JSONResponse({"success": False, "error": "Permission denied"}, status_code=403)
+            
+            comments = json.loads(row["comments_json"] or "[]")
+            new_comment = {
+                "id": f"comment_{secrets.token_hex(4)}",
+                "author": username,
+                "body": comment_text,
+                "created_at": db.utc_now_iso()
+            }
+            comments.append(new_comment)
+            
+            now = db.utc_now_iso()
+            if is_admin:
+                conn.execute(
+                    "UPDATE tickets SET admin_reply = ?, admin_replied_at = ?, comments_json = ? WHERE id = ?",
+                    (comment_text, now, json.dumps(comments), ticket_id)
+                )
+            else:
+                conn.execute(
+                    "UPDATE tickets SET comments_json = ? WHERE id = ?",
+                    (json.dumps(comments), ticket_id)
+                )
+            conn.commit()
+            
+            # Create a user notification if this was an admin reply
+            if is_admin:
+                from automation_hub.core import notifications as notif
+                notif.create_notification(
+                    row["user_email"],
+                    "ticket_reply",
+                    "Your ticket got a reply",
+                    f"Ticket #{ticket_id}: {row['subject']}"
+                )
+                
+        finally:
+            conn.close()
+            
+        return JSONResponse({"success": True, "comment": new_comment})
+    except Exception as e:
+        return JSONResponse({"success": False, "error": str(e)}, status_code=500)
+
+
+@pages_router.post("/api/tickets/{ticket_id}/status")
+async def update_support_ticket_status(ticket_id: int, request: Request):
+    """Update support ticket status."""
+    user = auth.get_current_user(request)
+    if not user:
+        return JSONResponse({"success": False, "error": "Authentication required"}, status_code=401)
+    
+    username = user.get("username") or ""
+    is_admin = user.get("role") == "admin"
+    
+    try:
+        body = await request.json()
+        status = (body.get("status") or "").strip().lower()
+        if status not in ("open", "in_progress", "closed"):
+            return JSONResponse({"success": False, "error": "Invalid status"}, status_code=400)
+        
+        conn = _db()
+        try:
+            row = conn.execute("SELECT * FROM tickets WHERE id = ?", (ticket_id,)).fetchone()
+            if not row:
+                return JSONResponse({"success": False, "error": "Ticket not found"}, status_code=404)
+            
+            if not is_admin:
+                if row["user_email"] != username:
+                    return JSONResponse({"success": False, "error": "Permission denied"}, status_code=403)
+                if status == "in_progress":
+                    return JSONResponse({"success": False, "error": "Only admins can set tickets to in_progress"}, status_code=403)
+            
+            resolved_at = row["resolved_at"]
+            if status == "closed" and not resolved_at:
+                resolved_at = db.utc_now_iso()
+            elif status != "closed":
+                resolved_at = None
+                
+            conn.execute(
+                "UPDATE tickets SET status = ?, resolved_at = ? WHERE id = ?",
+                (status, resolved_at, ticket_id)
+            )
+            conn.commit()
+        finally:
+            conn.close()
+            
+        return JSONResponse({"success": True})
+    except Exception as e:
+        return JSONResponse({"success": False, "error": str(e)}, status_code=500)

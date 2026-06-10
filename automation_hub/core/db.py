@@ -324,6 +324,10 @@ def init_database() -> None:
             conn.execute("ALTER TABLE tickets ADD COLUMN first_response_at TEXT")
         if "resolved_at" not in ticket_cols:
             conn.execute("ALTER TABLE tickets ADD COLUMN resolved_at TEXT")
+        if "comments_json" not in ticket_cols:
+            conn.execute(
+                "ALTER TABLE tickets ADD COLUMN comments_json TEXT NOT NULL DEFAULT '[]'"
+            )
 
         conn.execute("""
             CREATE TABLE IF NOT EXISTS db_connectors (

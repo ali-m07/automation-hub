@@ -9,7 +9,7 @@ from automation_hub.services import font_manager
 
 
 def _system_font_bytes() -> bytes:
-    font = ImageFont.truetype("DejaVuSans.ttf", 16)
+    font = ImageFont.truetype("Arial.ttf", 16)
     path = Path(font.path)
     return path.read_bytes()
 

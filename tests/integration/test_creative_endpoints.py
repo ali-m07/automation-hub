@@ -39,11 +39,11 @@ class TestCreativeEndpoints:
         self, authenticated_client: TestClient, monkeypatch, tmp_path
     ):
         monkeypatch.setenv("FONT_DIR", str(tmp_path))
-        font_path = Path(ImageFont.truetype("DejaVuSans.ttf", 16).path)
+        font_path = Path(ImageFont.truetype("Arial.ttf", 16).path)
 
         upload = authenticated_client.post(
             "/api/creative/fonts",
-            files={"file": ("DejaVuSans.ttf", font_path.read_bytes(), "font/ttf")},
+            files={"file": ("Arial.ttf", font_path.read_bytes(), "font/ttf")},
         )
         assert upload.status_code == 201
         uploaded = upload.json()["font"]

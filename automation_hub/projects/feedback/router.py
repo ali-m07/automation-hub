@@ -214,6 +214,8 @@ def _clean_status(status: Dict[str, Any], index: int) -> Dict[str, Any]:
         "screen_id": str(status.get("screen_id") or "")[:80],
         "description": str(status.get("description") or "")[:500],
         "order": index,
+        "x": int(status.get("x") or 0),
+        "y": int(status.get("y") or 0),
     }
 
 
@@ -754,6 +756,58 @@ async def transition_ticket(project_id: str, ticket_id: str, request: Request):
             "transition": transition.get("name"),
             "from": previous,
             "to": ticket.get("status"),
+        }
+    )
+    _save_store(store)
+    return JSONResponse({"success": True, "ticket": ticket})
+
+
+@router.post("/projects/{project_id}/tickets/{ticket_id}/update")
+async def update_feedback_ticket(project_id: str, ticket_id: str, request: Request):
+    user = _require_feedback_access(request)
+    payload = await request.json()
+    incoming = payload.get("ticket")
+    if not isinstance(incoming, dict):
+        raise HTTPException(status_code=400, detail="Ticket payload is required")
+    store = _load_store()
+    project = _find_project(store, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    ticket = next(
+        (t for t in project.get("tickets", []) if t.get("id") == ticket_id),
+        None,
+    )
+    if not ticket or not _ticket_visible(project, ticket, user):
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    username = user.get("username")
+    can_edit = (
+        user.get("role") == "admin"
+        or ticket.get("created_by") == username
+        or ticket.get("assigned_to") == username
+        or ticket.get("manager_username") == username
+    )
+    if not can_edit:
+        raise HTTPException(status_code=403, detail="Permission denied")
+    if "title" in incoming:
+        ticket["title"] = str(incoming["title"])[:200]
+    if "description" in incoming:
+        ticket["description"] = str(incoming["description"])[:10000]
+    if "description_html" in incoming:
+        ticket["description_html"] = _safe_html(incoming["description_html"])
+    if "assigned_to" in incoming:
+        ticket["assigned_to"] = str(incoming["assigned_to"])[:160]
+    if "manager_username" in incoming:
+        ticket["manager_username"] = str(incoming["manager_username"])[:160]
+    if "field_values" in incoming and isinstance(incoming["field_values"], dict):
+        ticket["field_values"] = ticket.get("field_values") or {}
+        for k, v in incoming["field_values"].items():
+            ticket["field_values"][k] = v
+    ticket["updated_at"] = _now()
+    ticket.setdefault("history", []).append(
+        {
+            "at": _now(),
+            "by": user.get("username"),
+            "action": "updated",
         }
     )
     _save_store(store)

@@ -23,7 +23,9 @@ let state = {
     dbSyncFilename: null,
     dbSyncSheets: [],
     creativeFonts: [],
-    layerOverrides: {}
+    layerOverrides: {},
+    tickets: [],
+    activeTicketId: null
 };
 
 // Dark mode
@@ -3503,17 +3505,28 @@ async function deleteDataTable(tableId) {
 }
 
 // Support / Tickets functions
+function openCreateTicketModal() {
+    const modal = document.getElementById('create-ticket-modal');
+    if (modal) modal.style.display = 'flex';
+    const statusEl = document.getElementById('ticket-status');
+    if (statusEl) { statusEl.style.display = 'none'; statusEl.textContent = ''; }
+}
+
+function closeCreateTicketModal() {
+    const modal = document.getElementById('create-ticket-modal');
+    if (modal) modal.style.display = 'none';
+}
+
 async function submitTicket() {
     const subjectEl = document.getElementById('ticket-subject');
     const bodyEl = document.getElementById('ticket-body');
-    const statusEl = document.getElementById('ticket-status');
     const priorityEl = document.getElementById('ticket-priority');
     const categoryEl = document.getElementById('ticket-category');
     
     const subject = (subjectEl.value || '').trim();
     const body = (bodyEl.value || '').trim();
     const priority = (priorityEl && priorityEl.value) ? priorityEl.value : 'medium';
-    const category = (categoryEl && categoryEl.value) ? categoryEl.value : 'general';
+    const category = (categoryEl && categoryEl.value) ? categoryEl.value : 'question';
     
     if (!subject || subject.length < 3) {
         showStatus('ticket-status', 'Subject must be at least 3 characters', 'error');
@@ -3521,7 +3534,7 @@ async function submitTicket() {
     }
     
     if (!body || body.length < 10) {
-        showStatus('ticket-status', 'Message must be at least 10 characters', 'error');
+        showStatus('ticket-status', 'Description must be at least 10 characters', 'error');
         return;
     }
     
@@ -3539,10 +3552,10 @@ async function submitTicket() {
             return;
         }
         
-        showStatus('ticket-status', 'Ticket submitted successfully! Admin will be notified.', 'success');
-        showToast('Ticket submitted.', 'success');
+        showToast('Ticket submitted successfully.', 'success');
         subjectEl.value = '';
         bodyEl.value = '';
+        closeCreateTicketModal();
         
         // Reload tickets list
         await loadMyTickets();
@@ -3624,48 +3637,216 @@ async function loadGallery() {
 }
 
 async function loadMyTickets() {
-    const listEl = document.getElementById('tickets-list');
-    if (!listEl) return;
-    
     try {
         const res = await fetch('/api/tickets', { credentials: 'include' });
         const data = await res.json();
-        
         if (!data.success) {
-            listEl.innerHTML = `<div style="text-align: center; color: #ef4444; padding: 20px;">Failed to load tickets: ${escapeHtml(data.error || 'Unknown error')}</div>`;
+            console.error('Failed to load tickets:', data.error);
             return;
         }
+        state.tickets = data.tickets || [];
+        filterUserTickets();
         
-        const tickets = data.tickets || [];
-        if (tickets.length === 0) {
-            listEl.innerHTML = '<div style="text-align: center; color: #9ca3af; padding: 20px;">No tickets yet. Create one above!</div>';
-            return;
+        // Refresh details if open
+        if (state.activeTicketId !== null && state.activeTicketId !== undefined) {
+            openTicketDetailModal(state.activeTicketId, false);
         }
-        
-        listEl.innerHTML = tickets.map(t => `
-            <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-bottom: 16px; background: #fff;">
-                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
-                    <div>
-                        <div style="font-weight: 600; font-size: 1.1rem; margin-bottom: 4px;">${escapeHtml(t.subject)}</div>
-                        <div style="font-size: 0.9rem; color: #6b7280;">${formatDate(t.created_at)}</div>
-                        <div style="font-size: 0.85rem; color:#4b5563; margin-top:4px;">Priority: <span style="font-weight:600;">${escapeHtml(t.priority || 'medium')}</span> • Category: <span style="font-weight:600;">${escapeHtml(t.category || 'general')}</span></div>
-                    </div>
-                    <div>
-                        <span style="padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; background: ${t.status === 'open' ? '#fef3c7' : '#d1fae5'}; color: ${t.status === 'open' ? '#92400e' : '#065f46'};">${t.status}</span>
-                    </div>
-                </div>
-                <div style="background: #f9fafb; padding: 12px; border-radius: 6px; margin-bottom: 12px; white-space: pre-wrap; font-size: 0.95rem;">${escapeHtml(t.body)}</div>
-                ${t.admin_reply ? `
-                    <div style="background: #eff6ff; padding: 12px; border-radius: 6px; border-left: 3px solid #3b82f6;">
-                        <div style="font-weight: 600; margin-bottom: 6px; color: #1e40af;">Admin Reply (${formatDate(t.admin_replied_at)})</div>
-                        <div style="white-space: pre-wrap; font-size: 0.95rem;">${escapeHtml(t.admin_reply)}</div>
-                    </div>
-                ` : '<div style="color: #6b7280; font-size: 0.9rem;">Waiting for admin response...</div>'}
-            </div>
-        `).join('');
     } catch (err) {
         console.error('Load tickets error:', err);
-        listEl.innerHTML = `<div style="text-align: center; color: #ef4444; padding: 20px;">Error loading tickets: ${escapeHtml(err.message || 'Unknown error')}</div>`;
+    }
+}
+
+function filterUserTickets() {
+    const q = (document.getElementById('user-ticket-search')?.value || '').trim().toLowerCase();
+    const priority = document.getElementById('user-ticket-priority')?.value || '';
+    const category = document.getElementById('user-ticket-category')?.value || '';
+
+    const filtered = (state.tickets || []).filter(t => {
+        const matchSearch = !q ||
+            (t.subject || '').toLowerCase().includes(q) ||
+            (t.body || '').toLowerCase().includes(q);
+        const matchPriority = !priority || t.priority === priority;
+        const matchCategory = !category || t.category === category;
+        return matchSearch && matchPriority && matchCategory;
+    });
+
+    renderUserTicketsBoard(filtered);
+}
+
+function renderUserTicketsBoard(ticketsList) {
+    const columns = {
+        open: document.getElementById('user-cards-open'),
+        in_progress: document.getElementById('user-cards-in_progress'),
+        closed: document.getElementById('user-cards-closed')
+    };
+
+    for (const col in columns) {
+        if (columns[col]) columns[col].innerHTML = '';
+        const countEl = document.getElementById(`user-count-${col}`);
+        if (countEl) countEl.textContent = '0';
+    }
+
+    const counts = { open: 0, in_progress: 0, closed: 0 };
+
+    ticketsList.forEach(t => {
+        const colKey = (t.status || 'open').toLowerCase();
+        const colEl = columns[colKey];
+        if (colEl) {
+            counts[colKey]++;
+            const card = document.createElement('div');
+            card.className = 'ticket-card';
+            card.onclick = () => openTicketDetailModal(t.id);
+
+            card.innerHTML = `
+                <div class="card-title">${escapeHtml(t.subject)}</div>
+                <div class="card-meta">
+                    <span class="badge badge-${escapeHtml(t.category || 'other')}">${escapeHtml(t.category || 'other')}</span>
+                    <span class="badge badge-${escapeHtml(t.priority || 'medium')}">${escapeHtml(t.priority || 'medium')}</span>
+                </div>
+                ${t.assigned_admin ? `
+                    <div style="font-size:0.75rem; color:#374151; margin-top:8px; font-weight:600; display:flex; align-items:center; gap:4px;">
+                        <span>👤</span> <span>${escapeHtml(t.assigned_admin)}</span>
+                    </div>
+                ` : ''}
+            `;
+            colEl.appendChild(card);
+        }
+    });
+
+    for (const col in counts) {
+        const countEl = document.getElementById(`user-count-${col}`);
+        if (countEl) countEl.textContent = counts[col];
+    }
+}
+
+async function openTicketDetailModal(ticketId, shouldShowModal = true) {
+    const t = (state.tickets || []).find(x => x.id === ticketId);
+    if (!t) return;
+
+    state.activeTicketId = ticketId;
+
+    document.getElementById('detail-ticket-id').textContent = `TICKET #${t.id}`;
+    document.getElementById('detail-subject').textContent = t.subject;
+    document.getElementById('detail-description').textContent = t.body;
+    document.getElementById('detail-created').textContent = formatDate(t.created_at);
+    document.getElementById('detail-resolved').textContent = t.resolved_at ? formatDate(t.resolved_at) : 'Unresolved';
+
+    const pBadge = document.getElementById('detail-priority-badge');
+    if (pBadge) {
+        pBadge.className = `badge badge-${t.priority}`;
+        pBadge.textContent = t.priority;
+    }
+
+    const cBadge = document.getElementById('detail-category-badge');
+    if (cBadge) {
+        cBadge.className = `badge badge-${t.category}`;
+        cBadge.textContent = t.category;
+    }
+
+    const statusEl = document.getElementById('detail-status-badge');
+    if (statusEl) {
+        statusEl.textContent = t.status || 'open';
+        statusEl.className = 'badge ' + (t.status === 'closed' ? 'badge-low' : (t.status === 'in_progress' ? 'badge-high' : 'badge-medium'));
+    }
+
+    const assigneeEl = document.getElementById('detail-assignee');
+    if (assigneeEl) {
+        assigneeEl.textContent = t.assigned_admin || 'Unassigned';
+    }
+
+    renderDetailComments(t.comments_json, t.admin_reply, t.admin_replied_at);
+
+    const btnContainer = document.getElementById('detail-status-btn-container');
+    if (btnContainer) {
+        if (t.status === 'closed') {
+            btnContainer.innerHTML = `<button class="btn" style="background:#f3f4f6; padding:6px 12px; font-size:0.9rem;" onclick="updateUserTicketStatus(${t.id}, 'open')">Reopen Ticket</button>`;
+        } else {
+            btnContainer.innerHTML = `<button class="btn btn-danger" style="padding:6px 12px; font-size:0.9rem;" onclick="updateUserTicketStatus(${t.id}, 'closed')">Close Ticket</button>`;
+        }
+    }
+
+    if (shouldShowModal) {
+        const modal = document.getElementById('ticket-detail-modal');
+        if (modal) modal.style.display = 'flex';
+    }
+}
+
+function closeTicketDetailModal() {
+    state.activeTicketId = null;
+    const modal = document.getElementById('ticket-detail-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+function renderDetailComments(comments, adminReply, adminRepliedAt) {
+    const list = document.getElementById('detail-comments');
+    if (!list) return;
+    let html = '';
+
+    if (comments && comments.length > 0) {
+        html = comments.map(c => `
+            <div class="comment-card" style="margin-bottom: 8px;">
+                <div class="comment-header" style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:0.8rem; color:#6b7280; font-weight:600;">
+                    <span>${escapeHtml(c.author)}</span>
+                    <span>${formatDate(c.created_at)}</span>
+                </div>
+                <div class="comment-body" style="font-size:0.9rem; line-height:1.4; color:var(--text-primary); white-space:pre-wrap;">${escapeHtml(c.body)}</div>
+            </div>
+        `).join('');
+    } else if (adminReply) {
+        html = `
+            <div class="comment-card" style="border-left: 3px solid var(--accent); margin-bottom: 8px;">
+                <div class="comment-header" style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:0.8rem; color:#6b7280; font-weight:600;">
+                    <span>Admin Reply</span>
+                    <span>${formatDate(adminRepliedAt)}</span>
+                </div>
+                <div class="comment-body" style="font-size:0.9rem; line-height:1.4; color:var(--text-primary); white-space:pre-wrap;">${escapeHtml(adminReply)}</div>
+            </div>
+        `;
+    } else {
+        html = '<div style="color:#6b7280; font-size:0.9rem; text-align:center; padding:12px;">No comments yet.</div>';
+    }
+    list.innerHTML = html;
+}
+
+async function submitDetailComment() {
+    const ticketId = state.activeTicketId;
+    if (ticketId === null || ticketId === undefined) return;
+
+    const commentEl = document.getElementById('detail-new-comment');
+    const commentText = commentEl.value.trim();
+    if (!commentText) return;
+
+    try {
+        const res = await fetch(`/api/tickets/${ticketId}/comment`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ body: commentText })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Failed to post comment');
+
+        commentEl.value = '';
+        await loadMyTickets();
+    } catch (e) {
+        alert('Failed to add comment: ' + (e.message || e));
+    }
+}
+
+async function updateUserTicketStatus(ticketId, status) {
+    try {
+        const res = await fetch(`/api/tickets/${ticketId}/status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ status })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Failed to update status');
+
+        await loadMyTickets();
+    } catch (e) {
+        alert('Failed to update status: ' + (e.message || e));
     }
 }
 
