@@ -41,6 +41,9 @@
             {% if user and (user.role == 'admin' or 'feedback_180' in (user.modules or []) or 'feedback_180_admin' in (user.modules or [])) %}
             <a href="/feedback" class="sidebar-link">180 Feedback</a>
             {% endif %}
+            {% if user and (user.role == 'admin' or 'process_designer_admin' in (user.modules or [])) %}
+            <a href="/process-designer" class="sidebar-link">Process Designer</a>
+            {% endif %}
             <a href="/creative" class="sidebar-link">Creative Studio</a>
             <a href="/gallery" class="sidebar-link">File Repository</a>
             <a href="/messaging" class="sidebar-link">Messaging</a>

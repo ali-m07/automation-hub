@@ -1,0 +1,50 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Process Designer - Automation Hub{% endblock %}
+{% block subtitle %}Shared custom fields and reusable workflows for every module{% endblock %}
+
+{% block content %}
+<header class="feedback-hero">
+    <div><div class="eyebrow">Platform administration</div><h1>Process Designer</h1><p class="subtitle">Build reusable fields and workflows once, then expose them globally or only to selected modules.</p></div>
+</header>
+
+<div class="feedback-main">
+    <section class="card feedback-card">
+        <div class="feedback-card-head"><div><h2>Shared custom field</h2><p>Global fields are reusable everywhere. Module-scoped fields appear only in selected products.</p></div><button class="btn btn-primary" onclick="pdSaveField()">Save field</button></div>
+        <div class="feedback-grid three">
+            <label>Label<input id="pd-field-label" class="form-control" placeholder="Department"></label>
+            <label>Key<input id="pd-field-key" class="form-control" placeholder="department"></label>
+            <label>Type<select id="pd-field-type" class="form-control"></select></label>
+        </div>
+        <div class="feedback-grid two">
+            <label>Scope<select id="pd-field-scope" class="form-control"><option value="global">All modules</option><option value="modules">Selected modules</option></select></label>
+            <label>Allowed modules<select id="pd-field-modules" class="form-control" multiple size="7"></select></label>
+        </div>
+        <div class="feedback-grid two">
+            <label>Options, one per line<textarea id="pd-field-options" class="form-control" rows="4"></textarea></label>
+            <label>Visibility policy (JSON)<textarea id="pd-field-visibility" class="form-control code-input" rows="4" placeholder='{"roles":["admin"],"condition":{"field":"country","equals":"IR"}}'></textarea></label>
+        </div>
+        <div id="pd-fields" class="ticket-list"></div>
+    </section>
+
+    <section class="card feedback-card">
+        <div class="feedback-card-head"><div><h2>Reusable workflow</h2><p>Define statuses, approval transitions and who may maintain this workflow.</p></div><button class="btn btn-primary" onclick="pdSaveWorkflow()">Save workflow</button></div>
+        <div class="feedback-grid two">
+            <label>Name<input id="pd-workflow-name" class="form-control" placeholder="Manager approval"></label>
+            <label>Key<input id="pd-workflow-key" class="form-control" placeholder="manager_approval"></label>
+            <label>Scope<select id="pd-workflow-scope" class="form-control"><option value="global">All modules</option><option value="modules">Selected modules</option></select></label>
+            <label>Allowed modules<select id="pd-workflow-modules" class="form-control" multiple size="7"></select></label>
+        </div>
+        <label>Description<textarea id="pd-workflow-description" class="form-control" rows="2"></textarea></label>
+        <div class="feedback-grid three">
+            <label>Statuses (JSON)<textarea id="pd-statuses" class="form-control code-input" rows="9">[{"id":"draft","name":"Draft"},{"id":"approval","name":"Manager approval"},{"id":"done","name":"Done"}]</textarea></label>
+            <label>Transitions (JSON)<textarea id="pd-transitions" class="form-control code-input" rows="9">[{"id":"submit","from":"draft","to":"approval","approver":"creator"},{"id":"approve","from":"approval","to":"done","approver":"manager"}]</textarea></label>
+            <label>Manage policy (JSON)<textarea id="pd-policy" class="form-control code-input" rows="9">{"roles":["admin"],"modules":["process_designer_admin"]}</textarea></label>
+        </div>
+        <div id="pd-workflows" class="ticket-list"></div>
+    </section>
+    <div id="pd-status" class="status-box info" style="display:none"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}<script src="/static/js/process-designer.js?v=20260610"></script>{% endblock %}

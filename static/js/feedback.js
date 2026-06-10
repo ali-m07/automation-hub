@@ -189,6 +189,39 @@ function fbRenderFormFields() {
 function fbAddFormField() { fbCollectProject(); fbCurrent.form_fields.push({ id: `field_${Date.now()}`, key: `field_${fbCurrent.form_fields.length + 1}`, label: 'New field', type: 'single_line', required: false, options: [], user_source: 'database' }); fbRenderFormFields(); fbRenderTicketForm(); }
 function fbRemoveFormField(index) { fbCollectProject(); fbCurrent.form_fields.splice(index, 1); fbRenderFormFields(); fbRenderTicketForm(); }
 
+async function fbImportSharedFields() {
+    try {
+        fbCollectProject();
+        const response = await fetch('/api/processes/fields?module=feedback_180', { credentials: 'include' });
+        const data = await response.json();
+        if (!data.success) throw new Error(data.detail || 'Could not load shared fields');
+        const existing = new Set((fbCurrent.form_fields || []).map(field => field.key));
+        (data.fields || []).forEach(field => {
+            if (existing.has(field.key)) return;
+            fbCurrent.form_fields.push({
+                id: field.id,
+                key: field.key,
+                label: field.label,
+                type: field.type,
+                required: Boolean(field.config?.required),
+                placeholder: field.config?.placeholder || '',
+                help_text: field.config?.help_text || '',
+                options: field.config?.options || [],
+                user_source: field.config?.user_source || 'database',
+                condition_field: field.visibility?.condition?.field || '',
+                condition_operator: field.visibility?.condition?.operator || 'equals',
+                condition_value: field.visibility?.condition?.value || '',
+                shared_definition_id: field.id
+            });
+        });
+        fbRenderFormFields();
+        fbRenderTicketForm();
+        fbSetStatus(`${data.fields.length} shared field definition(s) loaded. Save the cycle to apply them.`, 'success');
+    } catch (error) {
+        fbSetStatus(error.message || 'Shared field import failed.', 'error');
+    }
+}
+
 function fbRenderTransitions() {
     const target = document.getElementById('fb-transitions');
     if (!target) return;

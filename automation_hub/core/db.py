@@ -533,6 +533,39 @@ def init_database() -> None:
                 updated_at TEXT NOT NULL
             )
             """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS custom_field_definitions (
+                id TEXT PRIMARY KEY,
+                field_key TEXT NOT NULL UNIQUE,
+                label TEXT NOT NULL,
+                field_type TEXT NOT NULL,
+                config_json TEXT NOT NULL DEFAULT '{}',
+                scope_type TEXT NOT NULL DEFAULT 'global',
+                scope_modules_json TEXT NOT NULL DEFAULT '[]',
+                visibility_json TEXT NOT NULL DEFAULT '{}',
+                created_by TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                is_active INTEGER NOT NULL DEFAULT 1
+            )
+            """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS workflow_definitions (
+                id TEXT PRIMARY KEY,
+                workflow_key TEXT NOT NULL UNIQUE,
+                name TEXT NOT NULL,
+                description TEXT,
+                scope_type TEXT NOT NULL DEFAULT 'global',
+                scope_modules_json TEXT NOT NULL DEFAULT '[]',
+                statuses_json TEXT NOT NULL DEFAULT '[]',
+                transitions_json TEXT NOT NULL DEFAULT '[]',
+                manage_policy_json TEXT NOT NULL DEFAULT '{}',
+                created_by TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                is_active INTEGER NOT NULL DEFAULT 1
+            )
+            """)
         app_settings_keys = {
             safe_row_get(r, "key")
             for r in conn.execute("SELECT key FROM app_settings").fetchall()

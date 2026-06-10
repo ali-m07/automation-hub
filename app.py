@@ -31,6 +31,8 @@ from automation_hub.routers import (
     health_router,
     pages_router,
     feedback_router,
+    processes_router,
+    processes_page_router,
 )
 from automation_hub.routers.data import data_router
 from automation_hub.core import pg
@@ -180,6 +182,8 @@ app.include_router(
 app.include_router(connectors_router)  # /api/db-connectors/*
 app.include_router(data_router)  # /api/data/*
 app.include_router(feedback_router)  # /api/feedback/*
+app.include_router(processes_page_router)  # GET /process-designer
+app.include_router(processes_router)  # /api/processes/*
 app.include_router(
     messaging_router
 )  # /api/send-emails, /api/test-smtp, /api/upload-image*

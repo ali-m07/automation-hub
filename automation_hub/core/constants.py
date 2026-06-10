@@ -19,4 +19,12 @@ MODULES: List[Dict[str, Any]] = [
     {"key": "connectors_db", "label": "Database Connectors (Excel sync to SQL Server)"},
     {"key": "feedback_180", "label": "180 Feedback: participant access"},
     {"key": "feedback_180_admin", "label": "180 Feedback: workflow and cycle admin"},
+    {
+        "key": "process_designer",
+        "label": "Process Designer: use shared workflows and fields",
+    },
+    {
+        "key": "process_designer_admin",
+        "label": "Process Designer: manage shared workflows and fields",
+    },
 ]
