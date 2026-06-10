@@ -1,6 +1,5 @@
 let pdMeta = { modules: [], field_types: [] };
 let pdAccess = { roles: [], groups: [] };
-let pdStep = 1;
 let pdType = 'single_line';
 
 const PD_TYPES = [
@@ -24,10 +23,25 @@ function pdStatus(message, type='info') { const box=document.getElementById('pd-
 async function pdRequest(url, options={}) { const response=await fetch(url,{credentials:'include',...options}); const data=await response.json(); if(!data.success) throw new Error(data.detail||data.error||'Request failed'); return data; }
 
 function pdRenderTypes() {
-    document.getElementById('pd-field-types').innerHTML = PD_TYPES.map(([type,title,description]) => `<button type="button" class="field-type-card ${type===pdType?'active':''}" onclick="pdChooseType('${type}')"><strong>${title}</strong><span>${description}</span></button>`).join('');
+    document.getElementById('pd-field-type').innerHTML = PD_TYPES.map(([type,title]) => `<option value="${type}" ${type===pdType?'selected':''}>${title}</option>`).join('');
 }
 
-function pdChooseType(type) { pdType=type; pdRenderTypes(); pdRenderTypeSettings(); pdGoStep(2); }
+function pdChooseType(type) { pdType=type; pdRenderTypeSettings(); }
+function pdSlug(value) { return value.toLowerCase().trim().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,''); }
+function pdLabelChanged() {
+    const key=document.getElementById('pd-field-key');
+    if(!key.dataset.edited) key.value=pdSlug(document.getElementById('pd-field-label').value);
+    pdRenderPreview();
+}
+function pdToggleCreator(show) {
+    const creator=document.getElementById('pd-field-creator');
+    creator.hidden=!show;
+    document.getElementById('pd-new-field').hidden=show;
+    if(show) {
+        document.getElementById('pd-field-label').focus();
+        creator.scrollIntoView({behavior:'smooth',block:'start'});
+    }
+}
 
 function pdRenderTypeSettings() {
     const target=document.getElementById('pd-type-settings');
@@ -62,16 +76,6 @@ function pdRenderPreview() {
     target.innerHTML=`<label>${pdEscape(label)}${input}</label>`;
 }
 
-function pdGoStep(step) {
-    pdStep=Math.max(1,Math.min(3,step));
-    document.querySelectorAll('[data-step-panel]').forEach(p=>p.hidden=Number(p.dataset.stepPanel)!==pdStep);
-    document.querySelectorAll('[data-step-button]').forEach(b=>b.classList.toggle('active',Number(b.dataset.stepButton)===pdStep));
-    document.getElementById('pd-prev').disabled=pdStep===1;
-    document.getElementById('pd-next').hidden=pdStep===3;
-    document.getElementById('pd-save-field').hidden=pdStep!==3;
-    if(pdStep===2) pdRenderPreview();
-}
-function pdNext(){ pdGoStep(pdStep+1); } function pdPrevious(){ pdGoStep(pdStep-1); }
 function pdToggleScope(){ document.getElementById('pd-field-modules-wrap').style.display=document.getElementById('pd-field-scope').value==='modules'?'grid':'none'; }
 
 function pdTypeConfig() {
@@ -89,8 +93,17 @@ async function pdSaveField() {
         if(['single_select','multi_select'].includes(pdType) && !pdLines('pd-field-options').length) throw new Error('Add at least one option.');
         const payload={label,key:document.getElementById('pd-field-key').value,type:pdType,scope_type:document.getElementById('pd-field-scope').value,scope_modules:pdSelected('pd-field-modules'),config:pdTypeConfig(),visibility:{roles:pdSelected('pd-field-roles'),groups:pdSelected('pd-field-groups')}};
         await pdRequest('/api/processes/fields',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-        pdStatus('Custom field saved.','success'); pdGoStep(1); await pdLoad();
+        pdStatus('Custom field saved.','success'); pdResetField(); pdToggleCreator(false); await pdLoad();
     } catch(error){pdStatus(error.message,'error');}
+}
+
+function pdResetField() {
+    pdType='single_line';
+    ['pd-field-label','pd-field-key','pd-field-placeholder','pd-field-help'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('pd-field-required').checked=false;
+    document.getElementById('pd-field-scope').value='global';
+    document.getElementById('pd-field-key').dataset.edited='';
+    pdRenderTypes(); pdRenderTypeSettings(); pdToggleScope();
 }
 
 async function pdSaveRole(){try{await pdRequest('/api/processes/roles',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:document.getElementById('pd-role-name').value,key:document.getElementById('pd-role-key').value,description:document.getElementById('pd-role-description').value,permissions:pdLines('pd-role-permissions')})});pdStatus('Role saved.','success');await pdLoadAccess();}catch(e){pdStatus(e.message,'error');}}
@@ -119,5 +132,8 @@ async function pdLoad(){
         pdRenderTypes();pdRenderTypeSettings();pdToggleScope();
     }catch(e){pdStatus(e.message,'error');}
 }
-document.addEventListener('input',event=>{if(event.target.closest('[data-step-panel="2"]'))pdRenderPreview();});
+document.addEventListener('input',event=>{
+    if(event.target.id==='pd-field-key') event.target.dataset.edited='true';
+    if(event.target.closest('#pd-field-creator')) pdRenderPreview();
+});
 document.addEventListener('DOMContentLoaded',pdLoad);

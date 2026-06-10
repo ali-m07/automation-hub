@@ -2,46 +2,43 @@
 {% block title %}Process Designer - Servexa{% endblock %}
 {% block subtitle %}Structured fields, workflows, roles and groups{% endblock %}
 {% block content %}
-<header class="feedback-hero"><div><div class="eyebrow">Platform administration</div><h1>Process Designer</h1><p class="subtitle">Create reusable building blocks with guided configuration instead of raw forms.</p></div></header>
+<header class="feedback-hero"><div><div class="eyebrow">Platform administration</div><h1>Process Designer</h1><p class="subtitle">Create reusable fields and workflows without unnecessary setup steps.</p></div></header>
 
 <div class="feedback-main">
     <section class="card feedback-card">
-        <div class="feedback-card-head"><div><h2>Custom field wizard</h2><p>Select a field type, configure its behavior, then choose where and for whom it is available.</p></div></div>
-        <div class="wizard-steps" aria-label="Field creation progress">
-            <button class="wizard-step active" data-step-button="1" onclick="pdGoStep(1)"><span>1</span>Type</button>
-            <button class="wizard-step" data-step-button="2" onclick="pdGoStep(2)"><span>2</span>Configuration</button>
-            <button class="wizard-step" data-step-button="3" onclick="pdGoStep(3)"><span>3</span>Access</button>
+        <div class="feedback-card-head">
+            <div><h2>Custom fields</h2><p>Choose a type, give it a name and save. Open Advanced only when you need access or scope rules.</p></div>
+            <button class="btn btn-primary" id="pd-new-field" onclick="pdToggleCreator(true)">Create field</button>
         </div>
 
-        <div class="wizard-panel" data-step-panel="1">
-            <div id="pd-field-types" class="field-type-grid"></div>
-        </div>
-
-        <div class="wizard-panel" data-step-panel="2" hidden>
-            <div class="feedback-grid two">
-                <label>Field label<input id="pd-field-label" class="form-control" placeholder="Department"></label>
-                <label>Field key<input id="pd-field-key" class="form-control" placeholder="department"></label>
-                <label>Placeholder<input id="pd-field-placeholder" class="form-control"></label>
-                <label>Help text<input id="pd-field-help" class="form-control"></label>
+        <div id="pd-field-creator" class="field-creator" hidden>
+            <div class="field-creator-head">
+                <div><h3>Create a custom field</h3><p>Only settings relevant to the selected type are shown.</p></div>
+                <button class="btn btn-sm" onclick="pdToggleCreator(false)">Cancel</button>
             </div>
-            <div id="pd-type-settings"></div>
-            <div class="field-preview"><div class="eyebrow">Live preview</div><div id="pd-field-preview"></div></div>
-        </div>
-
-        <div class="wizard-panel" data-step-panel="3" hidden>
             <div class="feedback-grid two">
-                <label>Scope<select id="pd-field-scope" class="form-control" onchange="pdToggleScope()"><option value="global">All modules</option><option value="modules">Selected modules</option></select></label>
-                <label id="pd-field-modules-wrap">Allowed modules<select id="pd-field-modules" class="form-control" multiple size="7"></select></label>
-                <label>Visible to roles<select id="pd-field-roles" class="form-control" multiple size="6"></select></label>
-                <label>Visible to groups<select id="pd-field-groups" class="form-control" multiple size="6"></select></label>
+                <label>Field type<select id="pd-field-type" class="form-control" onchange="pdChooseType(this.value)"></select></label>
+                <label>Field name<input id="pd-field-label" class="form-control" placeholder="e.g. Department" oninput="pdLabelChanged()"></label>
             </div>
             <label class="feedback-toggle"><input id="pd-field-required" type="checkbox"> Required field</label>
-        </div>
-
-        <div class="wizard-actions">
-            <button class="btn" id="pd-prev" onclick="pdPrevious()" disabled>Back</button>
-            <button class="btn btn-primary" id="pd-next" onclick="pdNext()">Continue</button>
-            <button class="btn btn-success" id="pd-save-field" onclick="pdSaveField()" hidden>Save field</button>
+            <div id="pd-type-settings" class="field-type-settings"></div>
+            <details class="field-advanced">
+                <summary>Advanced settings</summary>
+                <div class="feedback-grid two">
+                    <label>Field key<input id="pd-field-key" class="form-control" placeholder="Generated automatically"></label>
+                    <label>Placeholder<input id="pd-field-placeholder" class="form-control"></label>
+                    <label>Help text<input id="pd-field-help" class="form-control"></label>
+                    <label>Scope<select id="pd-field-scope" class="form-control" onchange="pdToggleScope()"><option value="global">All modules</option><option value="modules">Selected modules</option></select></label>
+                    <label id="pd-field-modules-wrap">Allowed modules<select id="pd-field-modules" class="form-control" multiple size="5"></select></label>
+                    <label>Visible to roles<select id="pd-field-roles" class="form-control" multiple size="5"></select></label>
+                    <label>Visible to groups<select id="pd-field-groups" class="form-control" multiple size="5"></select></label>
+                </div>
+            </details>
+            <div class="field-preview"><div class="eyebrow">Preview</div><div id="pd-field-preview"></div></div>
+            <div class="field-creator-actions">
+                <button class="btn" onclick="pdToggleCreator(false)">Cancel</button>
+                <button class="btn btn-primary" onclick="pdSaveField()">Create field</button>
+            </div>
         </div>
         <div id="pd-fields" class="ticket-list"></div>
     </section>
@@ -87,4 +84,4 @@
     <div id="pd-status" class="status-box info" style="display:none"></div>
 </div>
 {% endblock %}
-{% block extra_js %}<script src="/static/js/process-designer.js?v=20260610-wizard"></script>{% endblock %}
+{% block extra_js %}<script src="/static/js/process-designer.js?v=20260610-simple-fields"></script>{% endblock %}

@@ -1023,4 +1023,15 @@ header h1 {
 .field-type-card.active { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: var(--accent-soft); }
 .field-preview { margin-top: 16px; padding: 16px; border: 1px dashed var(--border-color); border-radius: 14px; background: var(--surface-muted); }
 .wizard-actions { display: flex; justify-content: space-between; gap: 10px; margin: 16px 0 22px; }
+.field-creator { margin-bottom: 22px; padding: 20px; border: 1px solid var(--border-color); border-radius: 16px; background: var(--surface-muted); }
+.field-creator-head, .field-creator-actions { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.field-creator-head { margin-bottom: 18px; }
+.field-creator-head h3, .field-creator-head p { margin: 0; }
+.field-creator-head p { margin-top: 4px; color: var(--text-secondary); }
+.field-type-settings { margin-top: 14px; }
+.field-advanced { margin-top: 16px; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); }
+.field-advanced summary { padding: 14px 0; color: var(--text-secondary); font-weight: 700; cursor: pointer; }
+.field-advanced[open] summary { color: var(--text-primary); }
+.field-advanced .feedback-grid { padding-bottom: 16px; }
+.field-creator-actions { justify-content: flex-end; margin-top: 16px; }
 @media (max-width: 700px) { .wizard-steps { grid-template-columns: 1fr; } .field-type-grid { grid-template-columns: 1fr; } }
