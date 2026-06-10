@@ -1,13 +1,13 @@
 {% extends "base/layout.html" %}
 
-{% block title %}180 Feedback - Automation Hub{% endblock %}
+{% block title %}Reviews & Approvals - Servexa{% endblock %}
 {% block subtitle %}Jira-style 180 workflow board, screens, participants and responses{% endblock %}
 
 {% block content %}
 <header class="feedback-hero">
     <div>
         <div class="eyebrow">People operations</div>
-        <h1>180 Feedback Studio</h1>
+        <h1>Reviews &amp; Approval Studio</h1>
         <p class="subtitle">180 admins configure workflow statuses and screens. Participants use the response screen only.</p>
     </div>
     <div class="feedback-hero-panel">
@@ -75,11 +75,17 @@
 
         <section class="card feedback-card">
             <div class="feedback-card-head"><div><h2>Tickets and processes</h2><p>Create work items, select assignee and manager, use safe HTML, comment and run approval steps.</p></div></div>
+            <div class="feedback-actions">
+                <button class="btn" type="button" onclick="fbLoadTicketScope('mine')">My tickets</button>
+                <button class="btn" type="button" onclick="fbLoadTicketScope('approvals')">My approvals</button>
+                <a class="btn" href="/api/feedback/tickets/report.csv?scope=mine">Export my CSV</a>
+                <a class="btn" href="/api/feedback/tickets/report.csv?scope=approvals">Export approval CSV</a>
+            </div>
             <div class="feedback-grid two">
                 <label>Title<input id="fb-ticket-title" class="form-control" placeholder="Employee onboarding approval"></label>
                 <label>Assignee<input id="fb-ticket-assignee" class="form-control" list="fb-user-options" placeholder="Search a local or AD username" oninput="fbSearchUsers(this.value)"></label>
                 <label>Manager / approver<input id="fb-ticket-manager" class="form-control" list="fb-user-options" placeholder="manager.username" oninput="fbSearchUsers(this.value)"></label>
-                <label>User source<select id="fb-user-source" class="form-control" onchange="fbSearchUsers('')"><option value="database">Automation Hub database</option><option value="ldap">Active Directory</option></select></label>
+                <label>User source<select id="fb-user-source" class="form-control" onchange="fbSearchUsers('')"><option value="database">Servexa database</option><option value="ldap">Active Directory</option></select></label>
             </div>
             <datalist id="fb-user-options"></datalist>
             <label>Description<textarea id="fb-ticket-description" class="form-control" rows="3"></textarea></label>
@@ -87,6 +93,7 @@
             <div id="fb-ticket-fields" class="ticket-dynamic-fields"></div>
             <button class="btn btn-primary" type="button" onclick="fbCreateTicket()">Create ticket</button>
             <div id="fb-ticket-list" class="ticket-list"></div>
+            <div id="fb-scope-ticket-list" class="ticket-list"></div>
         </section>
 
         <section class="card feedback-card">

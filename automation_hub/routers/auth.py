@@ -566,7 +566,7 @@ async def twofa_setup(request: Request):
     finally:
         conn.close()
     totp = pyotp.TOTP(secret)
-    issuer = os.getenv("APP_NAME", "Automation Hub")
+    issuer = os.getenv("APP_NAME", "Servexa")
     provisioning_uri = totp.provisioning_uri(name=user["username"], issuer_name=issuer)
     return JSONResponse({"secret": secret, "provisioning_uri": provisioning_uri})
 

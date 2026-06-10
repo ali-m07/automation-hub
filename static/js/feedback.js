@@ -290,6 +290,14 @@ async function fbTransitionTicket(ticketId, transitionId) {
     const index = fbCurrent.tickets.findIndex(item => item.id === ticketId); fbCurrent.tickets[index] = data.ticket; fbRenderTickets(); fbSetStatus('Workflow transition completed.', 'success');
 }
 
+async function fbLoadTicketScope(scope) {
+    const response = await fetch(`/api/feedback/tickets?scope=${encodeURIComponent(scope)}`, { credentials: 'include' });
+    const data = await response.json();
+    const target = document.getElementById('fb-scope-ticket-list');
+    if (!data.success) return fbSetStatus(data.detail || 'Could not load tickets.', 'error');
+    target.innerHTML = (data.tickets || []).map(ticket => `<article class="ticket-card"><div class="ticket-card-head"><div><strong>${fbEscape(ticket.title)}</strong><span>${fbEscape(ticket.project_title)} · ${fbEscape(ticket.status)}</span></div><span>${fbEscape(ticket.manager_username || 'No approver')}</span></div><p>${fbEscape(ticket.description || '')}</p></article>`).join('') || '<div class="feedback-empty">No tickets in this view.</div>';
+}
+
 function fbRenderSetup() {
     document.getElementById('fb-title').value = fbCurrent.title || '';
     document.getElementById('fb-cycle').value = fbCurrent.cycle || '';

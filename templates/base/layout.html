@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Automation Hub{% endblock %}</title>
+    <title>{% block title %}Servexa{% endblock %}</title>
     <link rel="stylesheet" href="/static/css/style.css">
     {% block extra_css %}{% endblock %}
 </head>
@@ -15,7 +15,7 @@
             <div style="display:flex; align-items:center; gap:10px;">
                 <div class="top-nav-logo"></div>
                 <div>
-                    <div style="font-weight:800; color:#111827;">Automation Hub</div>
+                    <div style="font-weight:800; color:#111827;">Servexa</div>
                     <div style="font-size:0.8rem; color:#6b7280;">Menu</div>
                 </div>
             </div>
@@ -39,7 +39,7 @@
             <a href="/external-db" class="sidebar-link">External database</a>
             {% endif %}
             {% if user and (user.role == 'admin' or 'feedback_180' in (user.modules or []) or 'feedback_180_admin' in (user.modules or [])) %}
-            <a href="/feedback" class="sidebar-link">180 Feedback</a>
+            <a href="/feedback" class="sidebar-link">Reviews &amp; Approvals</a>
             {% endif %}
             {% if user and (user.role == 'admin' or 'process_designer_admin' in (user.modules or [])) %}
             <a href="/process-designer" class="sidebar-link">Process Designer</a>
@@ -70,7 +70,7 @@
             </button>
             <div class="top-nav-logo"></div>
             <div>
-                <div class="top-nav-title">Automation Hub</div>
+                <div class="top-nav-title">Servexa</div>
                 <div class="top-nav-sub">{% block subtitle %}Data connectors, evaluation pipelines, creative automation and messaging in one place{% endblock %}</div>
             </div>
         </div>

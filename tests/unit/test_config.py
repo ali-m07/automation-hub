@@ -14,7 +14,7 @@ class TestSettings:
     def test_default_values(self):
         """Test default settings values."""
         settings = Settings()
-        assert settings.app_name == "Automation Hub"
+        assert settings.app_name == "Servexa"
         assert settings.app_version == "2.0.0"
         assert settings.debug is False
         assert settings.host == "0.0.0.0"

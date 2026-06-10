@@ -41,10 +41,10 @@ from automation_hub.services.email_service import EmailService
 from automation_hub.services.job_processor import JobProcessor
 
 app = FastAPI(
-    title="Automation Hub",
+    title="Servexa",
     version="2.0.0",
     description="""
-    Automation Hub - Web application for PSD conversion, data management, 
+    Servexa - Intelligent service and process management platform.
     bulk messaging, and creative automation.
     
     ## Features
@@ -63,7 +63,7 @@ app = FastAPI(
     * Module-based permissions
     """,
     contact={
-        "name": "Automation Hub Support",
+        "name": "Servexa Support",
         "url": "https://github.com/ali-m07/automation-hub",
     },
     license_info={

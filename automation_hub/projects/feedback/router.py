@@ -11,12 +11,14 @@ import json
 import os
 import secrets
 import re
+import csv
+import io
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 import bleach
 
 from automation_hub.core import auth, db
@@ -416,11 +418,27 @@ def _project_visible(project: Dict[str, Any], user: Dict[str, Any]) -> bool:
         return True
     username = user.get("username") or ""
     participants = project.get("participants") or {}
+    manages_ticket = any(
+        ticket.get("manager_username") == username
+        for ticket in project.get("tickets", [])
+    )
     return (
         username in participants.get("reviewers", [])
         or username in participants.get("subjects", [])
         or project.get("owner_username") == username
+        or manages_ticket
     )
+
+
+def _visible_project(project: Dict[str, Any], user: Dict[str, Any]) -> Dict[str, Any]:
+    visible = dict(project)
+    if not _is_feedback_admin(user):
+        visible["tickets"] = [
+            ticket
+            for ticket in project.get("tickets", [])
+            if _ticket_visible(project, ticket, user)
+        ]
+    return visible
 
 
 def _find_project(store: Dict[str, Any], project_id: str) -> Optional[Dict[str, Any]]:
@@ -539,7 +557,11 @@ async def feedback_users(request: Request, source: str = "database", query: str 
 async def list_feedback_projects(request: Request):
     user = _require_feedback_access(request)
     store = _load_store()
-    projects = [p for p in store.get("projects", []) if _project_visible(p, user)]
+    projects = [
+        _visible_project(p, user)
+        for p in store.get("projects", [])
+        if _project_visible(p, user)
+    ]
     projects.sort(key=lambda p: p.get("updated_at") or "", reverse=True)
     return JSONResponse(
         {
@@ -635,6 +657,77 @@ async def submit_feedback_response(project_id: str, request: Request):
     project["updated_at"] = _now()
     _save_store(store)
     return JSONResponse({"success": True, "responses_count": len(responses)})
+
+
+@router.get("/tickets")
+async def list_process_tickets(request: Request, scope: str = "mine"):
+    user = _require_feedback_access(request)
+    username = user.get("username") or ""
+    tickets = []
+    for project in _load_store().get("projects", []):
+        for ticket in project.get("tickets", []):
+            allowed = (
+                _is_feedback_admin(user)
+                if scope == "all"
+                else (
+                    ticket.get("manager_username") == username
+                    if scope == "approvals"
+                    else ticket.get("created_by") == username
+                    or ticket.get("assigned_to") == username
+                )
+            )
+            if allowed:
+                tickets.append(
+                    {
+                        **ticket,
+                        "project_id": project.get("id"),
+                        "project_title": project.get("title"),
+                    }
+                )
+    tickets.sort(key=lambda item: item.get("updated_at") or "", reverse=True)
+    return JSONResponse({"success": True, "tickets": tickets, "scope": scope})
+
+
+@router.get("/tickets/report.csv")
+async def process_ticket_report(request: Request, scope: str = "mine"):
+    data = await list_process_tickets(request, scope)
+    payload = json.loads(data.body)
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(
+        [
+            "ticket_id",
+            "project",
+            "title",
+            "status",
+            "created_by",
+            "assigned_to",
+            "approver",
+            "created_at",
+            "updated_at",
+        ]
+    )
+    for ticket in payload["tickets"]:
+        writer.writerow(
+            [
+                ticket.get("id"),
+                ticket.get("project_title"),
+                ticket.get("title"),
+                ticket.get("status"),
+                ticket.get("created_by"),
+                ticket.get("assigned_to"),
+                ticket.get("manager_username"),
+                ticket.get("created_at"),
+                ticket.get("updated_at"),
+            ]
+        )
+    return Response(
+        output.getvalue(),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f'attachment; filename="servexa-{scope}-tickets.csv"'
+        },
+    )
 
 
 @router.post("/projects/{project_id}/tickets")
