@@ -1,34 +1,20 @@
 const FB_DEFAULT_PROJECT = {
     id: '',
-    title: '180 Feedback Cycle',
-    cycle: 'Quarterly',
-    description: 'A modular 180 review cycle with admin-controlled workflow, screens and response form.',
-    status: 'draft',
+    title: '',
+    cycle: '',
+    description: '',
+    status: '',
     workflow: {
         scale_min: 1,
         scale_max: 5,
-        anonymous: true,
-        deadline_days: 14,
-        statuses: [
-            { id: 'draft', name: 'Draft', category: 'todo', screen_id: 'screen_setup', description: 'Cycle is being configured by 180 admin.' },
-            { id: 'ready', name: 'Ready to launch', category: 'todo', screen_id: 'screen_setup', description: 'Participants and questions are approved.' },
-            { id: 'collecting', name: 'Collecting feedback', category: 'doing', screen_id: 'screen_response', description: 'Reviewers submit feedback.' },
-            { id: 'calibration', name: 'Calibration', category: 'doing', screen_id: 'screen_summary', description: '180 admin reviews response quality.' },
-            { id: 'closed', name: 'Closed', category: 'done', screen_id: 'screen_summary', description: 'Cycle is complete.' }
-        ],
-        screens: [
-            { id: 'screen_setup', name: 'Setup screen', description: 'Admin defines objective, scale and participants.', fields: ['title', 'cycle', 'deadline', 'rating_scale'] },
-            { id: 'screen_response', name: 'Reviewer response screen', description: 'Reviewer answers rating and text questions.', fields: ['subject', 'questions', 'overall_comment'] },
-            { id: 'screen_summary', name: 'Manager summary screen', description: 'Feedback admin reviews scores and coaching notes.', fields: ['response_count', 'average_score', 'comments'] }
-        ]
+        anonymous: false,
+        deadline_days: 0,
+        statuses: [],
+        screens: [],
+        transitions: []
     },
-    participants: { subjects: ['Sara Manager', 'Omid Lead'], reviewers: ['Direct manager', 'Peer reviewer', 'Team member'], matrix: {} },
-    questions: [
-        { id: 'q_1', category: 'Leadership', type: 'rating', required: true, text: 'Communicates priorities clearly and consistently.' },
-        { id: 'q_2', category: 'Collaboration', type: 'rating', required: true, text: 'Builds trust and follows through on commitments.' },
-        { id: 'q_3', category: 'Growth', type: 'text', required: false, text: 'What is one behavior this person should continue?' },
-        { id: 'q_4', category: 'Growth', type: 'text', required: false, text: 'What is one behavior this person should improve?' }
-    ],
+    participants: { subjects: [], reviewers: [], matrix: {} },
+    questions: [],
     form_fields: [],
     tickets: [],
     responses: []
@@ -68,20 +54,21 @@ function fbSetStatus(message, type = 'info') {
 
 function fbNormalizeWorkflow() {
     fbCurrent.workflow = fbCurrent.workflow || structuredCloneSafe(FB_DEFAULT_PROJECT.workflow);
-    fbCurrent.workflow.statuses = fbCurrent.workflow.statuses?.length ? fbCurrent.workflow.statuses : structuredCloneSafe(FB_DEFAULT_PROJECT.workflow.statuses);
-    fbCurrent.workflow.screens = fbCurrent.workflow.screens?.length ? fbCurrent.workflow.screens : structuredCloneSafe(FB_DEFAULT_PROJECT.workflow.screens);
+    fbCurrent.workflow.statuses = Array.isArray(fbCurrent.workflow.statuses) ? fbCurrent.workflow.statuses : [];
+    fbCurrent.workflow.screens = Array.isArray(fbCurrent.workflow.screens) ? fbCurrent.workflow.screens : [];
+    fbCurrent.workflow.transitions = Array.isArray(fbCurrent.workflow.transitions) ? fbCurrent.workflow.transitions : [];
 }
 
 function fbCollectProject() {
     fbNormalizeWorkflow();
     const scale = (document.getElementById('fb-scale')?.value || '1-5').split('-').map(Number);
     if (fbPermissions.can_manage_workflow) {
-        fbCurrent.title = document.getElementById('fb-title')?.value.trim() || '180 Feedback Cycle';
-        fbCurrent.cycle = document.getElementById('fb-cycle')?.value.trim() || 'Quarterly';
+        fbCurrent.title = document.getElementById('fb-title')?.value.trim() || 'Untitled form';
+        fbCurrent.cycle = document.getElementById('fb-cycle')?.value.trim() || '';
         fbCurrent.description = document.getElementById('fb-description')?.value.trim() || '';
         fbCurrent.workflow.scale_min = scale[0] || 1;
         fbCurrent.workflow.scale_max = scale[1] || 5;
-        fbCurrent.workflow.deadline_days = Number(document.getElementById('fb-deadline')?.value || 14);
+        fbCurrent.workflow.deadline_days = Number(document.getElementById('fb-deadline')?.value || 0);
         fbCurrent.workflow.anonymous = Boolean(document.getElementById('fb-anonymous')?.checked);
         fbCurrent.participants.subjects = fbLines(document.getElementById('fb-subjects')?.value);
         fbCurrent.participants.reviewers = fbLines(document.getElementById('fb-reviewers')?.value);
@@ -113,8 +100,8 @@ function fbCollectTransitions() {
     fbCurrent.workflow.transitions = Array.from(document.querySelectorAll('[data-fb-transition]')).map((row, index) => ({
         id: row.dataset.transitionId || `transition_${Date.now()}_${index}`,
         name: row.querySelector('[data-transition-name]')?.value.trim() || 'Transition',
-        from_status: row.querySelector('[data-transition-from]')?.value || 'draft',
-        to_status: row.querySelector('[data-transition-to]')?.value || 'ready',
+        from_status: row.querySelector('[data-transition-from]')?.value || '',
+        to_status: row.querySelector('[data-transition-to]')?.value || '',
         approver_type: row.querySelector('[data-transition-approver]')?.value || 'any_user',
         approver_value: row.querySelector('[data-transition-value]')?.value.trim() || '',
         condition_field: row.querySelector('[data-transition-condition-key]')?.value.trim() || '',
@@ -148,7 +135,7 @@ function fbSetAdminMode() {
     const isAdmin = fbPermissions.can_manage_workflow;
     document.body.classList.toggle('fb-readonly-user', !isAdmin);
     document.querySelectorAll('[data-admin-only]').forEach((el) => { el.style.display = isAdmin ? '' : 'none'; });
-    const adminHeadings = ['Cycle setup', 'Jira-style workflow board', 'Participants', 'Question builder', 'Ticket form builder', 'Approvals and transitions'];
+    const adminHeadings = ['Application setup', 'Workflow builder', 'Participants', 'Assessment fields', 'Ticket form builder', 'Approvals and transitions'];
     document.querySelectorAll('.feedback-card').forEach(card => {
         const heading = card.querySelector('h2')?.textContent.trim();
         if (adminHeadings.includes(heading)) card.style.display = isAdmin ? '' : 'none';
@@ -200,7 +187,7 @@ function fbShowView(view, updateUrl = true) {
     document.querySelectorAll('[data-fb-view]').forEach(section => {
         section.style.display = section.dataset.fbView === selected ? '' : 'none';
     });
-    const adminHeadings = ['Cycle setup', 'Jira-style workflow board', 'Participants', 'Question builder', 'Ticket form builder', 'Approvals and transitions'];
+    const adminHeadings = ['Application setup', 'Workflow builder', 'Participants', 'Assessment fields', 'Ticket form builder', 'Approvals and transitions'];
     document.querySelectorAll('.feedback-card').forEach(card => {
         const heading = card.querySelector('h2')?.textContent.trim();
         if (adminHeadings.includes(heading)) card.style.display = isAdmin && selected === 'designer' ? '' : 'none';
@@ -241,7 +228,7 @@ function fbRenderFormFields() {
     fbSetAdminMode();
 }
 
-function fbAddFormField() { fbCollectProject(); fbCurrent.form_fields.push({ id: `field_${Date.now()}`, key: `field_${fbCurrent.form_fields.length + 1}`, label: 'New field', type: 'single_line', required: false, options: [], user_source: 'database' }); fbRenderFormFields(); fbRenderTicketForm(); }
+function fbAddFormField() { fbCollectProject(); fbCurrent.form_fields.push({ id: `field_${Date.now()}`, key: '', label: '', type: 'single_line', required: false, options: [], user_source: 'database' }); fbRenderFormFields(); fbRenderTicketForm(); }
 function fbRemoveFormField(index) { fbCollectProject(); fbCurrent.form_fields.splice(index, 1); fbRenderFormFields(); fbRenderTicketForm(); }
 
 async function fbImportSharedFields() {
@@ -287,7 +274,14 @@ function fbRenderTransitions() {
     fbSetAdminMode();
 }
 
-function fbAddTransition() { fbCollectProject(); const statuses = fbCurrent.workflow.statuses || []; fbCurrent.workflow.transitions = fbCurrent.workflow.transitions || []; fbCurrent.workflow.transitions.push({ id: `transition_${Date.now()}`, name: 'Approve', from_status: statuses[0]?.id || 'draft', to_status: statuses[1]?.id || 'ready', approver_type: 'manager' }); fbRenderTransitions(); }
+function fbAddTransition() {
+    fbCollectProject();
+    const statuses = fbCurrent.workflow.statuses || [];
+    if (statuses.length < 2) return fbSetStatus('Create at least two statuses before adding a transition.', 'error');
+    fbCurrent.workflow.transitions = fbCurrent.workflow.transitions || [];
+    fbCurrent.workflow.transitions.push({ id: `transition_${Date.now()}`, name: 'New transition', from_status: statuses[0].id, to_status: statuses[1].id, approver_type: 'any_user' });
+    fbRenderTransitions();
+}
 function fbRemoveTransition(index) { fbCollectProject(); fbCurrent.workflow.transitions.splice(index, 1); fbRenderTransitions(); }
 
 function fbRenderTicketForm() {
@@ -358,7 +352,7 @@ function fbRenderSetup() {
     document.getElementById('fb-title').value = fbCurrent.title || '';
     document.getElementById('fb-cycle').value = fbCurrent.cycle || '';
     document.getElementById('fb-description').value = fbCurrent.description || '';
-    document.getElementById('fb-deadline').value = fbCurrent.workflow?.deadline_days || 14;
+    document.getElementById('fb-deadline').value = fbCurrent.workflow?.deadline_days || '';
     document.getElementById('fb-scale').value = `${fbCurrent.workflow?.scale_min || 1}-${fbCurrent.workflow?.scale_max || 5}`;
     document.getElementById('fb-anonymous').checked = Boolean(fbCurrent.workflow?.anonymous);
 }
@@ -372,7 +366,7 @@ function fbRenderProjectList() {
         list.innerHTML = '<div class="feedback-empty">No visible cycles yet.</div>';
         return;
     }
-    list.innerHTML = fbProjects.map((project) => `<button type="button" class="feedback-project ${project.id === fbCurrent.id ? 'active' : ''}" onclick="fbOpenProject('${project.id}')"><strong>${fbEscape(project.title || 'Untitled cycle')}</strong><span>${fbEscape(project.status || 'draft')} - ${(project.participants?.subjects || []).length} subject(s)</span></button>`).join('');
+    list.innerHTML = fbProjects.map((project) => `<button type="button" class="feedback-project ${project.id === fbCurrent.id ? 'active' : ''}" onclick="fbOpenProject('${project.id}')"><strong>${fbEscape(project.title || 'Untitled application')}</strong><span>${fbEscape(project.status || 'No status')} · ${(project.form_fields || []).length} ticket field(s) · ${(project.questions || []).length} assessment field(s)</span></button>`).join('');
 }
 
 function fbRenderWorkflowBoard() {
@@ -431,17 +425,17 @@ function fbRenameStatus(statusId) {
 function fbRemoveStatus(statusId) {
     if (!confirm('Delete this workflow status?')) return;
     fbCurrent.workflow.statuses = fbCurrent.workflow.statuses.filter((item) => item.id !== statusId);
-    if (fbCurrent.status === statusId) fbCurrent.status = fbCurrent.workflow.statuses[0]?.id || 'draft';
+    if (fbCurrent.status === statusId) fbCurrent.status = fbCurrent.workflow.statuses[0]?.id || '';
     fbRenderWorkflowBoard();
     fbSetAdminMode();
 }
 
 function fbAddWorkflowStatus() {
     fbCollectProject();
-    const name = prompt('New workflow status name', 'New status');
+    const name = prompt('Workflow status name');
     if (!name) return;
     const id = `status_${Date.now()}`;
-    fbCurrent.workflow.statuses.push({ id, name: name.trim(), category: 'todo', screen_id: fbCurrent.workflow.screens[0]?.id || 'screen_response', description: '' });
+    fbCurrent.workflow.statuses.push({ id, name: name.trim(), category: 'todo', screen_id: fbCurrent.workflow.screens[0]?.id || '', description: '' });
     fbRenderWorkflowBoard();
     fbSetAdminMode();
 }
@@ -456,7 +450,7 @@ function fbRenderScreens() {
 
 function fbAddScreen() {
     fbCollectProject();
-    fbCurrent.workflow.screens.push({ id: `screen_${Date.now()}`, name: 'New screen', description: '', fields: ['questions', 'comment'] });
+    fbCurrent.workflow.screens.push({ id: `screen_${Date.now()}`, name: '', description: '', fields: [] });
     fbRenderScreens();
     fbRenderWorkflowBoard();
 }
@@ -464,7 +458,7 @@ function fbAddScreen() {
 function fbRemoveScreen(screenId) {
     if (!confirm('Delete this screen? Statuses using it will fall back to the first screen.')) return;
     fbCurrent.workflow.screens = fbCurrent.workflow.screens.filter((screen) => screen.id !== screenId);
-    const fallback = fbCurrent.workflow.screens[0]?.id || 'screen_response';
+    const fallback = fbCurrent.workflow.screens[0]?.id || '';
     fbCurrent.workflow.statuses.forEach((status) => { if (status.screen_id === screenId) status.screen_id = fallback; });
     fbRenderScreens();
     fbRenderWorkflowBoard();
@@ -531,7 +525,7 @@ function fbBuildMatrix(collect = true) {
 
 function fbAddQuestion() {
     fbCollectProject();
-    fbCurrent.questions.push({ id: `q_${Date.now()}`, category: 'General', type: 'rating', required: true, text: 'New feedback question' });
+    fbCurrent.questions.push({ id: `q_${Date.now()}`, category: '', type: 'text', required: false, text: '' });
     fbRenderQuestions();
     fbRenderPreview();
 }
@@ -548,7 +542,7 @@ function fbNewProject() {
     fbCurrent = structuredCloneSafe(FB_DEFAULT_PROJECT);
     fbCurrent.id = '';
     fbRenderAll();
-    fbSetStatus('New draft ready. Only 180 admins can save workflow changes.', 'info');
+    fbSetStatus('Blank builder ready. Add only the components you need.', 'info');
 }
 
 function fbOpenProject(id) {
@@ -564,7 +558,6 @@ async function fbLoadProjects() {
         const meta = await metaRes.json();
         if (!meta.success) throw new Error(meta.detail || meta.error || 'Could not load module metadata');
         fbPermissions = meta.permissions || fbPermissions;
-        if (meta.default_workflow) FB_DEFAULT_PROJECT.workflow = meta.default_workflow;
 
         const res = await fetch('/api/feedback/projects', { credentials: 'include' });
         const data = await res.json();
@@ -585,7 +578,6 @@ async function fbSaveProject() {
     if (!fbPermissions.can_manage_workflow) return fbSetStatus('Only a 180 admin can configure workflow, screens, participants and questions.', 'error');
     if (fbSaving) return;
     fbCollectProject();
-    if (!fbCurrent.questions.length) return fbSetStatus('Add at least one question before saving.', 'error');
     fbSaving = true;
     fbSetStatus('Saving 180 admin configuration...', 'info');
     try {

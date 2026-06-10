@@ -44,3 +44,10 @@ def test_transition_condition():
     }
     assert router._condition_matches(rule, {"amount": 100})
     assert not router._condition_matches(rule, {"amount": 200})
+
+
+def test_blank_builder_has_no_generated_workflow():
+    workflow = router._default_workflow()
+    assert workflow["statuses"] == []
+    assert workflow["screens"] == []
+    assert workflow["transitions"] == []

@@ -135,97 +135,15 @@ def _require_feedback_admin(request: Request) -> Dict[str, Any]:
     return user
 
 
-def _default_screens() -> List[Dict[str, Any]]:
-    return [
-        {
-            "id": "screen_setup",
-            "name": "Setup screen",
-            "description": "Admin defines objective, scale and participants.",
-            "fields": ["title", "cycle", "deadline", "rating_scale"],
-        },
-        {
-            "id": "screen_response",
-            "name": "Reviewer response screen",
-            "description": "Reviewer answers rating and text questions.",
-            "fields": ["subject", "questions", "overall_comment"],
-        },
-        {
-            "id": "screen_summary",
-            "name": "Manager summary screen",
-            "description": "Feedback admin reviews scores and coaching notes.",
-            "fields": ["response_count", "average_score", "comments"],
-        },
-    ]
-
-
 def _default_workflow() -> Dict[str, Any]:
     return {
         "scale_min": 1,
         "scale_max": 5,
-        "anonymous": True,
-        "deadline_days": 14,
-        "statuses": [
-            {
-                "id": "draft",
-                "name": "Draft",
-                "category": "todo",
-                "screen_id": "screen_setup",
-                "description": "Cycle is being configured by 180 admin.",
-            },
-            {
-                "id": "ready",
-                "name": "Ready to launch",
-                "category": "todo",
-                "screen_id": "screen_setup",
-                "description": "Participants and questions are approved.",
-            },
-            {
-                "id": "collecting",
-                "name": "Collecting feedback",
-                "category": "doing",
-                "screen_id": "screen_response",
-                "description": "Reviewers can submit feedback.",
-            },
-            {
-                "id": "calibration",
-                "name": "Calibration",
-                "category": "doing",
-                "screen_id": "screen_summary",
-                "description": "180 admin reviews response quality.",
-            },
-            {
-                "id": "closed",
-                "name": "Closed",
-                "category": "done",
-                "screen_id": "screen_summary",
-                "description": "Cycle is complete.",
-            },
-        ],
-        "screens": _default_screens(),
-        "transitions": [
-            {
-                "id": "submit_for_approval",
-                "name": "Submit for approval",
-                "from_status": "draft",
-                "to_status": "ready",
-                "approver_type": "manager",
-                "approver_value": "",
-                "condition_field": "",
-                "condition_operator": "equals",
-                "condition_value": "",
-            },
-            {
-                "id": "approve",
-                "name": "Approve",
-                "from_status": "ready",
-                "to_status": "collecting",
-                "approver_type": "feedback_admin",
-                "approver_value": "",
-                "condition_field": "",
-                "condition_operator": "equals",
-                "condition_value": "",
-            },
-        ],
+        "anonymous": False,
+        "deadline_days": 0,
+        "statuses": [],
+        "screens": [],
+        "transitions": [],
     }
 
 
@@ -254,7 +172,7 @@ def _clean_form_field(field: Dict[str, Any], index: int) -> Dict[str, Any]:
     return {
         "id": str(field.get("id") or f"field_{secrets.token_hex(4)}")[:80],
         "key": _slug(field.get("key") or field.get("label"), f"field_{index + 1}"),
-        "label": str(field.get("label") or f"Field {index + 1}")[:160],
+        "label": str(field.get("label") or "")[:160],
         "type": field_type,
         "required": bool(field.get("required")),
         "placeholder": str(field.get("placeholder") or "")[:300],
@@ -277,9 +195,9 @@ def _clean_transition(item: Dict[str, Any], index: int) -> Dict[str, Any]:
         approver_type = "any_user"
     return {
         "id": str(item.get("id") or f"transition_{secrets.token_hex(4)}")[:80],
-        "name": str(item.get("name") or f"Transition {index + 1}")[:120],
-        "from_status": str(item.get("from_status") or "draft")[:80],
-        "to_status": str(item.get("to_status") or "ready")[:80],
+        "name": str(item.get("name") or "")[:120],
+        "from_status": str(item.get("from_status") or "")[:80],
+        "to_status": str(item.get("to_status") or "")[:80],
         "approver_type": approver_type,
         "approver_value": str(item.get("approver_value") or "")[:160],
         "condition_field": str(item.get("condition_field") or "")[:80],
@@ -291,9 +209,9 @@ def _clean_transition(item: Dict[str, Any], index: int) -> Dict[str, Any]:
 def _clean_status(status: Dict[str, Any], index: int) -> Dict[str, Any]:
     return {
         "id": str(status.get("id") or f"status_{secrets.token_hex(4)}")[:80],
-        "name": str(status.get("name") or f"Status {index + 1}")[:100],
+        "name": str(status.get("name") or "")[:100],
         "category": str(status.get("category") or "todo")[:40],
-        "screen_id": str(status.get("screen_id") or "screen_response")[:80],
+        "screen_id": str(status.get("screen_id") or "")[:80],
         "description": str(status.get("description") or "")[:500],
         "order": index,
     }
@@ -307,10 +225,10 @@ def _sanitize_project(
     now = _now()
     clean = dict(project or {})
     clean["id"] = str(clean.get("id") or f"fb_{secrets.token_hex(6)}")
-    clean["title"] = str(clean.get("title") or "180 Feedback Cycle")[:160]
+    clean["title"] = str(clean.get("title") or "Untitled form")[:160]
     clean["description"] = str(clean.get("description") or "")[:1000]
-    clean["cycle"] = str(clean.get("cycle") or "Quarterly")[:80]
-    clean["status"] = str(clean.get("status") or "draft")[:80]
+    clean["cycle"] = str(clean.get("cycle") or "")[:80]
+    clean["status"] = str(clean.get("status") or "")[:80]
     clean["owner_username"] = (
         (existing or {}).get("owner_username") or user.get("username") or ""
     )
@@ -319,26 +237,18 @@ def _sanitize_project(
     )
     clean["updated_at"] = now
 
-    workflow = (
-        clean.get("workflow")
-        if isinstance(clean.get("workflow"), dict)
-        else _default_workflow()
-    )
+    workflow = clean.get("workflow") if isinstance(clean.get("workflow"), dict) else {}
     statuses = (
-        workflow.get("statuses")
-        if isinstance(workflow.get("statuses"), list)
-        else _default_workflow()["statuses"]
+        workflow.get("statuses") if isinstance(workflow.get("statuses"), list) else []
     )
     screens = (
-        workflow.get("screens")
-        if isinstance(workflow.get("screens"), list)
-        else _default_screens()
+        workflow.get("screens") if isinstance(workflow.get("screens"), list) else []
     )
     clean["workflow"] = {
         "scale_min": int(workflow.get("scale_min") or 1),
         "scale_max": int(workflow.get("scale_max") or 5),
         "anonymous": bool(workflow.get("anonymous", True)),
-        "deadline_days": int(workflow.get("deadline_days") or 14),
+        "deadline_days": int(workflow.get("deadline_days") or 0),
         "statuses": [
             _clean_status(status, idx)
             for idx, status in enumerate(statuses[:20])
@@ -347,7 +257,7 @@ def _sanitize_project(
         "screens": [
             {
                 "id": str(screen.get("id") or f"screen_{idx + 1}")[:80],
-                "name": str(screen.get("name") or f"Screen {idx + 1}")[:100],
+                "name": str(screen.get("name") or "")[:100],
                 "description": str(screen.get("description") or "")[:500],
                 "fields": [
                     str(field)[:80]
@@ -389,9 +299,9 @@ def _sanitize_project(
         {
             "id": str(q.get("id") or f"q_{idx + 1}"),
             "text": str(q.get("text") or "")[:500],
-            "category": str(q.get("category") or "General")[:80],
-            "type": str(q.get("type") or "rating")[:40],
-            "required": bool(q.get("required", True)),
+            "category": str(q.get("category") or "")[:80],
+            "type": str(q.get("type") or "text")[:40],
+            "required": bool(q.get("required", False)),
         }
         for idx, q in enumerate(questions[:80])
         if isinstance(q, dict) and str(q.get("text") or "").strip()
@@ -539,7 +449,6 @@ async def feedback_meta(request: Request):
                 "can_manage_workflow": _is_feedback_admin(user),
                 "can_respond": True,
             },
-            "default_workflow": _default_workflow(),
             "field_types": sorted(FIELD_TYPES),
         }
     )
@@ -764,7 +673,7 @@ async def create_feedback_ticket(project_id: str, request: Request):
         "assigned_to": str(incoming.get("assigned_to") or "")[:160],
         "manager_username": str(incoming.get("manager_username") or "")[:160],
         "status": str(
-            incoming.get("status") or (statuses[0].get("id") if statuses else "draft")
+            incoming.get("status") or (statuses[0].get("id") if statuses else "")
         )[:80],
         "field_values": values,
         "comments": [],
