@@ -1243,14 +1243,17 @@ async def admin_assign_ticket(ticket_id: int, request: Request):
 
     conn = _db()
     try:
-        row = conn.execute("SELECT id FROM tickets WHERE id = ?", (ticket_id,)).fetchone()
+        row = conn.execute(
+            "SELECT id FROM tickets WHERE id = ?", (ticket_id,)
+        ).fetchone()
         if not row:
-            return JSONResponse({"success": False, "error": "Ticket not found"}, status_code=404)
-        
+            return JSONResponse(
+                {"success": False, "error": "Ticket not found"}, status_code=404
+            )
+
         val = assigned_admin if assigned_admin else None
         conn.execute(
-            "UPDATE tickets SET assigned_admin = ? WHERE id = ?",
-            (val, ticket_id)
+            "UPDATE tickets SET assigned_admin = ? WHERE id = ?", (val, ticket_id)
         )
         conn.commit()
     finally:
@@ -1262,7 +1265,7 @@ async def admin_assign_ticket(ticket_id: int, request: Request):
         "ticket_assigned",
         target_type="ticket",
         target_id=str(ticket_id),
-        details={"assigned_to": assigned_admin}
+        details={"assigned_to": assigned_admin},
     )
 
     return JSONResponse({"success": True})
@@ -1462,12 +1465,14 @@ async def admin_list_sql_tables(request: Request):
         }
         with get_sql_connection(conn_config) as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT TABLE_SCHEMA, TABLE_NAME
                 FROM INFORMATION_SCHEMA.TABLES
                 WHERE TABLE_TYPE = 'BASE TABLE'
                 ORDER BY TABLE_SCHEMA, TABLE_NAME
-                """)
+                """
+            )
             rows = cursor.fetchall() or []
         tables = []
         for schema, name in rows:
@@ -1497,13 +1502,15 @@ async def admin_list_pending_tables(request: Request):
         )
     with pg.pg_connect() as conn:
         with conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
                 SELECT table_id, title, owner_username, created_at, updated_at, promote_status, storage_backend
                 FROM tables_meta
                 WHERE promote_status IN ('pending_review')
                 ORDER BY updated_at DESC
                 LIMIT 200
-                """)
+                """
+            )
             rows = cur.fetchall() or []
     items = []
     for r in rows:
@@ -1620,12 +1627,14 @@ async def export_jobs_report(
     auth.require_admin(request, auth.get_current_user)
     conn = _db()
     try:
-        rows = conn.execute("""
+        rows = conn.execute(
+            """
             SELECT id, username, status, created_at, updated_at
             FROM job_queue
             ORDER BY created_at DESC
             LIMIT 10000
-            """).fetchall()
+            """
+        ).fetchall()
     finally:
         conn.close()
     import io
@@ -1666,12 +1675,14 @@ async def export_audit_report(
     auth.require_admin(request, auth.get_current_user)
     conn = _db()
     try:
-        rows = conn.execute("""
+        rows = conn.execute(
+            """
             SELECT username, action, details, ip_address, user_agent, created_at
             FROM audit_log
             ORDER BY created_at DESC
             LIMIT 10000
-            """).fetchall()
+            """
+        ).fetchall()
     finally:
         conn.close()
     import io

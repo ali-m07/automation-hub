@@ -32,32 +32,16 @@
         <div class="sidebar-section">
             <div class="sidebar-title">Workspace</div>
             <a href="/summary" class="sidebar-link">Summary</a>
-            {% if user and (user.role == 'admin' or 'data_tables_manual' in (user.modules or [])) %}
-            <a href="/data" class="sidebar-link">Data &amp; Connectors</a>
+            <a href="/projects" class="sidebar-link">Projects</a>
+            <a href="/projects#my-requests" class="sidebar-link">My Tickets</a>
+            {% if user and (user.role == 'admin' or 'feedback_180_admin' in (user.modules or [])) %}
+            <a href="/projects/admin" class="sidebar-link">Admin</a>
             {% endif %}
-            {% if user and (user.role == 'admin' or 'connectors_db' in (user.modules or [])) %}
-            <a href="/external-db" class="sidebar-link">External database</a>
-            {% endif %}
-            {% if user and (user.role == 'admin' or 'feedback_180' in (user.modules or []) or 'feedback_180_admin' in (user.modules or [])) %}
-            <a href="/feedback?view=assessments" class="sidebar-link">My Assessments</a>
-            <a href="/feedback?view=performance" class="sidebar-link">180 Performance</a>
-            <a href="/feedback?view=tickets" class="sidebar-link">My Process Tickets</a>
-            {% endif %}
-            {% if user and (user.role == 'admin' or 'process_designer_admin' in (user.modules or [])) %}
-            <a href="/process-designer" class="sidebar-link">Process Designer</a>
-            {% endif %}
-            <a href="/creative" class="sidebar-link">Creative Studio</a>
-            <a href="/gallery" class="sidebar-link">File Repository</a>
-            <a href="/messaging" class="sidebar-link">Messaging</a>
-            <a href="/support" class="sidebar-link">Support</a>
         </div>
 
         <div class="sidebar-section">
             <div class="sidebar-title">Account</div>
             <a href="#" class="sidebar-link" onclick="toggleNotificationsPanel(); closeSidebar(); return false;">Notifications</a>
-            {% if user and user.role == 'admin' %}
-            <a href="/admin" class="sidebar-link">Admin</a>
-            {% endif %}
             <a href="#" class="sidebar-link" onclick="toggleProfilePanel(); closeSidebar(); return false;">Profile</a>
             <a href="#" class="sidebar-link" onclick="toggleSecurityPanel(); closeSidebar(); return false;">Security</a>
             <a href="/logout" class="sidebar-link sidebar-link-danger">Logout</a>

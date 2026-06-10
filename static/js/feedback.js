@@ -115,6 +115,7 @@ function fbCollectProject() {
         fbCurrent.workflow.scale_max = scale[1] || 5;
         fbCurrent.workflow.deadline_days = Number(document.getElementById('fb-deadline')?.value || 0);
         fbCurrent.workflow.anonymous = Boolean(document.getElementById('fb-anonymous')?.checked);
+        fbCurrent.hidden = Boolean(document.getElementById('fb-hidden')?.checked);
         fbCurrent.participants.subjects = fbLines(document.getElementById('fb-subjects')?.value);
         fbCurrent.participants.reviewers = fbLines(document.getElementById('fb-reviewers')?.value);
         fbCollectScreens();
@@ -1031,6 +1032,7 @@ function fbRenderSetup() {
     document.getElementById('fb-deadline').value = fbCurrent.workflow?.deadline_days || '';
     document.getElementById('fb-scale').value = `${fbCurrent.workflow?.scale_min || 1}-${fbCurrent.workflow?.scale_max || 5}`;
     document.getElementById('fb-anonymous').checked = Boolean(fbCurrent.workflow?.anonymous);
+    if (document.getElementById('fb-hidden')) document.getElementById('fb-hidden').checked = Boolean(fbCurrent.hidden);
 }
 
 function fbRenderProjectList() {
@@ -1042,7 +1044,7 @@ function fbRenderProjectList() {
         list.innerHTML = '<div class="feedback-empty">No visible cycles yet.</div>';
         return;
     }
-    list.innerHTML = fbProjects.map((project) => `<button type="button" class="feedback-project ${project.id === fbCurrent.id ? 'active' : ''}" onclick="fbOpenProject('${project.id}')"><strong>${fbEscape(project.title || 'Untitled application')}</strong><span>${fbEscape(project.status || 'No status')} · ${(project.form_fields || []).length} ticket field(s) · ${(project.questions || []).length} assessment field(s)</span></button>`).join('');
+    list.innerHTML = fbProjects.map((project) => `<button type="button" class="feedback-project ${project.id === fbCurrent.id ? 'active' : ''}" onclick="fbOpenProject('${project.id}')"><strong>${fbEscape(project.title || 'Untitled application')}${project.hidden ? ' <span class="badge" style="background:#ef4444; color:#fff; font-size:0.7rem; padding:1px 4px; margin-left:4px;">Hidden</span>' : ''}</strong><span>${fbEscape(project.status || 'No status')} · ${(project.form_fields || []).length} ticket field(s) · ${(project.questions || []).length} assessment field(s)</span></button>`).join('');
 }
 
 function fbInitCanvasDragging() {
@@ -1485,7 +1487,8 @@ function fbRenderPortal() {
     
     // Group projects by category
     const categories = new Set();
-    fbProjects.forEach(proj => {
+    const visibleProjects = fbProjects.filter(p => !p.hidden);
+    visibleProjects.forEach(proj => {
         if (proj.category) categories.add(proj.category.trim());
     });
     if (categories.size === 0) categories.add('Common Requests');
@@ -1506,7 +1509,7 @@ function fbRenderPortal() {
     if (activeTitle) activeTitle.textContent = fbPortalActiveCategory;
     
     // Filter matching request types
-    const matching = fbProjects.filter(p => p.category === fbPortalActiveCategory || (!p.category && fbPortalActiveCategory === 'Common Requests'));
+    const matching = visibleProjects.filter(p => p.category === fbPortalActiveCategory || (!p.category && fbPortalActiveCategory === 'Common Requests'));
     fbRenderRequestTypesList(matching);
 }
 
@@ -1544,9 +1547,11 @@ function fbFilterPortal() {
     }
     
     const filtered = fbProjects.filter(p => 
-        p.title?.toLowerCase().includes(query) || 
-        p.description?.toLowerCase().includes(query) ||
-        p.category?.toLowerCase().includes(query)
+        !p.hidden && (
+            p.title?.toLowerCase().includes(query) || 
+            p.description?.toLowerCase().includes(query) ||
+            p.category?.toLowerCase().includes(query)
+        )
     );
     
     // Deselect categories
@@ -2118,6 +2123,11 @@ async function fbInitIssuePage(ticketId) {
         const badge = document.getElementById('fb-drawer-status-badge');
         badge.textContent = statusName;
         
+        const hiddenCheckbox = document.getElementById('fb-drawer-hidden-checkbox');
+        if (hiddenCheckbox) {
+            hiddenCheckbox.checked = Boolean(ticket.hidden);
+        }
+        
         // Render pickers and properties
         const currentUsername = document.querySelector('.sidebar-user div')?.textContent.trim() || '';
         const isEditable = fbPermissions.can_manage_workflow ||
@@ -2375,6 +2385,27 @@ function fbShowDesignerSubTab(tab, updateUrl = true) {
         const urlParams = new URLSearchParams(location.search);
         urlParams.set('tab', fbActiveDesignerSubTab);
         history.replaceState(null, '', `/projects/admin?${urlParams.toString()}`);
+    }
+}
+
+async function fbToggleTicketVisibility() {
+    const hiddenCheckbox = document.getElementById('fb-drawer-hidden-checkbox');
+    if (!hiddenCheckbox) return;
+    const isHidden = hiddenCheckbox.checked;
+    
+    try {
+        const res = await fetch(`/api/feedback/tickets/${encodeURIComponent(fbActiveTicketId)}/hide`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ hidden: isHidden }),
+            credentials: 'include'
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.detail || data.error || 'Failed to update visibility');
+        fbSetStatus(isHidden ? 'Ticket hidden/archived successfully.' : 'Ticket restored to visibility.', 'success');
+    } catch (error) {
+        fbSetStatus(error.message || 'Error updating ticket visibility.', 'error');
+        hiddenCheckbox.checked = !isHidden; // Revert
     }
 }
 

@@ -145,6 +145,22 @@ async def project_board(project_key: str, request: Request):
         and "feedback_180_admin" not in modules
     ):
         return RedirectResponse(url="/summary", status_code=302)
+
+    from automation_hub.projects.feedback.router import _load_store, _project_visible
+
+    store = _load_store()
+    project = next(
+        (
+            p
+            for p in store.get("projects", [])
+            if (p.get("key") or "").upper() == project_key.upper()
+            or p.get("id") == project_key
+        ),
+        None,
+    )
+    if not project or not _project_visible(project, user):
+        return RedirectResponse(url="/projects", status_code=302)
+
     templates = _get_templates(request)
     if not templates:
         return JSONResponse({"error": "Templates not available"}, status_code=500)
@@ -170,6 +186,18 @@ async def ticket_detail(ticket_id: str, request: Request):
         and "feedback_180_admin" not in modules
     ):
         return RedirectResponse(url="/summary", status_code=302)
+
+    from automation_hub.projects.feedback.router import (
+        _load_store,
+        _ticket_visible,
+        _find_ticket_and_project,
+    )
+
+    store = _load_store()
+    ticket, project = _find_ticket_and_project(store, ticket_id)
+    if not ticket or not project or not _ticket_visible(project, ticket, user):
+        return RedirectResponse(url="/projects", status_code=302)
+
     templates = _get_templates(request)
     if not templates:
         return JSONResponse({"error": "Templates not available"}, status_code=500)

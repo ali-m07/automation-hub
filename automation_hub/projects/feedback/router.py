@@ -241,6 +241,7 @@ def _sanitize_project(
     clean["created_at"] = (
         (existing or {}).get("created_at") or clean.get("created_at") or now
     )
+    clean["hidden"] = bool(project.get("hidden", (existing or {}).get("hidden", False)))
     clean["updated_at"] = now
 
     workflow = clean.get("workflow") if isinstance(clean.get("workflow"), dict) else {}
@@ -334,6 +335,8 @@ def _sanitize_project(
 def _project_visible(project: Dict[str, Any], user: Dict[str, Any]) -> bool:
     if _is_feedback_admin(user):
         return True
+    if project.get("hidden"):
+        return False
     username = user.get("username") or ""
     participants = project.get("participants") or {}
     manages_ticket = any(
@@ -371,6 +374,8 @@ def _ticket_visible(
 ) -> bool:
     if _is_feedback_admin(user):
         return True
+    if ticket.get("hidden"):
+        return False
     username = user.get("username") or ""
     return username in {
         ticket.get("created_by"),
@@ -876,9 +881,7 @@ async def update_ticket_direct(ticket_id: str, request: Request):
     payload = await request.json()
     incoming = payload.get("ticket")
     if not isinstance(incoming, dict):
-        raise HTTPException(
-            status_code=400, detail="Ticket payload is required"
-        )
+        raise HTTPException(status_code=400, detail="Ticket payload is required")
     store = _load_store()
     ticket, project = _find_ticket_and_project(store, ticket_id)
     if not ticket or not project:
@@ -907,9 +910,7 @@ async def update_ticket_direct(ticket_id: str, request: Request):
         ticket["assigned_to"] = str(incoming["assigned_to"])[:160]
     if "manager_username" in incoming:
         ticket["manager_username"] = str(incoming["manager_username"])[:160]
-    if "field_values" in incoming and isinstance(
-        incoming["field_values"], dict
-    ):
+    if "field_values" in incoming and isinstance(incoming["field_values"], dict):
         ticket.setdefault("field_values", {}).update(incoming["field_values"])
 
     ticket["updated_at"] = _now()
@@ -971,13 +972,9 @@ async def transition_ticket_direct(ticket_id: str, request: Request):
         None,
     )
     if not transition:
-        raise HTTPException(
-            status_code=400, detail="Transition is not available"
-        )
+        raise HTTPException(status_code=400, detail="Transition is not available")
     if not _condition_matches(transition, ticket.get("field_values") or {}):
-        raise HTTPException(
-            status_code=400, detail="Transition condition is not met"
-        )
+        raise HTTPException(status_code=400, detail="Transition condition is not met")
     if not _can_transition(transition, ticket, user):
         raise HTTPException(
             status_code=403,
@@ -997,5 +994,35 @@ async def transition_ticket_direct(ticket_id: str, request: Request):
             "to": ticket.get("status"),
         }
     )
+    _save_store(store)
+    return JSONResponse({"success": True, "ticket": ticket})
+
+
+@router.post("/projects/{project_id}/hide")
+async def hide_feedback_project(project_id: str, request: Request):
+    _require_feedback_admin(request)
+    payload = await request.json()
+    hidden = bool(payload.get("hidden", True))
+    store = _load_store()
+    project = _find_project(store, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    project["hidden"] = hidden
+    project["updated_at"] = _now()
+    _save_store(store)
+    return JSONResponse({"success": True, "project": project})
+
+
+@router.post("/tickets/{ticket_id}/hide")
+async def hide_ticket_direct(ticket_id: str, request: Request):
+    _require_feedback_admin(request)
+    payload = await request.json()
+    hidden = bool(payload.get("hidden", True))
+    store = _load_store()
+    ticket, project = _find_ticket_and_project(store, ticket_id)
+    if not ticket or not project:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    ticket["hidden"] = hidden
+    ticket["updated_at"] = _now()
     _save_store(store)
     return JSONResponse({"success": True, "ticket": ticket})
