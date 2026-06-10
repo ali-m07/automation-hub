@@ -31,6 +31,7 @@ image replacement, batch rendering, and ZIP downloads.
 - **Admin panel** – Users (pending/active/inactive), roles (admin/user), module permissions, approve/reject signups, edit user, change email, reset password, logout all sessions, login log, audit log, tickets (reply, status, priority, category), notifications config (signup/ticket/reply emails), dashboard stats.
 - **Support** – Users create tickets (subject, body, priority, category); admins reply; email notifications on reply; first response / resolved timestamps.
 - **Auth** – Session-based; signup (pending until approved); login; forgot password / reset by token; username = email; strong password rules. **Optional 2FA (TOTP)** – enable per user in Security panel; login then requires 6-digit code (e.g. Google Authenticator).
+- **Enterprise auth** – Optional Active Directory/LDAP login and OIDC single sign-on for Keycloak or any standards-compliant provider, with automatic local user provisioning.
 
 ### Tech stack
 

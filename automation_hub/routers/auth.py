@@ -13,6 +13,13 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from automation_hub.core import audit, auth, constants, db
 from automation_hub.core.notifications import send_signup_notification
 from automation_hub.services.email_service import EmailService
+from automation_hub.services.enterprise_auth import (
+    authenticate_ldap,
+    ldap_enabled,
+    oidc_config,
+    oidc_enabled,
+    provision_user,
+)
 
 try:
     import pyotp
@@ -110,6 +117,9 @@ async def login_page(request: Request):
             "step_2fa": step == "2fa",
             "pending_2fa_username": pending_2fa_username or "",
             "msg": request.query_params.get("msg"),
+            "ldap_enabled": ldap_enabled(),
+            "oidc_enabled": oidc_enabled(),
+            "oidc_provider_name": oidc_config()["name"],
         },
     )
 
@@ -144,7 +154,15 @@ async def login(
         conn.close()
 
     # اما همچنان رکورد واقعی DB را برای session_version و role استفاده می‌کنیم.
-    if (not record) or not auth.verify_password(password, record.get("password") or ""):
+    valid_local = bool(
+        record and auth.verify_password(password, record.get("password") or "")
+    )
+    if not valid_local and ldap_enabled():
+        try:
+            record = authenticate_ldap(username, password)
+        except Exception:
+            record = None
+    if not record:
         _log_login_failure(username, request, "invalid_credentials")
         return RedirectResponse(url="/login?error=invalid", status_code=302)
 
@@ -205,6 +223,63 @@ async def login(
 
     if (record.get("role") or "") == "admin":
         return RedirectResponse(url="/admin", status_code=302)
+    return RedirectResponse(url="/", status_code=302)
+
+
+@auth_router.get("/auth/oidc/login")
+async def oidc_login(request: Request):
+    if not oidc_enabled():
+        raise HTTPException(status_code=404, detail="OIDC is not enabled")
+    from authlib.integrations.starlette_client import OAuth
+
+    config = oidc_config()
+    oauth = OAuth()
+    client = oauth.register(
+        name="enterprise",
+        client_id=config["client_id"],
+        client_secret=config["client_secret"],
+        server_metadata_url=config["discovery_url"],
+        client_kwargs={"scope": config["scope"]},
+    )
+    redirect_uri = str(request.url_for("oidc_callback"))
+    return await client.authorize_redirect(request, redirect_uri)
+
+
+@auth_router.get("/auth/oidc/callback", name="oidc_callback")
+async def oidc_callback(request: Request):
+    if not oidc_enabled():
+        raise HTTPException(status_code=404, detail="OIDC is not enabled")
+    from authlib.integrations.starlette_client import OAuth
+
+    config = oidc_config()
+    oauth = OAuth()
+    client = oauth.register(
+        name="enterprise",
+        client_id=config["client_id"],
+        client_secret=config["client_secret"],
+        server_metadata_url=config["discovery_url"],
+        client_kwargs={"scope": config["scope"]},
+    )
+    token = await client.authorize_access_token(request)
+    claims = token.get("userinfo") or await client.userinfo(token=token)
+    username = claims.get("email") or claims.get("preferred_username")
+    record = provision_user(
+        username or "",
+        "oidc",
+        str(claims.get("sub") or ""),
+        str(claims.get("given_name") or ""),
+        str(claims.get("family_name") or ""),
+    )
+    if record.get("status") != "active":
+        return RedirectResponse(url="/login?error=inactive", status_code=302)
+    request.session["user"] = {
+        "username": record["username"],
+        "role": record.get("role") or "user",
+        "level": record.get("level") or "user",
+        "modules": auth.user_modules_from_record(record),
+        "session_version": record.get("session_version") or 0,
+    }
+    audit.audit_log(record["username"], "oidc_login")
     return RedirectResponse(url="/", status_code=302)
 
 

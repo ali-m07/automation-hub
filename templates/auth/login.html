@@ -38,11 +38,20 @@
                     <label for="password">Password</label>
                     <input type="password" id="password" name="password" class="form-control" placeholder="Enter your password" required>
                 </div>
+                {% if ldap_enabled %}
+                <p style="color:#6b7280; font-size:0.85rem;">Your Active Directory credentials are accepted here.</p>
+                {% endif %}
                 <button class="btn btn-success btn-large" type="submit">Sign in to platform</button>
                 <div style="margin-top: 12px; text-align: center;">
                     <a href="#" onclick="showForgotPassword(); return false;" style="font-size: 0.9rem; color: #3b82f6;">Forgot password?</a>
                 </div>
             </form>
+            {% if oidc_enabled %}
+            <div style="margin:16px 0; text-align:center; color:#6b7280;">or</div>
+            <a class="btn btn-primary btn-large" style="display:block; text-align:center;" href="/auth/oidc/login">
+                Sign in with {{ oidc_provider_name }}
+            </a>
+            {% endif %}
             {% endif %}
             <div id="forgot-password-form" style="display: none; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
                 <h3 style="margin-bottom: 12px;">Reset password</h3>

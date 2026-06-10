@@ -1,0 +1,6 @@
+export http_proxy="http://internal-proxy.snapp.tech:8118"
+export https_proxy="http://internal-proxy.snapp.tech:8118"
+export HTTP_PROXY="$http_proxy"
+export HTTPS_PROXY="$https_proxy"
+export NO_PROXY="localhost,127.0.0.1,::1,redis,postgres,automation-hub,172.16.0.0/12,10.0.0.0/8"
+export no_proxy="$NO_PROXY"

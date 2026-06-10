@@ -125,6 +125,12 @@ def init_database() -> None:
             conn.execute(
                 "ALTER TABLE users ADD COLUMN totp_enabled INTEGER NOT NULL DEFAULT 0"
             )
+        if "auth_provider" not in cols:
+            conn.execute(
+                "ALTER TABLE users ADD COLUMN auth_provider TEXT NOT NULL DEFAULT 'local'"
+            )
+        if "external_subject" not in cols:
+            conn.execute("ALTER TABLE users ADD COLUMN external_subject TEXT")
 
         # Backfill created_at for existing rows (used for request timestamps)
         now = utc_now_iso()

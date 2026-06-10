@@ -1,0 +1,2 @@
+Acquire::http::Proxy "http://internal-proxy.snapp.tech:8118/";
+Acquire::https::Proxy "http://internal-proxy.snapp.tech:8118/";
