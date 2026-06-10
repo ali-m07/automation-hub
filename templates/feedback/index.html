@@ -3,121 +3,240 @@
 {% block title %}Reviews & Approvals - Servexa{% endblock %}
 {% block subtitle %}Jira-style 180 workflow board, screens, participants and responses{% endblock %}
 
-{% block extra_css %}
+{% {% block extra_css %}
 <style>
     /* Visual Workflow Canvas Styles */
     .workflow-canvas-container {
         position: relative;
         width: 100%;
-        height: 520px;
+        height: 500px;
         background-color: var(--bg-primary);
         background-image: radial-gradient(var(--border-color) 1.5px, transparent 1.5px);
         background-size: 24px 24px;
         border: 1px solid var(--border-color);
         border-radius: 16px;
-        overflow: hidden;
+        overflow: auto;
         margin-bottom: 24px;
         user-select: none;
     }
+    .workflow-canvas-container::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+    .workflow-canvas-container::-webkit-scrollbar-track {
+        background: var(--bg-secondary);
+    }
+    .workflow-canvas-container::-webkit-scrollbar-thumb {
+        background: var(--border-color);
+        border-radius: 4px;
+    }
+    .workflow-canvas-container::-webkit-scrollbar-thumb:hover {
+        background: var(--text-secondary);
+    }
+
     .workflow-canvas-svg {
         position: absolute;
         inset: 0;
-        width: 100%;
-        height: 100%;
+        width: 1250px;
+        height: 480px;
         pointer-events: none;
         z-index: 1;
     }
     .workflow-canvas-nodes {
         position: absolute;
         inset: 0;
-        width: 100%;
-        height: 100%;
+        width: 1250px;
+        height: 480px;
         z-index: 2;
         pointer-events: auto;
     }
+
+    /* Redesigned clean capsule JIRA nodes */
     .workflow-node {
         position: absolute;
-        width: 190px;
-        background: var(--surface-raised);
-        border: 2px solid var(--border-color);
-        border-radius: 14px;
-        padding: 14px;
-        box-shadow: 0 10px 25px var(--shadow);
-        cursor: grab;
+        width: 175px;
+        height: 44px;
         display: flex;
-        flex-direction: column;
-        gap: 8px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-size: 0.76rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        cursor: grab;
         z-index: 10;
-        transition: border-color 0.15s, box-shadow 0.15s;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+        border: 1.5px solid transparent;
+        transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s, opacity 0.2s;
+        text-align: center;
+        padding: 0 12px;
     }
     .workflow-node:active {
         cursor: grabbing;
+        transform: scale(0.97);
+    }
+    
+    /* Todo Category (Grey) */
+    .workflow-node.todo-node {
+        background: var(--bg-tertiary);
+        border-color: var(--border-color);
+        color: var(--text-primary);
     }
     .workflow-node.active-node {
-        border-color: var(--accent);
         box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent);
     }
-    .workflow-node-title {
-        font-weight: 800;
-        font-size: 0.95rem;
-        color: var(--text-primary);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+    
+    /* Doing Category (Blue) */
+    .workflow-node.doing-node {
+        background: #0284c7;
+        border-color: #0369a1;
+        color: #ffffff;
     }
-    .workflow-node-meta {
-        font-size: 0.76rem;
-        color: var(--text-secondary);
+    [data-theme="dark"] .workflow-node.doing-node {
+        background: #0369a1;
+        border-color: #0284c7;
+    }
+    
+    /* Done Category (Green) */
+    .workflow-node.done-node {
+        background: #16a34a;
+        border-color: #15803d;
+        color: #ffffff;
+    }
+    [data-theme="dark"] .workflow-node.done-node {
+        background: #15803d;
+        border-color: #16a34a;
+    }
+
+    /* Start Circle Node */
+    .workflow-node-start {
+        position: absolute;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: #9ca3af;
+        border: 2px solid #6b7280;
+        z-index: 15;
         display: flex;
-        justify-content: space-between;
         align-items: center;
+        justify-content: center;
     }
-    .workflow-node-actions {
+    [data-theme="dark"] .workflow-node-start {
+        background: #4b5563;
+        border-color: #374151;
+    }
+
+    /* Hover actions on builder nodes */
+    .workflow-node-hover-actions {
+        position: absolute;
+        top: -26px;
+        right: 0;
+        display: none;
+        gap: 4px;
+        z-index: 50;
+    }
+    .workflow-node:hover .workflow-node-hover-actions {
         display: flex;
-        gap: 6px;
-        margin-top: 4px;
-        border-top: 1px solid var(--border-color);
-        padding-top: 8px;
     }
-    .workflow-node-actions button {
-        flex: 1;
-        padding: 4px 6px;
-        font-size: 0.72rem;
+    .workflow-node-hover-actions button {
+        padding: 2px 8px;
+        font-size: 0.65rem;
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 700;
+        box-shadow: 0 2px 6px var(--shadow);
+    }
+    .workflow-node-hover-actions button:hover {
+        background: var(--bg-tertiary);
+        border-color: var(--accent);
+        color: var(--accent);
+    }
+
+    /* Connector handle */
+    .workflow-node-connector {
+        position: absolute;
+        right: -8px;
+        top: calc(50% - 8px);
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--bg-primary);
+        border: 1.5px solid var(--accent);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 800;
+        cursor: crosshair;
+        z-index: 20;
+        color: var(--accent);
+        opacity: 0;
+        transition: opacity 0.15s, transform 0.1s;
+    }
+    .workflow-node:hover .workflow-node-connector {
+        opacity: 1;
+    }
+    .workflow-node-connector:hover {
+        transform: scale(1.25);
+        background: var(--accent);
+        color: #ffffff;
     }
     
     /* SVG Link path styling */
     .workflow-svg-path {
         fill: none;
         stroke: var(--text-secondary);
-        stroke-width: 3;
+        stroke-width: 2;
         stroke-linecap: round;
         transition: stroke 0.15s, stroke-width 0.15s;
     }
     .workflow-svg-path.active-link {
         stroke: var(--accent);
-        stroke-width: 4;
+        stroke-width: 3;
     }
     .workflow-link-label {
         position: absolute;
         background: var(--bg-primary);
         border: 1px solid var(--border-color);
-        border-radius: 999px;
-        padding: 3px 12px;
-        font-size: 0.74rem;
-        font-weight: 800;
-        color: var(--text-primary);
-        box-shadow: 0 4px 12px var(--shadow);
+        border-radius: 4px;
+        padding: 2px 8px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--text-secondary);
+        box-shadow: 0 2px 6px var(--shadow);
         cursor: pointer;
         transform: translate(-50%, -50%);
         z-index: 30;
         white-space: nowrap;
         pointer-events: auto;
-        transition: border-color 0.15s, color 0.15s, transform 0.1s;
+        transition: border-color 0.15s, color 0.15s;
     }
     .workflow-link-label:hover {
         border-color: var(--accent);
         color: var(--accent);
-        transform: translate(-50%, -50%) scale(1.05);
+    }
+
+    /* Glowing flow visualizer state */
+    @keyframes pulse-highlight {
+        0% { box-shadow: 0 0 0 0px rgba(15, 118, 110, 0.7); }
+        70% { box-shadow: 0 0 0 8px rgba(15, 118, 110, 0); }
+        100% { box-shadow: 0 0 0 0px rgba(15, 118, 110, 0); }
+    }
+    .workflow-node.active-flow-node {
+        border-color: var(--accent) !important;
+        border-width: 2px !important;
+        animation: pulse-highlight 2s infinite;
+        transform: scale(1.02);
+        z-index: 100 !important;
+        opacity: 1 !important;
+    }
+    .workflow-node.inactive-flow-node {
+        opacity: 0.45 !important;
     }
 
     /* Ticket Kanban Board Styles */
@@ -287,6 +406,180 @@
     .user-autocomplete-item:hover {
         background: var(--bg-secondary);
     }
+
+    /* Jira Portal / Help Center Aesthetics */
+    .portal-search-banner {
+        background: radial-gradient(circle at 10% 20%, color-mix(in srgb, var(--accent) 7%, var(--bg-secondary)) 0%, var(--bg-secondary) 90%);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 36px;
+        text-align: center;
+        margin-bottom: 24px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+    }
+    .portal-search-banner h2 {
+        font-size: 1.8rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        margin: 0;
+    }
+    .portal-search-banner p {
+        font-size: 0.95rem;
+        color: var(--text-secondary);
+        margin: 0;
+    }
+    .portal-search-wrapper {
+        position: relative;
+        max-width: 500px;
+        width: 100%;
+        margin-top: 4px;
+    }
+    .portal-search-input {
+        width: 100%;
+        padding: 12px 16px 12px 42px !important;
+        border-radius: 999px !important;
+        font-size: 1rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        border: 1.5px solid var(--border-color) !important;
+        background: var(--bg-primary) !important;
+    }
+    .portal-search-input:focus {
+        border-color: var(--accent) !important;
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent) !important;
+    }
+    .portal-search-icon {
+        position: absolute;
+        left: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 1.1rem;
+        color: var(--text-secondary);
+        pointer-events: none;
+    }
+    
+    .portal-layout {
+        display: grid;
+        grid-template-columns: 240px 1fr;
+        gap: 28px;
+        align-items: start;
+        margin-top: 8px;
+    }
+    .portal-sidebar {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 14px;
+        padding: 12px;
+    }
+    .portal-categories-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    .portal-category-item {
+        padding: 10px 14px;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-weight: 650;
+        color: var(--text-primary);
+        cursor: pointer;
+        transition: background 0.15s, color 0.15s;
+    }
+    .portal-category-item:hover {
+        background: var(--bg-tertiary);
+    }
+    .portal-category-item.active {
+        background: var(--accent-soft);
+        color: var(--on-accent-soft);
+    }
+    
+    .portal-section-title {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        margin-bottom: 18px;
+        border-bottom: 2px solid var(--border-color);
+        padding-bottom: 8px;
+    }
+    
+    .portal-request-types-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    .portal-request-card {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        padding: 18px 24px;
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        cursor: pointer;
+        box-shadow: 0 4px 10px var(--shadow);
+        transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+    }
+    .portal-request-card:hover {
+        transform: translateY(-2px);
+        border-color: var(--accent);
+        box-shadow: 0 8px 20px var(--shadow);
+    }
+    .portal-request-card-icon {
+        font-size: 2.2rem;
+        min-width: 54px;
+        height: 54px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-secondary);
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+    }
+    .portal-request-card-content {
+        flex: 1;
+    }
+    .portal-request-card-title {
+        font-size: 1.08rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        margin-bottom: 4px;
+    }
+    .portal-request-card-description {
+        font-size: 0.88rem;
+        color: var(--text-secondary);
+        line-height: 1.4;
+    }
+    .portal-request-card-arrow {
+        font-size: 1.25rem;
+        color: var(--text-secondary);
+        font-weight: bold;
+        transition: transform 0.15s;
+    }
+    .portal-request-card:hover .portal-request-card-arrow {
+        transform: translateX(4px);
+        color: var(--accent);
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .table th, .table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .table tbody tr {
+        cursor: pointer;
+        transition: background 0.15s;
+    }
+    .table tbody tr:hover {
+        background: var(--bg-secondary);
+    }
 </style>
 {% endblock %}
 
@@ -305,10 +598,12 @@
 </header>
 
 <nav class="feedback-view-nav" aria-label="Reviews and performance">
-    <button type="button" onclick="fbShowView('assessments')">My Assessments</button>
-    <button type="button" onclick="fbShowView('performance')">180 Performance</button>
-    <button type="button" onclick="fbShowView('tickets')">My Tickets</button>
+    <button type="button" onclick="fbShowView('portal')">Help Center</button>
+    <button type="button" onclick="fbShowView('my_requests')">My Requests</button>
+    <button type="button" onclick="fbShowView('tickets')" data-agent-admin-only>Agent Board</button>
     <button type="button" onclick="fbShowView('designer')" data-admin-only>Admin Designer</button>
+    <button type="button" onclick="fbShowView('assessments')" style="margin-left: auto;">My Assessments</button>
+    <button type="button" onclick="fbShowView('performance')">180 Performance</button>
 </nav>
 
 <div class="feedback-shell">
@@ -333,6 +628,22 @@
                 <label>Optional deadline (days)<input id="fb-deadline" type="number" min="0" max="365" class="form-control"></label>
                 <label>Rating scale<select id="fb-scale" class="form-control"><option value="1-5">1 to 5</option><option value="1-10">1 to 10</option><option value="0-100">0 to 100</option></select></label>
             </div>
+            <div class="feedback-grid two" style="margin-top: 12px;">
+                <label>Portal Category / Group<input id="fb-category" class="form-control" placeholder="e.g. Computers, Logins & Accounts" value="Common Requests"></label>
+                <label>Portal Icon
+                    <select id="fb-icon" class="form-control">
+                        <option value="💻">💻 Computer / Hardware</option>
+                        <option value="📶">📶 Wi-Fi / Network</option>
+                        <option value="✈️">✈️ Flight / Travel</option>
+                        <option value="🔑">🔑 Password / Access</option>
+                        <option value="👤">👤 User Account</option>
+                        <option value="❓" selected>❓ General Help / QA</option>
+                        <option value="🛠️">🛠️ IT Support / Maintenance</option>
+                        <option value="💰">💰 Expense / Finance</option>
+                        <option value="📋">📋 General Request</option>
+                    </select>
+                </label>
+            </div>
             <label>Description<textarea id="fb-description" class="form-control" rows="3" placeholder="Explain who is being reviewed and what decisions this feedback supports."></textarea></label>
             <label class="feedback-toggle"><input id="fb-anonymous" type="checkbox"> Keep reviewer identity anonymous in summaries</label>
             <div id="fb-status" class="status-box info" style="display:none;"></div>
@@ -352,6 +663,7 @@
                             <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--accent)"/>
                         </marker>
                     </defs>
+                    <path id="fb-temp-connection-path" stroke="var(--accent)" stroke-width="3" stroke-dasharray="5,5" fill="none" style="display:none;"></path>
                 </svg>
                 <div id="fb-workflow-nodes" class="workflow-canvas-nodes"></div>
             </div>
@@ -382,13 +694,96 @@
             <div class="feedback-card-head"><div><h2>Approvals and transitions</h2><p>Control who may move a ticket between statuses and optionally require a field condition.</p></div><button class="btn" type="button" data-admin-only onclick="fbAddTransition()">+ Add transition</button></div>
             <div id="fb-transitions" class="question-builder"></div>
         </section>
+        <!-- Help Center (Portal) -->
+        <section class="card feedback-card" id="fb-view-portal" data-fb-view="portal">
+            <div class="portal-search-banner">
+                <h2>Help Center</h2>
+                <p>Welcome! You can raise a request from the options provided below.</p>
+                <div class="portal-search-wrapper">
+                    <input type="text" id="fb-portal-search" class="form-control portal-search-input" placeholder="What do you need help with?" oninput="fbFilterPortal()">
+                    <span class="portal-search-icon">🔍</span>
+                </div>
+            </div>
+            
+            <div class="portal-layout">
+                <!-- Sidebar categories -->
+                <aside class="portal-sidebar">
+                    <ul id="fb-portal-categories-list" class="portal-categories-list">
+                        <!-- dynamically generated categories -->
+                    </ul>
+                </aside>
+                
+                <!-- Request Types list -->
+                <div class="portal-content">
+                    <h3 id="fb-portal-active-category-title" class="portal-section-title">Common Requests</h3>
+                    <div id="fb-portal-request-types" class="portal-request-types-grid">
+                        <!-- dynamically generated request cards -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Portal Request Submission Form Modal -->
+        <div id="fb-portal-request-modal" class="modal-overlay" style="display:none; z-index: 2100;">
+            <div class="modal-content" style="max-width: 680px; width: 95%;">
+                <div class="modal-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
+                    <h3 style="display:flex; align-items:center; gap:8px;">
+                        <span id="fb-portal-form-icon" style="font-size:1.6rem;">💻</span>
+                        <span id="fb-portal-form-title">Raise a Request</span>
+                    </h3>
+                    <button type="button" class="btn-close-modal" onclick="fbClosePortalRequestForm()">&times;</button>
+                </div>
+                <div style="margin-bottom: 16px; font-size: 0.9rem; color: var(--text-secondary);" id="fb-portal-form-desc">
+                    Request type description...
+                </div>
+                <div id="fb-portal-form-fields-container" style="display:flex; flex-direction:column; gap:14px; max-height: 55vh; overflow-y: auto; padding-right: 6px;">
+                    <!-- dynamic fields here -->
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px; border-top: 1px solid var(--border-color); padding-top:16px;">
+                    <button class="btn" style="background:var(--bg-tertiary);" onclick="fbClosePortalRequestForm()">Cancel</button>
+                    <button class="btn btn-primary" type="button" onclick="fbSubmitPortalRequest()">Create request</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- My Requests Tracking Tab -->
+        <section class="card feedback-card" id="fb-view-my-requests" data-fb-view="my_requests">
+            <div class="feedback-card-head">
+                <div>
+                    <div class="eyebrow">Customer Portal</div>
+                    <h2>My Requests</h2>
+                    <p>Track your submitted requests, status, and communication history.</p>
+                </div>
+            </div>
+            
+            <div style="overflow-x: auto; margin-top: 16px;">
+                <table class="table" style="width:100%; border-collapse: collapse; text-align: left;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid var(--border-color); color: var(--text-secondary); font-size: 0.85rem; font-weight: 700;">
+                            <th style="padding: 12px 16px; width: 120px;">Key</th>
+                            <th style="padding: 12px 16px; width: 160px;">Request Type</th>
+                            <th style="padding: 12px 16px;">Summary</th>
+                            <th style="padding: 12px 16px; width: 130px;">Status</th>
+                            <th style="padding: 12px 16px; width: 150px;">Created</th>
+                            <th style="padding: 12px 16px; width: 150px;">Last Update</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fb-my-requests-tbody" style="font-size: 0.92rem;">
+                        <!-- requests rows -->
+                    </tbody>
+                </table>
+                <div id="fb-my-requests-empty" class="feedback-empty" style="display:none;">
+                    You have not submitted any service requests yet.
+                </div>
+            </div>
+        </section>
 
         <section class="card feedback-card" id="tickets" data-fb-view="tickets">
             <div class="feedback-card-head">
                 <div>
-                    <div class="eyebrow">My work</div>
-                    <h2>Tickets and processes</h2>
-                    <p>Create work items, select assignee and manager, configure reviewers, and transition through workflow statuses.</p>
+                    <div class="eyebrow">Agent Console</div>
+                    <h2>Agent Board</h2>
+                    <p>Manage process tickets, transition through workflow statuses, and assign tasks.</p>
                 </div>
             </div>
             
@@ -404,6 +799,7 @@
                     <button class="btn" type="button" id="fb-filter-approvals" onclick="fbSetBoardFilter('approvals')">Pending my approval</button>
                 </div>
                 <div style="margin-left: auto; display:flex; gap:8px;">
+                    <button class="btn" type="button" onclick="fbOpenWorkflowModal()" style="font-weight:700;">View Workflow</button>
                     <a class="btn" id="fb-export-mine-csv" href="/api/feedback/tickets/report.csv?scope=mine">Export my CSV</a>
                     <button class="btn btn-primary" type="button" onclick="fbOpenCreateTicketModal()">+ Create Ticket</button>
                 </div>
@@ -526,7 +922,10 @@
                     
                     <div style="display:grid; grid-template-columns:auto 1fr; gap:12px 14px; font-size:0.9rem; align-items:center;">
                         <div style="font-weight:600; color:var(--text-secondary);">Status</div>
-                        <div><span id="fb-drawer-status-badge" class="badge badge-medium">Draft</span></div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span id="fb-drawer-status-badge" class="badge badge-medium">Draft</span>
+                            <a href="#" onclick="fbOpenWorkflowModal(true); return false;" style="font-size:0.75rem; font-weight:700; color:var(--accent); text-decoration:underline;">View Flow</a>
+                        </div>
 
                         <div style="font-weight:600; color:var(--text-secondary);">Assignee</div>
                         <div id="fb-drawer-assignee-container" class="user-picker-wrapper"></div>
@@ -548,6 +947,35 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Workflow Modal -->
+    <div id="fb-workflow-modal" class="modal-overlay" style="display:none; z-index: 2500;">
+        <div class="modal-content" style="max-width: 1100px; width: 95%; height: 620px; display: flex; flex-direction: column;">
+            <div class="modal-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+                <h3>Workflow Diagram: <span id="fb-workflow-modal-title" style="color:var(--accent);">Jira Epics Workflow</span></h3>
+                <button type="button" class="btn-close-modal" onclick="fbCloseWorkflowModal()">&times;</button>
+            </div>
+            <div class="modal-body" style="flex: 1; overflow: auto; padding: 16px; background: var(--bg-tertiary); position: relative;">
+                <div id="fb-modal-canvas-container" class="workflow-canvas-container" style="height: 100%; border: none; margin: 0; background: var(--bg-primary);">
+                    <svg id="fb-modal-workflow-svg" class="workflow-canvas-svg" style="width:1250px; height:500px;">
+                        <defs>
+                            <marker id="modal-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                <path d="M 0 1 L 10 5 L 0 9 z" fill="#6b7280"/>
+                            </marker>
+                            <marker id="modal-arrow-active" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--accent)"/>
+                            </marker>
+                        </defs>
+                        <path id="fb-modal-temp-connection-path" stroke="var(--accent)" stroke-width="3" stroke-dasharray="5,5" fill="none" style="display:none;"></path>
+                    </svg>
+                    <div id="fb-modal-workflow-nodes" class="workflow-canvas-nodes" style="width:1250px; height:500px;"></div>
+                </div>
+            </div>
+            <div style="padding: 12px 20px; border-top: 1px solid var(--border-color); text-align: right; background: var(--bg-secondary);">
+                <button class="btn btn-primary" onclick="fbCloseWorkflowModal()">Close Diagram</button>
             </div>
         </div>
     </div>

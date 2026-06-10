@@ -231,6 +231,8 @@ def _sanitize_project(
     clean["description"] = str(clean.get("description") or "")[:1000]
     clean["cycle"] = str(clean.get("cycle") or "")[:80]
     clean["status"] = str(clean.get("status") or "")[:80]
+    clean["category"] = str(clean.get("category") or "Common Requests")[:120]
+    clean["icon"] = str(clean.get("icon") or "question")[:80]
     clean["owner_username"] = (
         (existing or {}).get("owner_username") or user.get("username") or ""
     )
