@@ -4,6 +4,8 @@ const FB_DEFAULT_PROJECT = {
     cycle: '',
     description: '',
     status: '',
+    category: 'Common Requests',
+    icon: '❓',
     workflow: {
         scale_min: 1,
         scale_max: 5,
@@ -18,6 +20,34 @@ const FB_DEFAULT_PROJECT = {
     form_fields: [],
     tickets: [],
     responses: []
+};
+
+const FB_JIRA_EPICS_WORKFLOW = {
+    statuses: [
+        { id: 'in_definition', name: 'IN DEFINITION', category: 'todo', screen_id: '', description: 'Initial drafting stage', x: 80, y: 120 },
+        { id: 'refinement', name: 'REFINEMENT', category: 'todo', screen_id: '', description: 'Backlog refinement', x: 280, y: 120 },
+        { id: 'dor_review', name: 'DOR REVIEW', category: 'todo', screen_id: '', description: 'Definition of Ready review', x: 500, y: 120 },
+        { id: 'story_task_creation', name: 'STORY AND TASK CREATION', category: 'todo', screen_id: '', description: 'Breaking down epics into sub-items', x: 340, y: 240 },
+        { id: 'backlog', name: 'BACKLOG', category: 'todo', screen_id: '', description: 'Ready for planning', x: 680, y: 120 },
+        { id: 'in_progress', name: 'IN PROGRESS', category: 'doing', screen_id: '', description: 'Development in progress', x: 850, y: 120 },
+        { id: 'on_hold', name: 'ON HOLD', category: 'doing', screen_id: '', description: 'Blocked or paused', x: 850, y: 20 },
+        { id: 'done', name: 'DONE', category: 'done', screen_id: '', description: 'Fully completed and deployed', x: 1040, y: 120 }
+    ],
+    screens: [
+        { id: 'screen_default', name: 'Default Screen', description: 'Standard request intake fields', fields: [] }
+    ],
+    transitions: [
+        { id: 't1', name: 'Refine', from_status: 'in_definition', to_status: 'refinement', approver_type: 'any_user' },
+        { id: 't2', name: 'Refine', from_status: 'refinement', to_status: 'story_task_creation', approver_type: 'any_user' },
+        { id: 't3', name: 'Next', from_status: 'story_task_creation', to_status: 'dor_review', approver_type: 'any_user' },
+        { id: 't4', name: 'Reject', from_status: 'dor_review', to_status: 'refinement', approver_type: 'any_user' },
+        { id: 't5', name: 'Accept', from_status: 'dor_review', to_status: 'backlog', approver_type: 'any_user' },
+        { id: 't6', name: 'Reject', from_status: 'backlog', to_status: 'refinement', approver_type: 'any_user' },
+        { id: 't7', name: 'Begin Work', from_status: 'backlog', to_status: 'in_progress', approver_type: 'any_user' },
+        { id: 't8', name: 'Hold', from_status: 'in_progress', to_status: 'on_hold', approver_type: 'any_user' },
+        { id: 't9', name: 'Begin Work', from_status: 'on_hold', to_status: 'in_progress', approver_type: 'any_user' },
+        { id: 't10', name: 'Done', from_status: 'in_progress', to_status: 'done', approver_type: 'any_user' }
+    ]
 };
 
 const FB_COLUMNS = [
@@ -36,10 +66,13 @@ let fbDraggedStatusId = null;
 let fbActiveTicketId = null;
 let fbSelectedBoardProjectId = '';
 let fbBoardFilter = 'all'; // 'all' | 'mine' | 'approvals'
+let fbPortalActiveCategory = '';
+let fbPortalFormProjectId = '';
 
 // Visual Canvas Dragging
 let fbCanvasDraggingNode = null;
 let fbCanvasDragOffset = { x: 0, y: 0 };
+let fbCanvasConnectingFromStatusId = null;
 
 function structuredCloneSafe(value) {
     return JSON.parse(JSON.stringify(value));
@@ -75,6 +108,8 @@ function fbCollectProject() {
         fbCurrent.title = document.getElementById('fb-title')?.value.trim() || 'Untitled form';
         fbCurrent.cycle = document.getElementById('fb-cycle')?.value.trim() || '';
         fbCurrent.description = document.getElementById('fb-description')?.value.trim() || '';
+        fbCurrent.category = document.getElementById('fb-category')?.value.trim() || 'Common Requests';
+        fbCurrent.icon = document.getElementById('fb-icon')?.value || '❓';
         fbCurrent.workflow.scale_min = scale[0] || 1;
         fbCurrent.workflow.scale_max = scale[1] || 5;
         fbCurrent.workflow.deadline_days = Number(document.getElementById('fb-deadline')?.value || 0);
@@ -142,14 +177,18 @@ function fbCollectQuestions() {
 
 function fbSetAdminMode() {
     const isAdmin = fbPermissions.can_manage_workflow;
+    const isAgentOrAdmin = fbPermissions.can_manage_workflow || (fbPermissions.can_respond && fbProjects.some(p => p.tickets?.length > 0));
+    
     document.body.classList.toggle('fb-readonly-user', !isAdmin);
     document.querySelectorAll('[data-admin-only]').forEach((el) => { el.style.display = isAdmin ? '' : 'none'; });
+    document.querySelectorAll('[data-agent-admin-only]').forEach((el) => { el.style.display = isAgentOrAdmin ? '' : 'none'; });
+    
     const adminHeadings = ['Application setup', 'Workflow builder', 'Participants', 'Assessment fields', 'Ticket form builder', 'Approvals and transitions'];
     document.querySelectorAll('.feedback-card').forEach(card => {
         const heading = card.querySelector('h2')?.textContent.trim();
         if (adminHeadings.includes(heading)) card.style.display = isAdmin ? '' : 'none';
     });
-    ['fb-title', 'fb-cycle', 'fb-description', 'fb-deadline', 'fb-scale', 'fb-anonymous', 'fb-subjects', 'fb-reviewers'].forEach((id) => {
+    ['fb-title', 'fb-cycle', 'fb-description', 'fb-deadline', 'fb-scale', 'fb-anonymous', 'fb-subjects', 'fb-reviewers', 'fb-category', 'fb-icon'].forEach((id) => {
         const el = document.getElementById(id);
         if (el) el.disabled = !isAdmin;
     });
@@ -193,7 +232,8 @@ function fbRenderPublishedState() {
 
 function fbShowView(view, updateUrl = true) {
     const isAdmin = fbPermissions.can_manage_workflow;
-    const selected = ['assessments', 'performance', 'tickets', 'designer'].includes(view) ? view : 'assessments';
+    const selected = ['portal', 'my_requests', 'tickets', 'designer', 'assessments', 'performance'].includes(view) ? view : 'portal';
+    
     document.querySelectorAll('[data-fb-view]').forEach(section => {
         section.style.display = section.dataset.fbView === selected ? '' : 'none';
     });
@@ -202,17 +242,28 @@ function fbShowView(view, updateUrl = true) {
         const heading = card.querySelector('h2')?.textContent.trim();
         if (adminHeadings.includes(heading)) card.style.display = isAdmin && selected === 'designer' ? '' : 'none';
     });
-    document.querySelector('.feedback-sidebar').style.display = isAdmin && selected === 'designer' ? '' : 'none';
-    document.querySelector('.feedback-shell').classList.toggle('single-view', !(isAdmin && selected === 'designer'));
+    
+    const sidebar = document.querySelector('.feedback-sidebar');
+    if (sidebar) sidebar.style.display = isAdmin && selected === 'designer' ? '' : 'none';
+    
+    const shell = document.querySelector('.feedback-shell');
+    if (shell) shell.classList.toggle('single-view', !(isAdmin && selected === 'designer'));
+    
     document.querySelectorAll('.feedback-view-nav button').forEach(button => {
         button.classList.toggle('active', button.getAttribute('onclick')?.includes(`'${selected}'`));
     });
-    if (selected === 'tickets') {
+    
+    if (selected === 'portal') {
+        fbRenderPortal();
+    } else if (selected === 'my_requests') {
+        fbRenderMyRequests();
+    } else if (selected === 'tickets') {
         if (!fbSelectedBoardProjectId && fbCurrent.id) {
             fbSelectedBoardProjectId = fbCurrent.id;
         }
         fbRenderTickets();
     }
+    
     if (updateUrl) {
         history.replaceState(null, '', `/feedback?view=${encodeURIComponent(selected)}`);
     }
@@ -1008,6 +1059,8 @@ function fbRenderSetup() {
     document.getElementById('fb-title').value = fbCurrent.title || '';
     document.getElementById('fb-cycle').value = fbCurrent.cycle || '';
     document.getElementById('fb-description').value = fbCurrent.description || '';
+    if (document.getElementById('fb-category')) document.getElementById('fb-category').value = fbCurrent.category || 'Common Requests';
+    if (document.getElementById('fb-icon')) document.getElementById('fb-icon').value = fbCurrent.icon || '❓';
     document.getElementById('fb-deadline').value = fbCurrent.workflow?.deadline_days || '';
     document.getElementById('fb-scale').value = `${fbCurrent.workflow?.scale_min || 1}-${fbCurrent.workflow?.scale_max || 5}`;
     document.getElementById('fb-anonymous').checked = Boolean(fbCurrent.workflow?.anonymous);
@@ -1030,24 +1083,46 @@ function fbInitCanvasDragging() {
     if (!nodesContainer) return;
     
     nodesContainer.addEventListener('mousemove', (e) => {
-        if (!fbCanvasDraggingNode) return;
         const container = document.getElementById('fb-workflow-canvas-container');
         const containerRect = container.getBoundingClientRect();
         
-        let newX = e.clientX - containerRect.left - fbCanvasDragOffset.x;
-        let newY = e.clientY - containerRect.top - fbCanvasDragOffset.y;
-        
-        // Boundaries
-        newX = Math.max(10, Math.min(newX, containerRect.width - 200));
-        newY = Math.max(10, Math.min(newY, containerRect.height - 100));
-        
-        fbCanvasDraggingNode.style.left = `${newX}px`;
-        fbCanvasDraggingNode.style.top = `${newY}px`;
-        
-        fbDrawWorkflowConnections();
+        if (fbCanvasDraggingNode) {
+            let newX = e.clientX - containerRect.left - fbCanvasDragOffset.x;
+            let newY = e.clientY - containerRect.top - fbCanvasDragOffset.y;
+            
+            // Boundaries
+            newX = Math.max(10, Math.min(newX, containerRect.width - 200));
+            newY = Math.max(10, Math.min(newY, containerRect.height - 100));
+            
+            fbCanvasDraggingNode.style.left = `${newX}px`;
+            fbCanvasDraggingNode.style.top = `${newY}px`;
+            
+            fbDrawWorkflowConnections();
+        } else if (fbCanvasConnectingFromStatusId) {
+            // Draw temporary connection line
+            const fromNode = document.getElementById(`node-${fbCanvasConnectingFromStatusId}`);
+            if (fromNode) {
+                const x1 = parseInt(fromNode.style.left);
+                const y1 = parseInt(fromNode.style.top);
+                const w1 = fromNode.offsetWidth || 190;
+                const h1 = fromNode.offsetHeight || 80;
+                const cx1 = x1 + w1 / 2;
+                const cy1 = y1 + h1 / 2;
+                
+                const mouseX = e.clientX - containerRect.left;
+                const mouseY = e.clientY - containerRect.top;
+                
+                const tempPath = document.getElementById('fb-temp-connection-path');
+                if (tempPath) {
+                    tempPath.setAttribute('d', `M ${cx1} ${cy1} L ${mouseX} ${mouseY}`);
+                    tempPath.setAttribute('marker-end', 'url(#arrow-active)');
+                    tempPath.style.display = '';
+                }
+            }
+        }
     });
     
-    document.addEventListener('mouseup', () => {
+    document.addEventListener('mouseup', (e) => {
         if (fbCanvasDraggingNode) {
             const statusId = fbCanvasDraggingNode.dataset.statusId;
             const status = fbCurrent.workflow.statuses.find(s => s.id === statusId);
@@ -1057,6 +1132,53 @@ function fbInitCanvasDragging() {
             }
             fbCanvasDraggingNode = null;
             fbCollectProject();
+        }
+        
+        if (fbCanvasConnectingFromStatusId) {
+            // Hide temp connection line
+            const tempPath = document.getElementById('fb-temp-connection-path');
+            if (tempPath) tempPath.style.display = 'none';
+            
+            const container = document.getElementById('fb-workflow-canvas-container');
+            if (container) {
+                const containerRect = container.getBoundingClientRect();
+                const mouseX = e.clientX - containerRect.left;
+                const mouseY = e.clientY - containerRect.top;
+                
+                // Find if dropped over any target node
+                const targetStatus = fbCurrent.workflow.statuses.find(status => {
+                    const node = document.getElementById(`node-${status.id}`);
+                    if (!node) return false;
+                    
+                    const x = parseInt(node.style.left);
+                    const y = parseInt(node.style.top);
+                    const w = node.offsetWidth || 190;
+                    const h = node.offsetHeight || 80;
+                    
+                    return mouseX >= x && mouseX <= (x + w) && mouseY >= y && mouseY <= (y + h);
+                });
+                
+                if (targetStatus && targetStatus.id !== fbCanvasConnectingFromStatusId) {
+                    // Prompt to create transition
+                    const fromStatusObj = fbCurrent.workflow.statuses.find(s => s.id === fbCanvasConnectingFromStatusId);
+                    setTimeout(() => {
+                        const name = prompt(`Enter transition name from "${fromStatusObj.name}" to "${targetStatus.name}":`);
+                        if (name && name.trim()) {
+                            fbCurrent.workflow.transitions.push({
+                                id: `transition_${Date.now()}`,
+                                name: name.trim(),
+                                from_status: fbCanvasConnectingFromStatusId,
+                                to_status: targetStatus.id,
+                                approver_type: 'any_user'
+                            });
+                            fbRenderWorkflowBoard();
+                            fbCollectProject();
+                            fbSetAdminMode();
+                        }
+                    }, 50);
+                }
+            }
+            fbCanvasConnectingFromStatusId = null;
         }
     });
 }
@@ -1074,108 +1196,30 @@ function fbStartNodeDrag(e, statusId) {
     e.preventDefault();
 }
 
-function fbDrawWorkflowConnections() {
-    const svg = document.getElementById('fb-workflow-svg');
-    const nodesContainer = document.getElementById('fb-workflow-nodes');
-    if (!svg || !nodesContainer) return;
-    
-    // Clear old links & labels
-    svg.querySelectorAll('.workflow-svg-path').forEach(p => p.remove());
-    nodesContainer.querySelectorAll('.workflow-link-label').forEach(l => l.remove());
-    
-    const transitions = fbCurrent.workflow.transitions || [];
-    transitions.forEach(trans => {
-        const fromNode = document.getElementById(`node-${trans.from_status}`);
-        const toNode = document.getElementById(`node-${trans.to_status}`);
-        if (!fromNode || !toNode) return;
-        
-        const x1 = parseInt(fromNode.style.left);
-        const y1 = parseInt(fromNode.style.top);
-        const w1 = fromNode.offsetWidth || 190;
-        const h1 = fromNode.offsetHeight || 80;
-        
-        const x2 = parseInt(toNode.style.left);
-        const y2 = parseInt(toNode.style.top);
-        const w2 = toNode.offsetWidth || 190;
-        const h2 = toNode.offsetHeight || 80;
-        
-        const cx1 = x1 + w1 / 2;
-        const cy1 = y1 + h1 / 2;
-        const cx2 = x2 + w2 / 2;
-        const cy2 = y2 + h2 / 2;
-        
-        const dx = cx2 - cx1;
-        const dy = cy2 - cy1;
-        const angle = Math.atan2(dy, dx);
-        
-        const startX = cx1 + Math.cos(angle) * (w1 / 2);
-        const startY = cy1 + Math.sin(angle) * (h1 / 2);
-        const endX = cx2 - Math.cos(angle) * (w2 / 2 + 10);
-        const endY = cy2 - Math.sin(angle) * (h2 / 2 + 10);
-        
-        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path.setAttribute('d', `M ${startX} ${startY} L ${endX} ${endY}`);
-        path.setAttribute('class', 'workflow-svg-path');
-        path.setAttribute('marker-end', 'url(#arrow)');
-        svg.appendChild(path);
-        
-        const mx = (startX + endX) / 2;
-        const my = (startY + endY) / 2;
-        
-        const label = document.createElement('div');
-        label.className = 'workflow-link-label';
-        label.style.left = `${mx}px`;
-        label.style.top = `${my}px`;
-        label.textContent = trans.name;
-        label.onclick = () => fbEditTransitionProperties(trans.id);
-        nodesContainer.appendChild(label);
-    });
+function fbStartConnectionDrag(e, statusId) {
+    if (!fbPermissions.can_manage_workflow) return;
+    fbCanvasConnectingFromStatusId = statusId;
+    e.stopPropagation();
+    e.preventDefault();
 }
 
 function fbRenderWorkflowBoard() {
-    const container = document.getElementById('fb-workflow-canvas-container');
-    const nodesContainer = document.getElementById('fb-workflow-nodes');
-    if (!container || !nodesContainer) return;
-    
-    // Check if currently viewing the designer
     const navBtn = document.querySelector('.feedback-view-nav button.active');
     const isDesigner = navBtn && navBtn.getAttribute('onclick')?.includes('designer');
     
     if (!isDesigner || !fbPermissions.can_manage_workflow) {
-        container.style.display = 'none';
+        const container = document.getElementById('fb-workflow-canvas-container');
+        if (container) container.style.display = 'none';
         return;
     }
-    container.style.display = 'block';
-    nodesContainer.innerHTML = '';
     
-    const statuses = fbCurrent.workflow.statuses || [];
-    statuses.forEach((status, index) => {
-        if (!status.x) status.x = 50 + (index % 4) * 210;
-        if (!status.y) status.y = 50 + Math.floor(index / 4) * 140;
-        
-        const node = document.createElement('div');
-        node.className = `workflow-node ${status.id === fbCurrent.status ? 'active-node' : ''}`;
-        node.id = `node-${status.id}`;
-        node.dataset.statusId = status.id;
-        node.style.left = `${status.x}px`;
-        node.style.top = `${status.y}px`;
-        node.onmousedown = (e) => fbStartNodeDrag(e, status.id);
-        
-        node.innerHTML = `
-            <div class="workflow-node-title" title="${fbEscape(status.name)}">${fbEscape(status.name)}</div>
-            <div class="workflow-node-meta">
-                <span class="badge badge-medium" style="font-size:0.75rem;">${fbEscape(status.category)}</span>
-                <span style="font-family:monospace; font-size:0.7rem;">${fbEscape(status.id.substring(0, 8))}</span>
-            </div>
-            <div class="workflow-node-actions" onmousedown="event.stopPropagation()">
-                <button class="btn" type="button" onclick="fbEditStatusProperties('${status.id}')">Edit</button>
-                <button class="btn danger-soft" type="button" onclick="fbRemoveStatus('${status.id}')">Delete</button>
-            </div>
-        `;
-        nodesContainer.appendChild(node);
-    });
-    
-    fbDrawWorkflowConnections();
+    fbRenderWorkflowCanvas(
+        fbCurrent,
+        true, // editable
+        'fb-workflow-canvas-container',
+        'fb-workflow-nodes',
+        'fb-workflow-svg'
+    );
 }
 
 function fbEditStatusProperties(statusId) {
@@ -1366,8 +1410,16 @@ function fbNewProject() {
     if (!fbPermissions.can_manage_workflow) return;
     fbCurrent = structuredCloneSafe(FB_DEFAULT_PROJECT);
     fbCurrent.id = '';
+    // Seed new project with Jira Epics Workflow by default
+    fbCurrent.title = 'Service Request Portal';
+    fbCurrent.category = 'Common Requests';
+    fbCurrent.icon = '📋';
+    fbCurrent.workflow.statuses = structuredCloneSafe(FB_JIRA_EPICS_WORKFLOW.statuses);
+    fbCurrent.workflow.screens = structuredCloneSafe(FB_JIRA_EPICS_WORKFLOW.screens);
+    fbCurrent.workflow.transitions = structuredCloneSafe(FB_JIRA_EPICS_WORKFLOW.transitions);
+    fbCurrent.status = 'in_definition';
     fbRenderAll();
-    fbSetStatus('Blank builder ready. Add only the components you need.', 'info');
+    fbSetStatus('Jira Epics template loaded. Customize statuses and transitions as needed.', 'info');
 }
 
 function fbOpenProject(id) {
@@ -1454,6 +1506,533 @@ function fbExportProject() {
     link.download = `${(fbCurrent.title || 'feedback-cycle').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.json`;
     link.click();
     URL.revokeObjectURL(link.href);
+}
+
+// Help Center Portal Rendering
+let fbPortalActiveCategory = '';
+let fbPortalFormProjectId = '';
+
+function fbRenderPortal() {
+    const categoriesList = document.getElementById('fb-portal-categories-list');
+    const activeTitle = document.getElementById('fb-portal-active-category-title');
+    const grid = document.getElementById('fb-portal-request-types');
+    if (!categoriesList || !grid) return;
+    
+    // Group projects by category
+    const categories = new Set();
+    fbProjects.forEach(proj => {
+        if (proj.category) categories.add(proj.category.trim());
+    });
+    if (categories.size === 0) categories.add('Common Requests');
+    
+    const categoriesArr = Array.from(categories);
+    if (!fbPortalActiveCategory || !categories.has(fbPortalActiveCategory)) {
+        fbPortalActiveCategory = categoriesArr[0];
+    }
+    
+    // Render sidebar
+    categoriesList.innerHTML = categoriesArr.map(cat => `
+        <li class="portal-category-item ${cat === fbPortalActiveCategory ? 'active' : ''}" 
+            onclick="fbSelectPortalCategory('${fbEscape(cat)}')">
+            ${fbEscape(cat)}
+        </li>
+    `).join('');
+    
+    if (activeTitle) activeTitle.textContent = fbPortalActiveCategory;
+    
+    // Filter matching request types
+    const matching = fbProjects.filter(p => p.category === fbPortalActiveCategory || (!p.category && fbPortalActiveCategory === 'Common Requests'));
+    fbRenderRequestTypesList(matching);
+}
+
+function fbSelectPortalCategory(category) {
+    fbPortalActiveCategory = category;
+    fbRenderPortal();
+}
+
+function fbRenderRequestTypesList(projects) {
+    const grid = document.getElementById('fb-portal-request-types');
+    if (!grid) return;
+    
+    if (projects.length === 0) {
+        grid.innerHTML = '<div class="feedback-empty" style="padding:40px 0;">No request types available in this category.</div>';
+        return;
+    }
+    
+    grid.innerHTML = projects.map(p => `
+        <div class="portal-request-card" onclick="fbOpenPortalRequestForm('${fbEscape(p.id)}')">
+            <div class="portal-request-card-icon">${fbEscape(p.icon || '📋')}</div>
+            <div class="portal-request-card-content">
+                <div class="portal-request-card-title">${fbEscape(p.title)}</div>
+                <div class="portal-request-card-description">${fbEscape(p.description || 'No description provided.')}</div>
+            </div>
+            <div class="portal-request-card-arrow">&rarr;</div>
+        </div>
+    `).join('');
+}
+
+function fbFilterPortal() {
+    const query = document.getElementById('fb-portal-search')?.value.toLowerCase().trim();
+    if (!query) {
+        fbRenderPortal();
+        return;
+    }
+    
+    const filtered = fbProjects.filter(p => 
+        p.title?.toLowerCase().includes(query) || 
+        p.description?.toLowerCase().includes(query) ||
+        p.category?.toLowerCase().includes(query)
+    );
+    
+    // Deselect categories
+    document.querySelectorAll('.portal-category-item').forEach(item => item.classList.remove('active'));
+    
+    const activeTitle = document.getElementById('fb-portal-active-category-title');
+    if (activeTitle) activeTitle.textContent = `Search results for "${query}"`;
+    
+    fbRenderRequestTypesList(filtered);
+}
+
+// Portal Request Form POPUP
+function fbOpenPortalRequestForm(projectId) {
+    fbPortalFormProjectId = projectId;
+    const project = fbProjects.find(p => p.id === projectId);
+    if (!project) return;
+    
+    const modal = document.getElementById('fb-portal-request-modal');
+    const icon = document.getElementById('fb-portal-form-icon');
+    const title = document.getElementById('fb-portal-form-title');
+    const desc = document.getElementById('fb-portal-form-desc');
+    const fieldsContainer = document.getElementById('fb-portal-form-fields-container');
+    
+    if (!modal || !fieldsContainer) return;
+    
+    if (icon) icon.textContent = project.icon || '💻';
+    if (title) title.textContent = project.title;
+    if (desc) desc.textContent = project.description || 'Please fill out the details below to submit your request.';
+    
+    const fields = project.form_fields || [];
+    fieldsContainer.innerHTML = `
+        <label style="display: block; font-weight: 700; margin-bottom: 4px;">
+            Request Title *
+            <input id="fb-portal-req-title" class="form-control" placeholder="Brief summary of your request" required>
+        </label>
+        <label style="display: block; font-weight: 700; margin-bottom: 4px;">
+            Additional Description
+            <textarea id="fb-portal-req-description" class="form-control" rows="3" placeholder="Provide more context..."></textarea>
+        </label>
+    ` + fields.map(field => {
+        const options = (field.options || []).map(option => `<option value="${fbEscape(option)}">${fbEscape(option)}</option>`).join('');
+        let input = `<input class="form-control" data-portal-field="${fbEscape(field.key)}" type="${field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}" placeholder="${fbEscape(field.placeholder || '')}">`;
+        if (field.type === 'multi_line') input = `<textarea class="form-control" data-portal-field="${fbEscape(field.key)}" rows="3"></textarea>`;
+        if (field.type === 'single_select') input = `<select class="form-control" data-portal-field="${fbEscape(field.key)}"><option value="">Select...</option>${options}</select>`;
+        if (field.type === 'multi_select') input = `<select multiple class="form-control" data-portal-field="${fbEscape(field.key)}">${options}</select>`;
+        if (field.type === 'checkbox') input = `<input type="checkbox" data-portal-field="${fbEscape(field.key)}">`;
+        if (field.type === 'single_user_picker' || field.type === 'user_picker' || field.type === 'multi_user_picker') {
+            input = `<div id="fb-portal-picker-${fbEscape(field.key)}" class="user-picker-wrapper"></div>`;
+        }
+        return `<label style="display: block; font-weight: 700; margin-bottom: 12px;">${fbEscape(field.label)}${field.required ? ' *' : ''}${input}<small style="display: block; font-weight: 400; color: var(--text-secondary); margin-top: 4px;">${fbEscape(field.help_text || '')}</small></label>`;
+    }).join('');
+    
+    // User pickers instantiation
+    fields.forEach(field => {
+        if (field.type === 'single_user_picker' || field.type === 'user_picker' || field.type === 'multi_user_picker') {
+            const pickerContainer = document.getElementById(`fb-portal-picker-${field.key}`);
+            if (pickerContainer) {
+                fbRenderUserPicker(pickerContainer, field, field.type === 'multi_user_picker' ? [] : '', true);
+            }
+        }
+    });
+    
+    modal.style.display = 'flex';
+}
+
+function fbClosePortalRequestForm() {
+    const modal = document.getElementById('fb-portal-request-modal');
+    if (modal) modal.style.display = 'none';
+    fbPortalFormProjectId = '';
+}
+
+async function fbSubmitPortalRequest() {
+    if (!fbPortalFormProjectId) return;
+    
+    const project = fbProjects.find(p => p.id === fbPortalFormProjectId);
+    if (!project) return;
+    
+    const titleVal = document.getElementById('fb-portal-req-title')?.value.trim();
+    if (!titleVal) {
+        alert('Request Title is required');
+        return;
+    }
+    
+    const values = {};
+    document.querySelectorAll('[data-portal-field]').forEach(input => {
+        values[input.dataset.portalField] = input.multiple ? Array.from(input.selectedOptions).map(o => o.value) : input.type === 'checkbox' ? input.checked : input.value;
+    });
+    
+    document.querySelectorAll('#fb-portal-form-fields-container .user-picker-wrapper').forEach(wrapper => {
+        const key = wrapper.dataset.fieldKey;
+        if (key) {
+            values[key] = wrapper.fbSelectedValues;
+        }
+    });
+    
+    const ticket = {
+        title: titleVal,
+        description: document.getElementById('fb-portal-req-description')?.value || '',
+        description_html: '',
+        assigned_to: '',
+        manager_username: '',
+        field_values: values
+    };
+    
+    fbSetStatus('Submitting your request...', 'info');
+    try {
+        const res = await fetch(`/api/feedback/projects/${encodeURIComponent(project.id)}/tickets`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticket })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.detail || data.error || 'Request submission failed');
+        
+        project.tickets = project.tickets || [];
+        project.tickets.unshift(data.ticket);
+        
+        const index = fbProjects.findIndex(p => p.id === project.id);
+        if (index >= 0) fbProjects[index] = project;
+        
+        fbClosePortalRequestForm();
+        fbShowView('my_requests');
+        fbSetStatus('Request submitted successfully.', 'success');
+    } catch (error) {
+        fbSetStatus(error.message || 'Submission failed.', 'error');
+        alert(`Failed to submit request: ${error.message}`);
+    }
+}
+
+// Render User's Submitted Requests List
+function fbRenderMyRequests() {
+    const tbody = document.getElementById('fb-my-requests-tbody');
+    const empty = document.getElementById('fb-my-requests-empty');
+    if (!tbody) return;
+    
+    const currentUsername = document.querySelector('.sidebar-user div')?.textContent.trim() || '';
+    const myTickets = [];
+    
+    fbProjects.forEach(project => {
+        (project.tickets || []).forEach(ticket => {
+            if (ticket.created_by === currentUsername) {
+                myTickets.push({
+                    ...ticket,
+                    projectTitle: project.title,
+                    projectIcon: project.icon || '📋',
+                    projectId: project.id
+                });
+            }
+        });
+    });
+    
+    myTickets.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+    
+    if (myTickets.length === 0) {
+        tbody.innerHTML = '';
+        if (empty) empty.style.display = 'block';
+        return;
+    }
+    if (empty) empty.style.display = 'none';
+    
+    tbody.innerHTML = myTickets.map(t => {
+        const createdStr = new Date(t.created_at).toLocaleDateString();
+        const updatedStr = new Date(t.updated_at).toLocaleDateString();
+        const shortId = t.id.substring(7, 13).toUpperCase();
+        return `
+            <tr onclick="fbOpenTicketFromMyRequests('${fbEscape(t.projectId)}', '${fbEscape(t.id)}')">
+                <td style="font-family:monospace; font-weight:700; color:var(--text-secondary);">REQ-${fbEscape(shortId)}</td>
+                <td>
+                    <span style="margin-right:6px;">${fbEscape(t.projectIcon)}</span>
+                    <strong>${fbEscape(t.projectTitle)}</strong>
+                </td>
+                <td>${fbEscape(t.title)}</td>
+                <td><span class="badge badge-medium">${fbEscape(t.status)}</span></td>
+                <td>${fbEscape(createdStr)}</td>
+                <td>${fbEscape(updatedStr)}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function fbOpenTicketFromMyRequests(projectId, ticketId) {
+    fbSelectedBoardProjectId = projectId;
+    fbOpenTicketDrawer(ticketId);
+}
+
+// Workflow Diagram Modal controls
+function fbOpenWorkflowModal(highlightCurrentStatus = false) {
+    const modal = document.getElementById('fb-workflow-modal');
+    if (!modal) return;
+    
+    const project = fbProjects.find(p => p.id === fbSelectedBoardProjectId) || fbCurrent;
+    if (!project || !project.id) {
+        alert('Please select or save a request type project first.');
+        return;
+    }
+    
+    const modalTitle = document.getElementById('fb-workflow-modal-title');
+    if (modalTitle) modalTitle.textContent = project.title || 'Workflow Diagram';
+    
+    let activeStatusId = '';
+    if (highlightCurrentStatus && fbActiveTicketId) {
+        const ticket = project.tickets?.find(t => t.id === fbActiveTicketId);
+        if (ticket) activeStatusId = ticket.status;
+    }
+    
+    fbRenderWorkflowCanvas(
+        project,
+        false, // read-only
+        'fb-modal-canvas-container',
+        'fb-modal-workflow-nodes',
+        'fb-modal-workflow-svg',
+        activeStatusId
+    );
+    
+    modal.style.display = 'flex';
+}
+
+function fbCloseWorkflowModal() {
+    const modal = document.getElementById('fb-workflow-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+// Orthogonal SVG path calculation
+function fbGetOrthogonalPath(x1, y1, w1, h1, x2, y2, w2, h2, offset = 0) {
+    const cx1 = x1 + w1 / 2;
+    const cy1 = y1 + h1 / 2;
+    const cx2 = x2 + w2 / 2;
+    const cy2 = y2 + h2 / 2;
+    
+    const dx = cx2 - cx1;
+    const dy = cy2 - cy1;
+    
+    let startX, startY, endX, endY, path;
+    
+    if (Math.abs(dx) > Math.abs(dy)) {
+        // Horizontal connection is better
+        if (dx > 0) {
+            startX = x1 + w1;
+            startY = cy1 + offset;
+            endX = x2 - 8;
+            endY = cy2 + offset;
+            const mx = (startX + endX) / 2;
+            path = `M ${startX} ${startY} H ${mx} V ${endY} H ${endX}`;
+        } else {
+            startX = x1;
+            startY = cy1 + offset;
+            endX = x2 + w2 + 8;
+            endY = cy2 + offset;
+            const mx = (startX + endX) / 2;
+            path = `M ${startX} ${startY} H ${mx} V ${endY} H ${endX}`;
+        }
+    } else {
+        // Vertical connection is better
+        if (dy > 0) {
+            startX = cx1 + offset;
+            startY = y1 + h1;
+            endX = cx2 + offset;
+            endY = y2 - 8;
+            const my = (startY + endY) / 2;
+            path = `M ${startX} ${startY} V ${my} H ${endX} V ${endY}`;
+        } else {
+            startX = cx1 + offset;
+            startY = y1;
+            endX = cx2 + offset;
+            endY = y2 + h2 + 8;
+            const my = (startY + endY) / 2;
+            path = `M ${startX} ${startY} V ${my} H ${endX} V ${endY}`;
+        }
+    }
+    
+    return {
+        path,
+        mx: (startX + endX) / 2,
+        my: (startY + endY) / 2
+    };
+}
+
+// Unified Canvas Drawing Function
+function fbRenderWorkflowCanvas(project, isEditable, containerId, nodesId, svgId, activeStatusId = '') {
+    const container = document.getElementById(containerId);
+    const nodesContainer = document.getElementById(nodesId);
+    const svg = document.getElementById(svgId);
+    
+    if (!container || !nodesContainer || !svg) return;
+    
+    container.style.display = 'block';
+    nodesContainer.innerHTML = '';
+    
+    // Clear paths & labels
+    svg.querySelectorAll('.workflow-svg-path').forEach(p => p.remove());
+    nodesContainer.querySelectorAll('.workflow-link-label').forEach(l => l.remove());
+    
+    const statuses = project.workflow?.statuses || [];
+    if (statuses.length === 0) {
+        if (isEditable) {
+            nodesContainer.innerHTML = '<div class="feedback-empty" style="padding: 100px 0;">No statuses in workflow. Click "+ Add status" at the top to begin.</div>';
+        } else {
+            nodesContainer.innerHTML = '<div class="feedback-empty" style="padding: 100px 0;">No workflow diagram configured.</div>';
+        }
+        return;
+    }
+    
+    const nodeIdPrefix = containerId === 'fb-workflow-canvas-container' ? 'node-' : 'modal-node-';
+    
+    // 1. Draw Start Node relative to the first status node
+    const firstStatus = statuses[0];
+    if (firstStatus) {
+        const startX = (firstStatus.x || 80) - 90;
+        const startY = (firstStatus.y || 120) + 8;
+        
+        const startNode = document.createElement('div');
+        startNode.className = 'workflow-node-start';
+        startNode.style.left = `${startX}px`;
+        startNode.style.top = `${startY}px`;
+        startNode.title = 'Ticket Entry Point';
+        startNode.innerHTML = '<span style="font-size:0.52rem; color:#fff; font-weight:800;">Start</span>';
+        nodesContainer.appendChild(startNode);
+        
+        const startPathD = `M ${startX + 28} ${startY + 14} H ${firstStatus.x - 8}`;
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', startPathD);
+        path.setAttribute('class', 'workflow-svg-path active-link');
+        path.setAttribute('marker-end', svgId.includes('modal') ? 'url(#modal-arrow-active)' : 'url(#arrow-active)');
+        svg.appendChild(path);
+        
+        const label = document.createElement('div');
+        label.className = 'workflow-link-label';
+        label.style.left = `${(startX + 28 + firstStatus.x) / 2}px`;
+        label.style.top = `${startY + 14}px`;
+        label.textContent = 'Create';
+        nodesContainer.appendChild(label);
+    }
+    
+    // 2. Render status cards
+    statuses.forEach((status, index) => {
+        if (!status.x) status.x = 80 + (index % 4) * 200;
+        if (!status.y) status.y = 80 + Math.floor(index / 4) * 140;
+        
+        let catClass = 'todo-node';
+        if (status.category === 'doing') catClass = 'doing-node';
+        if (status.category === 'done') catClass = 'done-node';
+        
+        const node = document.createElement('div');
+        node.className = `workflow-node ${catClass} ${status.id === project.status ? 'active-node' : ''}`;
+        node.id = `${nodeIdPrefix}${status.id}`;
+        node.dataset.statusId = status.id;
+        node.style.left = `${status.x}px`;
+        node.style.top = `${status.y}px`;
+        
+        if (activeStatusId) {
+            if (status.id === activeStatusId) {
+                node.classList.add('active-flow-node');
+            } else {
+                node.classList.add('inactive-flow-node');
+            }
+        }
+        
+        if (isEditable) {
+            node.onmousedown = (e) => fbStartNodeDrag(e, status.id);
+            node.innerHTML = `
+                <div class="workflow-node-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; font-weight:800;" title="${fbEscape(status.name)}">
+                    ${fbEscape(status.name)}
+                </div>
+                <div class="workflow-node-hover-actions" onmousedown="event.stopPropagation()">
+                    <button type="button" onclick="fbEditStatusProperties('${status.id}')">Edit</button>
+                    <button type="button" style="background:#fee2e2; border-color:#fca5a5; color:#991b1b;" onclick="fbRemoveStatus('${status.id}')">×</button>
+                </div>
+                <div class="workflow-node-connector" 
+                     onmousedown="fbStartConnectionDrag(event, '${status.id}')"
+                     title="Drag to connect transition">&plus;</div>
+            `;
+        } else {
+            node.innerHTML = `
+                <div class="workflow-node-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; font-weight:800;" title="${fbEscape(status.name)}">
+                    ${fbEscape(status.name)}
+                </div>
+            `;
+        }
+        nodesContainer.appendChild(node);
+    });
+    
+    // 3. Render transitions
+    const transitions = project.workflow?.transitions || [];
+    const pairCount = {};
+    transitions.forEach(t => {
+        const key = [t.from_status, t.to_status].sort().join('-');
+        pairCount[key] = (pairCount[key] || 0) + 1;
+    });
+    
+    const pairIndex = {};
+    transitions.forEach(trans => {
+        const fromNode = document.getElementById(`${nodeIdPrefix}${trans.from_status}`);
+        const toNode = document.getElementById(`${nodeIdPrefix}${trans.to_status}`);
+        if (!fromNode || !toNode) return;
+        
+        const x1 = parseInt(fromNode.style.left);
+        const y1 = parseInt(fromNode.style.top);
+        const w1 = 175;
+        const h1 = 44;
+        
+        const x2 = parseInt(toNode.style.left);
+        const y2 = parseInt(toNode.style.top);
+        const w2 = 175;
+        const h2 = 44;
+        
+        const key = [trans.from_status, trans.to_status].sort().join('-');
+        const idx = pairIndex[key] || 0;
+        pairIndex[key] = idx + 1;
+        
+        let offset = 0;
+        if (pairCount[key] > 1) {
+            offset = idx === 0 ? -12 : 12;
+        }
+        
+        const pathData = fbGetOrthogonalPath(x1, y1, w1, h1, x2, y2, w2, h2, offset);
+        
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', pathData.path);
+        path.setAttribute('class', 'workflow-svg-path');
+        
+        let markerId = svgId.includes('modal') ? 'modal-arrow' : 'arrow';
+        if (activeStatusId) {
+            const isActiveLink = (trans.from_status === activeStatusId || trans.to_status === activeStatusId);
+            if (isActiveLink) {
+                path.classList.add('active-link');
+                markerId = svgId.includes('modal') ? 'modal-arrow-active' : 'arrow-active';
+            } else {
+                path.style.opacity = '0.35';
+            }
+        }
+        
+        path.setAttribute('marker-end', `url(#${markerId})`);
+        svg.appendChild(path);
+        
+        const label = document.createElement('div');
+        label.className = 'workflow-link-label';
+        label.style.left = `${pathData.mx}px`;
+        label.style.top = `${pathData.my}px`;
+        label.textContent = trans.name;
+        
+        if (activeStatusId) {
+            const isActiveLink = (trans.from_status === activeStatusId || trans.to_status === activeStatusId);
+            if (!isActiveLink) label.style.opacity = '0.35';
+        }
+        
+        if (isEditable) {
+            label.onclick = () => fbEditTransitionProperties(trans.id);
+        }
+        nodesContainer.appendChild(label);
+    });
 }
 
 ['input', 'change'].forEach((eventName) => document.addEventListener(eventName, (event) => {
