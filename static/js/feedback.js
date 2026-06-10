@@ -1509,8 +1509,6 @@ function fbExportProject() {
 }
 
 // Help Center Portal Rendering
-let fbPortalActiveCategory = '';
-let fbPortalFormProjectId = '';
 
 function fbRenderPortal() {
     const categoriesList = document.getElementById('fb-portal-categories-list');
