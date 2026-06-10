@@ -16,6 +16,13 @@ sudo systemctl daemon-reload
 sudo systemctl restart docker
 ```
 
+Create writable host directories for the non-root container user:
+
+```bash
+mkdir -p uploads outputs
+sudo chown -R 10001:10001 uploads outputs
+```
+
 For image builds:
 
 ```bash
