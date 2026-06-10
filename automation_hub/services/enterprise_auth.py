@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import os
 import secrets
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from automation_hub.core import auth, db
 
@@ -135,6 +135,56 @@ def authenticate_ldap(username: str, password: str) -> Optional[Dict[str, Any]]:
             str(entry.givenName or ""),
             str(entry.sn or ""),
         )
+    finally:
+        connection.unbind()
+
+
+def search_ldap_users(query: str) -> List[Dict[str, str]]:
+    """Search Active Directory using a configured service account."""
+    if not ldap_enabled() or not os.getenv("LDAP_BIND_USER"):
+        return []
+    from ldap3 import ALL, Connection, Server, SUBTREE
+    from ldap3.utils.conv import escape_filter_chars
+
+    server = Server(
+        os.environ["LDAP_SERVER"],
+        port=int(os.getenv("LDAP_PORT", "636")),
+        use_ssl=enabled("LDAP_USE_SSL"),
+        get_info=ALL,
+        connect_timeout=10,
+    )
+    connection = Connection(
+        server,
+        user=os.environ["LDAP_BIND_USER"],
+        password=os.getenv("LDAP_BIND_PASSWORD", ""),
+        auto_bind=True,
+        receive_timeout=10,
+    )
+    try:
+        term = escape_filter_chars(query.strip() or "*")
+        if term != "*":
+            term = f"*{term}*"
+        template = os.getenv(
+            "LDAP_DIRECTORY_FILTER",
+            "(&(objectClass=user)(|(sAMAccountName={query})(displayName={query})(mail={query})))",
+        )
+        connection.search(
+            os.getenv("LDAP_BASE_DN", ""),
+            template.format(query=term),
+            search_scope=SUBTREE,
+            attributes=["sAMAccountName", "displayName", "mail", "userPrincipalName"],
+            size_limit=50,
+        )
+        return [
+            {
+                "id": str(entry.sAMAccountName or entry.userPrincipalName),
+                "username": str(entry.sAMAccountName or entry.userPrincipalName),
+                "label": str(entry.displayName or entry.sAMAccountName),
+                "email": str(entry.mail or entry.userPrincipalName or ""),
+                "source": "ldap",
+            }
+            for entry in connection.entries
+        ]
     finally:
         connection.unbind()
 

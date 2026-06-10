@@ -29,6 +29,8 @@ const FB_DEFAULT_PROJECT = {
         { id: 'q_3', category: 'Growth', type: 'text', required: false, text: 'What is one behavior this person should continue?' },
         { id: 'q_4', category: 'Growth', type: 'text', required: false, text: 'What is one behavior this person should improve?' }
     ],
+    form_fields: [],
+    tickets: [],
     responses: []
 };
 
@@ -85,7 +87,40 @@ function fbCollectProject() {
         fbCurrent.participants.reviewers = fbLines(document.getElementById('fb-reviewers')?.value);
         fbCollectScreens();
         fbCollectQuestions();
+        fbCollectFormFields();
+        fbCollectTransitions();
     }
+}
+
+function fbCollectFormFields() {
+    fbCurrent.form_fields = Array.from(document.querySelectorAll('[data-fb-form-field]')).map((row, index) => ({
+        id: row.dataset.fieldId || `field_${Date.now()}_${index}`,
+        key: row.querySelector('[data-field-key]')?.value.trim() || `field_${index + 1}`,
+        label: row.querySelector('[data-field-label]')?.value.trim() || 'Field',
+        type: row.querySelector('[data-field-type]')?.value || 'single_line',
+        required: Boolean(row.querySelector('[data-field-required]')?.checked),
+        placeholder: row.querySelector('[data-field-placeholder]')?.value.trim() || '',
+        help_text: row.querySelector('[data-field-help]')?.value.trim() || '',
+        options: fbLines(row.querySelector('[data-field-options]')?.value),
+        user_source: row.querySelector('[data-field-source]')?.value || 'database',
+        condition_field: row.querySelector('[data-field-condition-key]')?.value.trim() || '',
+        condition_operator: row.querySelector('[data-field-condition-operator]')?.value || 'equals',
+        condition_value: row.querySelector('[data-field-condition-value]')?.value.trim() || ''
+    }));
+}
+
+function fbCollectTransitions() {
+    fbCurrent.workflow.transitions = Array.from(document.querySelectorAll('[data-fb-transition]')).map((row, index) => ({
+        id: row.dataset.transitionId || `transition_${Date.now()}_${index}`,
+        name: row.querySelector('[data-transition-name]')?.value.trim() || 'Transition',
+        from_status: row.querySelector('[data-transition-from]')?.value || 'draft',
+        to_status: row.querySelector('[data-transition-to]')?.value || 'ready',
+        approver_type: row.querySelector('[data-transition-approver]')?.value || 'any_user',
+        approver_value: row.querySelector('[data-transition-value]')?.value.trim() || '',
+        condition_field: row.querySelector('[data-transition-condition-key]')?.value.trim() || '',
+        condition_operator: row.querySelector('[data-transition-condition-operator]')?.value || 'equals',
+        condition_value: row.querySelector('[data-transition-condition-value]')?.value.trim() || ''
+    }));
 }
 
 function fbCollectScreens() {
@@ -130,8 +165,96 @@ function fbRenderAll() {
     fbRenderScreens();
     fbRenderParticipants();
     fbRenderQuestions();
+    fbRenderFormFields();
+    fbRenderTransitions();
+    fbRenderTicketForm();
+    fbRenderTickets();
     fbRenderPreview();
     fbRenderMetrics();
+}
+
+function fbRenderFormFields() {
+    const target = document.getElementById('fb-form-fields');
+    if (!target) return;
+    const disabled = fbPermissions.can_manage_workflow ? '' : 'disabled';
+    target.innerHTML = (fbCurrent.form_fields || []).map((field, index) => `<div class="process-builder-row" data-fb-form-field data-field-id="${fbEscape(field.id)}">
+        <div class="feedback-grid three"><label>Label<input ${disabled} data-field-label class="form-control" value="${fbEscape(field.label)}"></label><label>Key<input ${disabled} data-field-key class="form-control" value="${fbEscape(field.key)}"></label><label>Type<select ${disabled} data-field-type class="form-control">${['single_line','multi_line','number','date','single_select','multi_select','user_picker','checkbox'].map(type => `<option value="${type}" ${field.type === type ? 'selected' : ''}>${type.replaceAll('_',' ')}</option>`).join('')}</select></label></div>
+        <div class="feedback-grid three"><label>Placeholder<input ${disabled} data-field-placeholder class="form-control" value="${fbEscape(field.placeholder || '')}"></label><label>Help text<input ${disabled} data-field-help class="form-control" value="${fbEscape(field.help_text || '')}"></label><label>User source<select ${disabled} data-field-source class="form-control"><option value="database" ${field.user_source !== 'ldap' ? 'selected' : ''}>Database</option><option value="ldap" ${field.user_source === 'ldap' ? 'selected' : ''}>Active Directory</option></select></label></div>
+        <div class="feedback-grid three"><label>Options (one per line)<textarea ${disabled} data-field-options class="form-control" rows="3">${fbEscape((field.options || []).join('\n'))}</textarea></label><label>Show when field<input ${disabled} data-field-condition-key class="form-control" value="${fbEscape(field.condition_field || '')}"></label><label>Condition<select ${disabled} data-field-condition-operator class="form-control"><option value="equals">equals</option><option value="not_equals" ${field.condition_operator === 'not_equals' ? 'selected' : ''}>not equals</option><option value="contains" ${field.condition_operator === 'contains' ? 'selected' : ''}>contains</option><option value="is_set" ${field.condition_operator === 'is_set' ? 'selected' : ''}>is set</option></select><input ${disabled} data-field-condition-value class="form-control" value="${fbEscape(field.condition_value || '')}" placeholder="Condition value"></label></div>
+        <label class="feedback-toggle"><input ${disabled} data-field-required type="checkbox" ${field.required ? 'checked' : ''}> Required</label><button class="btn danger-soft" data-admin-only type="button" onclick="fbRemoveFormField(${index})">Remove</button>
+    </div>`).join('') || '<div class="feedback-empty">No custom ticket fields yet.</div>';
+    fbSetAdminMode();
+}
+
+function fbAddFormField() { fbCollectProject(); fbCurrent.form_fields.push({ id: `field_${Date.now()}`, key: `field_${fbCurrent.form_fields.length + 1}`, label: 'New field', type: 'single_line', required: false, options: [], user_source: 'database' }); fbRenderFormFields(); fbRenderTicketForm(); }
+function fbRemoveFormField(index) { fbCollectProject(); fbCurrent.form_fields.splice(index, 1); fbRenderFormFields(); fbRenderTicketForm(); }
+
+function fbRenderTransitions() {
+    const target = document.getElementById('fb-transitions');
+    if (!target) return;
+    const disabled = fbPermissions.can_manage_workflow ? '' : 'disabled';
+    const statuses = fbCurrent.workflow.statuses || [];
+    const statusOptions = (selected) => statuses.map(status => `<option value="${fbEscape(status.id)}" ${status.id === selected ? 'selected' : ''}>${fbEscape(status.name)}</option>`).join('');
+    target.innerHTML = (fbCurrent.workflow.transitions || []).map((item, index) => `<div class="process-builder-row" data-fb-transition data-transition-id="${fbEscape(item.id)}"><div class="feedback-grid three"><label>Name<input ${disabled} data-transition-name class="form-control" value="${fbEscape(item.name)}"></label><label>From<select ${disabled} data-transition-from class="form-control">${statusOptions(item.from_status)}</select></label><label>To<select ${disabled} data-transition-to class="form-control">${statusOptions(item.to_status)}</select></label></div><div class="feedback-grid three"><label>Approver<select ${disabled} data-transition-approver class="form-control"><option value="any_user">Any permitted user</option><option value="manager" ${item.approver_type === 'manager' ? 'selected' : ''}>Ticket manager</option><option value="user" ${item.approver_type === 'user' ? 'selected' : ''}>Specific user</option><option value="role" ${item.approver_type === 'role' ? 'selected' : ''}>Role</option><option value="feedback_admin" ${item.approver_type === 'feedback_admin' ? 'selected' : ''}>180 admin</option></select></label><label>User / role<input ${disabled} data-transition-value class="form-control" value="${fbEscape(item.approver_value || '')}"></label><label>Condition field<input ${disabled} data-transition-condition-key class="form-control" value="${fbEscape(item.condition_field || '')}"></label></div><div class="feedback-grid two"><label>Operator<select ${disabled} data-transition-condition-operator class="form-control"><option value="equals">equals</option><option value="not_equals" ${item.condition_operator === 'not_equals' ? 'selected' : ''}>not equals</option><option value="contains" ${item.condition_operator === 'contains' ? 'selected' : ''}>contains</option><option value="is_set" ${item.condition_operator === 'is_set' ? 'selected' : ''}>is set</option></select></label><label>Value<input ${disabled} data-transition-condition-value class="form-control" value="${fbEscape(item.condition_value || '')}"></label></div><button class="btn danger-soft" data-admin-only type="button" onclick="fbRemoveTransition(${index})">Remove</button></div>`).join('') || '<div class="feedback-empty">No transitions configured.</div>';
+    fbSetAdminMode();
+}
+
+function fbAddTransition() { fbCollectProject(); const statuses = fbCurrent.workflow.statuses || []; fbCurrent.workflow.transitions = fbCurrent.workflow.transitions || []; fbCurrent.workflow.transitions.push({ id: `transition_${Date.now()}`, name: 'Approve', from_status: statuses[0]?.id || 'draft', to_status: statuses[1]?.id || 'ready', approver_type: 'manager' }); fbRenderTransitions(); }
+function fbRemoveTransition(index) { fbCollectProject(); fbCurrent.workflow.transitions.splice(index, 1); fbRenderTransitions(); }
+
+function fbRenderTicketForm() {
+    const target = document.getElementById('fb-ticket-fields');
+    if (!target) return;
+    target.innerHTML = (fbCurrent.form_fields || []).map(field => {
+        const options = (field.options || []).map(option => `<option value="${fbEscape(option)}">${fbEscape(option)}</option>`).join('');
+        let input = `<input class="form-control" data-ticket-field="${fbEscape(field.key)}" type="${field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}" placeholder="${fbEscape(field.placeholder || '')}">`;
+        if (field.type === 'multi_line') input = `<textarea class="form-control" data-ticket-field="${fbEscape(field.key)}" rows="3"></textarea>`;
+        if (field.type === 'single_select') input = `<select class="form-control" data-ticket-field="${fbEscape(field.key)}"><option value="">Select...</option>${options}</select>`;
+        if (field.type === 'multi_select') input = `<select multiple class="form-control" data-ticket-field="${fbEscape(field.key)}">${options}</select>`;
+        if (field.type === 'checkbox') input = `<input type="checkbox" data-ticket-field="${fbEscape(field.key)}">`;
+        if (field.type === 'user_picker') input = `<input class="form-control" list="fb-user-options" data-ticket-field="${fbEscape(field.key)}" data-user-source="${fbEscape(field.user_source || 'database')}" oninput="fbSearchUsers(this.value, '${fbEscape(field.user_source || 'database')}')">`;
+        return `<label data-ticket-field-wrap="${fbEscape(field.key)}">${fbEscape(field.label)}${field.required ? ' *' : ''}${input}<small>${fbEscape(field.help_text || '')}</small></label>`;
+    }).join('');
+}
+
+async function fbSearchUsers(query, forcedSource = '') {
+    const source = forcedSource || document.getElementById('fb-user-source')?.value || 'database';
+    const res = await fetch(`/api/feedback/users?source=${encodeURIComponent(source)}&query=${encodeURIComponent(query || '')}`, { credentials: 'include' });
+    const data = await res.json();
+    document.getElementById('fb-user-options').innerHTML = (data.users || []).map(user => `<option value="${fbEscape(user.username)}">${fbEscape(user.label)} - ${fbEscape(user.email || '')}</option>`).join('');
+}
+
+async function fbCreateTicket() {
+    if (!fbCurrent.id) return fbSetStatus('Save the process before creating tickets.', 'error');
+    const values = {};
+    document.querySelectorAll('[data-ticket-field]').forEach(input => { values[input.dataset.ticketField] = input.multiple ? Array.from(input.selectedOptions).map(o => o.value) : input.type === 'checkbox' ? input.checked : input.value; });
+    const ticket = { title: document.getElementById('fb-ticket-title').value, description: document.getElementById('fb-ticket-description').value, description_html: document.getElementById('fb-ticket-html').value, assigned_to: document.getElementById('fb-ticket-assignee').value, manager_username: document.getElementById('fb-ticket-manager').value, field_values: values };
+    const res = await fetch(`/api/feedback/projects/${encodeURIComponent(fbCurrent.id)}/tickets`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ticket }) });
+    const data = await res.json();
+    if (!data.success) return fbSetStatus(data.detail || data.error || 'Ticket creation failed.', 'error');
+    fbCurrent.tickets = fbCurrent.tickets || []; fbCurrent.tickets.unshift(data.ticket); fbRenderTickets(); fbSetStatus('Ticket created.', 'success');
+}
+
+function fbRenderTickets() {
+    const target = document.getElementById('fb-ticket-list');
+    if (!target) return;
+    target.innerHTML = (fbCurrent.tickets || []).map(ticket => {
+        const transitions = (fbCurrent.workflow.transitions || []).filter(item => item.from_status === ticket.status);
+        return `<article class="ticket-card"><div class="ticket-card-head"><div><strong>${fbEscape(ticket.title)}</strong><span>${fbEscape(ticket.id)} · ${fbEscape(ticket.status)}</span></div><span>${fbEscape(ticket.assigned_to || 'Unassigned')}</span></div><p>${fbEscape(ticket.description || '')}</p><div class="ticket-html">${ticket.description_html || ''}</div><div class="ticket-actions">${transitions.map(item => `<button class="btn" type="button" onclick="fbTransitionTicket('${fbEscape(ticket.id)}','${fbEscape(item.id)}')">${fbEscape(item.name)}</button>`).join('')}</div><div class="ticket-comments">${(ticket.comments || []).map(c => `<p><strong>${fbEscape(c.author)}</strong>: ${fbEscape(c.body || '')}</p>`).join('')}</div><div class="feedback-grid two"><input id="comment-${fbEscape(ticket.id)}" class="form-control" placeholder="Add a comment"><button class="btn" type="button" onclick="fbAddTicketComment('${fbEscape(ticket.id)}')">Comment</button></div></article>`;
+    }).join('') || '<div class="feedback-empty">No tickets in this process.</div>';
+}
+
+async function fbAddTicketComment(ticketId) {
+    const input = document.getElementById(`comment-${ticketId}`); const body = input?.value || '';
+    const res = await fetch(`/api/feedback/projects/${encodeURIComponent(fbCurrent.id)}/tickets/${encodeURIComponent(ticketId)}/comments`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ body }) });
+    const data = await res.json(); if (!data.success) return fbSetStatus(data.detail || 'Comment failed.', 'error');
+    const ticket = fbCurrent.tickets.find(item => item.id === ticketId); ticket.comments = ticket.comments || []; ticket.comments.push(data.comment); fbRenderTickets();
+}
+
+async function fbTransitionTicket(ticketId, transitionId) {
+    const res = await fetch(`/api/feedback/projects/${encodeURIComponent(fbCurrent.id)}/tickets/${encodeURIComponent(ticketId)}/transition`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ transition_id: transitionId }) });
+    const data = await res.json(); if (!data.success) return fbSetStatus(data.detail || 'Transition failed.', 'error');
+    const index = fbCurrent.tickets.findIndex(item => item.id === ticketId); fbCurrent.tickets[index] = data.ticket; fbRenderTickets(); fbSetStatus('Workflow transition completed.', 'success');
 }
 
 function fbRenderSetup() {

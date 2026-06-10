@@ -64,6 +64,32 @@
         </section>
 
         <section class="card feedback-card">
+            <div class="feedback-card-head"><div><h2>Ticket form builder</h2><p>Define text, choice, date, number and directory-backed user fields with conditional visibility.</p></div><button class="btn" type="button" data-admin-only onclick="fbAddFormField()">+ Add field</button></div>
+            <div id="fb-form-fields" class="question-builder"></div>
+        </section>
+
+        <section class="card feedback-card">
+            <div class="feedback-card-head"><div><h2>Approvals and transitions</h2><p>Control who may move a ticket between statuses and optionally require a field condition.</p></div><button class="btn" type="button" data-admin-only onclick="fbAddTransition()">+ Add transition</button></div>
+            <div id="fb-transitions" class="question-builder"></div>
+        </section>
+
+        <section class="card feedback-card">
+            <div class="feedback-card-head"><div><h2>Tickets and processes</h2><p>Create work items, select assignee and manager, use safe HTML, comment and run approval steps.</p></div></div>
+            <div class="feedback-grid two">
+                <label>Title<input id="fb-ticket-title" class="form-control" placeholder="Employee onboarding approval"></label>
+                <label>Assignee<input id="fb-ticket-assignee" class="form-control" list="fb-user-options" placeholder="Search a local or AD username" oninput="fbSearchUsers(this.value)"></label>
+                <label>Manager / approver<input id="fb-ticket-manager" class="form-control" list="fb-user-options" placeholder="manager.username" oninput="fbSearchUsers(this.value)"></label>
+                <label>User source<select id="fb-user-source" class="form-control" onchange="fbSearchUsers('')"><option value="database">Automation Hub database</option><option value="ldap">Active Directory</option></select></label>
+            </div>
+            <datalist id="fb-user-options"></datalist>
+            <label>Description<textarea id="fb-ticket-description" class="form-control" rows="3"></textarea></label>
+            <label>HTML template<textarea id="fb-ticket-html" class="form-control code-input" rows="5" placeholder="<h2>Request details</h2><p>Safe HTML is allowed.</p>"></textarea></label>
+            <div id="fb-ticket-fields" class="ticket-dynamic-fields"></div>
+            <button class="btn btn-primary" type="button" onclick="fbCreateTicket()">Create ticket</button>
+            <div id="fb-ticket-list" class="ticket-list"></div>
+        </section>
+
+        <section class="card feedback-card">
             <div class="feedback-card-head"><div><h2>Form preview & response capture</h2><p>Test the live form before launching the cycle.</p></div><button class="btn" type="button" onclick="fbSubmitDemoResponse()">Submit demo response</button></div>
             <div class="feedback-grid two">
                 <label>Subject<select id="fb-response-subject" class="form-control"></select></label>
@@ -78,5 +104,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="/static/js/feedback.js?v=20260509-180-feedback"></script>
+<script src="/static/js/feedback.js?v=20260610-process-builder"></script>
 {% endblock %}

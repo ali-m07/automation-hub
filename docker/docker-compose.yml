@@ -6,7 +6,7 @@ services:
     image: automation-hub:latest
     container_name: automation-hub
     ports:
-    - 2050:8000
+    - 8000:8000
     volumes:
     - ../uploads:/app/uploads
     - ../outputs:/app/outputs

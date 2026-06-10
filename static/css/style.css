@@ -974,3 +974,14 @@ header h1 {
 .fb-readonly-user .workflow-card { cursor: default; opacity: 0.92; }
 .fb-readonly-user .screen-builder { opacity: 0.72; }
 @media (max-width: 900px) { .workflow-board, .screen-card { grid-template-columns: 1fr; } }
+.process-builder-row, .ticket-card { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--border-color); border-radius: 16px; background: var(--bg-secondary); }
+.ticket-dynamic-fields, .ticket-list { display: grid; gap: 12px; margin: 14px 0; }
+.ticket-card { background: var(--bg-primary); }
+.ticket-card-head { display: flex; justify-content: space-between; gap: 12px; }
+.ticket-card-head strong, .ticket-card-head span { display: block; }
+.ticket-card-head span { color: var(--text-secondary); font-size: .84rem; }
+.ticket-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.ticket-html { padding: 10px; border-left: 3px solid #0f766e; background: var(--bg-secondary); }
+.ticket-comments { display: grid; gap: 6px; }
+.ticket-comments p { margin: 0; padding: 8px; border-radius: 10px; background: var(--bg-secondary); }
+.code-input { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
