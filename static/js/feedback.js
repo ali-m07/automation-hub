@@ -177,6 +177,46 @@ function fbRenderAll() {
     fbRenderPreview();
     fbRenderMetrics();
     fbRenderPerformanceOverview();
+    fbRenderPublishedState();
+}
+
+function fbRenderPublishedState() {
+    const hasProject = Boolean(fbCurrent.id);
+    const hasAssessment = hasProject && (fbCurrent.questions || []).length > 0;
+    const hasTicketForm = hasProject && (fbCurrent.form_fields || []).length > 0;
+    const assessmentForm = document.getElementById('fb-assessment-form');
+    const assessmentEmpty = document.getElementById('fb-assessment-empty');
+    const ticketForm = document.getElementById('fb-ticket-create-form');
+    const ticketEmpty = document.getElementById('fb-ticket-empty');
+    if (assessmentForm) assessmentForm.style.display = hasAssessment ? '' : 'none';
+    if (assessmentEmpty) assessmentEmpty.style.display = hasAssessment ? 'none' : 'block';
+    if (ticketForm) ticketForm.style.display = hasTicketForm ? '' : 'none';
+    if (ticketEmpty) ticketEmpty.style.display = hasTicketForm ? 'none' : 'block';
+}
+
+function fbShowView(view, updateUrl = true) {
+    const isAdmin = fbPermissions.can_manage_workflow;
+    const selected = ['assessments', 'performance', 'tickets', 'designer'].includes(view) ? view : 'assessments';
+    document.querySelectorAll('[data-fb-view]').forEach(section => {
+        section.style.display = section.dataset.fbView === selected ? '' : 'none';
+    });
+    const adminHeadings = ['Cycle setup', 'Jira-style workflow board', 'Participants', 'Question builder', 'Ticket form builder', 'Approvals and transitions'];
+    document.querySelectorAll('.feedback-card').forEach(card => {
+        const heading = card.querySelector('h2')?.textContent.trim();
+        if (adminHeadings.includes(heading)) card.style.display = isAdmin && selected === 'designer' ? '' : 'none';
+    });
+    document.querySelector('.feedback-sidebar').style.display = isAdmin && selected === 'designer' ? '' : 'none';
+    document.querySelector('.feedback-shell').classList.toggle('single-view', !(isAdmin && selected === 'designer'));
+    document.querySelectorAll('.feedback-view-nav button').forEach(button => {
+        button.classList.toggle('active', button.getAttribute('onclick')?.includes(`'${selected}'`));
+    });
+    if (selected === 'tickets') {
+        fbLoadTicketScope('mine');
+    }
+    if (updateUrl) {
+        history.replaceState(null, '', `/feedback?view=${encodeURIComponent(selected)}`);
+    }
+    window.scrollTo({ top: 0, behavior: 'auto' });
 }
 
 function fbRenderPerformanceOverview() {
@@ -184,7 +224,7 @@ function fbRenderPerformanceOverview() {
     if (!target) return;
     target.innerHTML = (fbProjects || []).map(project => {
         const status = (project.workflow?.statuses || []).find(item => item.id === project.status)?.name || project.status || 'Draft';
-        return `<button type="button" class="performance-card" onclick="fbOpenProject('${fbEscape(project.id)}'); location.hash='assessments'"><span class="performance-status">${fbEscape(status)}</span><strong>${fbEscape(project.title || 'Performance cycle')}</strong><small>${(project.responses || []).length} response(s) · ${(project.questions || []).length} question(s)</small></button>`;
+        return `<button type="button" class="performance-card" onclick="fbOpenProject('${fbEscape(project.id)}'); fbShowView('assessments')"><span class="performance-status">${fbEscape(status)}</span><strong>${fbEscape(project.title || 'Performance cycle')}</strong><small>${(project.responses || []).length} response(s) · ${(project.questions || []).length} question(s)</small></button>`;
     }).join('') || '<div class="feedback-empty">No 180 performance cycle is assigned to you yet.</div>';
 }
 
@@ -533,6 +573,8 @@ async function fbLoadProjects() {
         fbProjects = data.projects || [];
         fbCurrent = fbProjects[0] ? structuredCloneSafe(fbProjects[0]) : structuredCloneSafe(FB_DEFAULT_PROJECT);
         fbRenderAll();
+        const requestedView = new URLSearchParams(location.search).get('view');
+        fbShowView(requestedView || (fbPermissions.can_manage_workflow ? 'designer' : 'assessments'), false);
     } catch (error) {
         fbSetStatus(error.message || 'Could not load feedback cycles.', 'error');
         fbRenderAll();

@@ -18,10 +18,10 @@
 </header>
 
 <nav class="feedback-view-nav" aria-label="Reviews and performance">
-    <a href="#assessments">My Assessments</a>
-    <a href="#performance">180 Performance</a>
-    <a href="#tickets">My Tickets</a>
-    <a href="#designer" data-admin-only>Admin Designer</a>
+    <button type="button" onclick="fbShowView('assessments')">My Assessments</button>
+    <button type="button" onclick="fbShowView('performance')">180 Performance</button>
+    <button type="button" onclick="fbShowView('tickets')">My Tickets</button>
+    <button type="button" onclick="fbShowView('designer')" data-admin-only>Admin Designer</button>
 </nav>
 
 <div class="feedback-shell">
@@ -80,7 +80,7 @@
             <div id="fb-transitions" class="question-builder"></div>
         </section>
 
-        <section class="card feedback-card" id="tickets">
+        <section class="card feedback-card" id="tickets" data-fb-view="tickets">
             <div class="feedback-card-head"><div><div class="eyebrow">My work</div><h2>Tickets and processes</h2><p>Create work items, select assignee and manager, use safe HTML, comment and run approval steps.</p></div></div>
             <div class="feedback-actions">
                 <button class="btn" type="button" onclick="fbLoadTicketScope('mine')">My tickets</button>
@@ -88,6 +88,7 @@
                 <a class="btn" href="/api/feedback/tickets/report.csv?scope=mine">Export my CSV</a>
                 <a class="btn" href="/api/feedback/tickets/report.csv?scope=approvals">Export approval CSV</a>
             </div>
+            <div id="fb-ticket-create-form">
             <div class="feedback-grid two">
                 <label>Title<input id="fb-ticket-title" class="form-control" placeholder="Employee onboarding approval"></label>
                 <label>Assignee<input id="fb-ticket-assignee" class="form-control" list="fb-user-options" placeholder="Search a local or AD username" oninput="fbSearchUsers(this.value)"></label>
@@ -99,12 +100,15 @@
             <label>HTML template<textarea id="fb-ticket-html" class="form-control code-input" rows="5" placeholder="<h2>Request details</h2><p>Safe HTML is allowed.</p>"></textarea></label>
             <div id="fb-ticket-fields" class="ticket-dynamic-fields"></div>
             <button class="btn btn-primary" type="button" onclick="fbCreateTicket()">Create ticket</button>
+            </div>
+            <div id="fb-ticket-empty" class="feedback-empty" style="display:none;">No ticket form has been published for you yet.</div>
             <div id="fb-ticket-list" class="ticket-list"></div>
             <div id="fb-scope-ticket-list" class="ticket-list"></div>
         </section>
 
-        <section class="card feedback-card" id="assessments">
+        <section class="card feedback-card" id="assessments" data-fb-view="assessments">
             <div class="feedback-card-head"><div><div class="eyebrow">My assessments</div><h2>Assessment response</h2><p>Complete the assessment assigned to you for the selected performance cycle.</p></div><button class="btn btn-primary" type="button" onclick="fbSubmitDemoResponse()">Submit assessment</button></div>
+            <div id="fb-assessment-form">
             <div class="feedback-grid two">
                 <label>Subject<select id="fb-response-subject" class="form-control"></select></label>
                 <label>Reviewer<select id="fb-response-reviewer" class="form-control"></select></label>
@@ -112,9 +116,11 @@
             <div id="fb-form-preview" class="feedback-form-preview"></div>
             <label>Overall comment<textarea id="fb-response-comment" class="form-control" rows="3" placeholder="Add strengths, risks and coaching notes."></textarea></label>
             <div id="fb-response-summary" class="feedback-summary"></div>
+            </div>
+            <div id="fb-assessment-empty" class="feedback-empty" style="display:none;">No assessment has been assigned or published for you yet.</div>
         </section>
 
-        <section class="card feedback-card" id="performance">
+        <section class="card feedback-card" id="performance" data-fb-view="performance">
             <div class="feedback-card-head"><div><div class="eyebrow">180 performance</div><h2>Performance overview</h2><p>Your visible cycles, response progress and current stage.</p></div></div>
             <div id="fb-performance-overview" class="performance-grid"></div>
         </section>

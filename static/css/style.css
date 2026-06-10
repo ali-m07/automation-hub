@@ -937,6 +937,7 @@ header h1 {
 .metric span { display: block; font-size: 1.5rem; font-weight: 900; color: var(--text-primary); }
 .metric small { color: var(--text-secondary); font-weight: 700; }
 .feedback-shell { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 18px; align-items: start; }
+.feedback-shell.single-view { grid-template-columns: minmax(0, 1fr); }
 .feedback-sidebar { position: sticky; top: 20px; }
 .feedback-list-title { margin: 18px 0 8px; font-size: 0.78rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 900; }
 .feedback-project-list { display: grid; gap: 8px; }
@@ -996,8 +997,8 @@ header h1 {
 .ticket-comments p { margin: 0; padding: 8px; border-radius: 10px; background: var(--bg-secondary); }
 .code-input { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
 .feedback-view-nav { position: sticky; top: 8px; z-index: 20; display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; padding: 8px; border: 1px solid var(--border-color); border-radius: 16px; background: color-mix(in srgb, var(--bg-primary) 88%, transparent); backdrop-filter: blur(14px); box-shadow: 0 12px 28px var(--shadow); }
-.feedback-view-nav a { min-height: 44px; display: inline-flex; align-items: center; padding: 0 16px; border-radius: 12px; color: var(--text-primary); text-decoration: none; font-weight: 800; }
-.feedback-view-nav a:hover, .feedback-view-nav a:focus-visible { color: var(--on-accent-soft); background: var(--accent-soft); outline: none; }
+.feedback-view-nav button { min-height: 44px; display: inline-flex; align-items: center; padding: 0 16px; border: 0; border-radius: 12px; color: var(--text-primary); background: transparent; font-weight: 800; cursor: pointer; }
+.feedback-view-nav button:hover, .feedback-view-nav button:focus-visible, .feedback-view-nav button.active { color: var(--on-accent-soft); background: var(--accent-soft); outline: none; }
 .performance-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
 .performance-card { min-height: 132px; display: grid; gap: 8px; text-align: left; padding: 16px; border: 1px solid var(--border-color); border-radius: 16px; background: var(--surface-raised); color: var(--text-primary); cursor: pointer; transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease; }
 .performance-card:hover { transform: translateY(-2px); border-color: var(--accent); box-shadow: 0 14px 30px var(--shadow); }

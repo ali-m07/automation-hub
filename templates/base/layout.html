@@ -39,9 +39,9 @@
             <a href="/external-db" class="sidebar-link">External database</a>
             {% endif %}
             {% if user and (user.role == 'admin' or 'feedback_180' in (user.modules or []) or 'feedback_180_admin' in (user.modules or [])) %}
-            <a href="/feedback#assessments" class="sidebar-link">My Assessments</a>
-            <a href="/feedback#performance" class="sidebar-link">180 Performance</a>
-            <a href="/feedback#tickets" class="sidebar-link">My Process Tickets</a>
+            <a href="/feedback?view=assessments" class="sidebar-link">My Assessments</a>
+            <a href="/feedback?view=performance" class="sidebar-link">180 Performance</a>
+            <a href="/feedback?view=tickets" class="sidebar-link">My Process Tickets</a>
             {% endif %}
             {% if user and (user.role == 'admin' or 'process_designer_admin' in (user.modules or [])) %}
             <a href="/process-designer" class="sidebar-link">Process Designer</a>
