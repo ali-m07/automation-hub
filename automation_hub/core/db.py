@@ -644,6 +644,10 @@ def init_database() -> None:
                     parsed = []
             except Exception:
                 parsed = []
+            if "feedback" in parsed and "feedback_180" not in parsed:
+                parsed = [
+                    "feedback_180" if key == "feedback" else key for key in parsed
+                ]
             desired = all_module_keys if role == "admin" else parsed
             if role != "admin" and not desired:
                 desired = []

@@ -15,7 +15,7 @@ def test_provider_flags_require_configuration(monkeypatch):
 
 
 def test_provision_external_user_with_feedback_access(test_settings, monkeypatch):
-    monkeypatch.setenv("SSO_DEFAULT_MODULES", "feedback")
+    monkeypatch.setenv("SSO_DEFAULT_MODULES", "feedback_180")
     db.init_database()
 
     user = enterprise_auth.provision_user(
@@ -29,4 +29,4 @@ def test_provision_external_user_with_feedback_access(test_settings, monkeypatch
     assert user["username"] == "person@example.com"
     assert user["status"] == "active"
     assert user["auth_provider"] == "oidc"
-    assert enterprise_auth.auth.user_modules_from_record(user) == ["feedback"]
+    assert enterprise_auth.auth.user_modules_from_record(user) == ["feedback_180"]

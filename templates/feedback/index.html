@@ -17,6 +17,13 @@
     </div>
 </header>
 
+<nav class="feedback-view-nav" aria-label="Reviews and performance">
+    <a href="#assessments">My Assessments</a>
+    <a href="#performance">180 Performance</a>
+    <a href="#tickets">My Tickets</a>
+    <a href="#designer" data-admin-only>Admin Designer</a>
+</nav>
+
 <div class="feedback-shell">
     <aside class="feedback-sidebar card">
         <button class="btn btn-primary" type="button" onclick="fbNewProject()">+ New feedback cycle</button>
@@ -73,8 +80,8 @@
             <div id="fb-transitions" class="question-builder"></div>
         </section>
 
-        <section class="card feedback-card">
-            <div class="feedback-card-head"><div><h2>Tickets and processes</h2><p>Create work items, select assignee and manager, use safe HTML, comment and run approval steps.</p></div></div>
+        <section class="card feedback-card" id="tickets">
+            <div class="feedback-card-head"><div><div class="eyebrow">My work</div><h2>Tickets and processes</h2><p>Create work items, select assignee and manager, use safe HTML, comment and run approval steps.</p></div></div>
             <div class="feedback-actions">
                 <button class="btn" type="button" onclick="fbLoadTicketScope('mine')">My tickets</button>
                 <button class="btn" type="button" onclick="fbLoadTicketScope('approvals')">My approvals</button>
@@ -96,8 +103,8 @@
             <div id="fb-scope-ticket-list" class="ticket-list"></div>
         </section>
 
-        <section class="card feedback-card">
-            <div class="feedback-card-head"><div><h2>Form preview & response capture</h2><p>Test the live form before launching the cycle.</p></div><button class="btn" type="button" onclick="fbSubmitDemoResponse()">Submit demo response</button></div>
+        <section class="card feedback-card" id="assessments">
+            <div class="feedback-card-head"><div><div class="eyebrow">My assessments</div><h2>Assessment response</h2><p>Complete the assessment assigned to you for the selected performance cycle.</p></div><button class="btn btn-primary" type="button" onclick="fbSubmitDemoResponse()">Submit assessment</button></div>
             <div class="feedback-grid two">
                 <label>Subject<select id="fb-response-subject" class="form-control"></select></label>
                 <label>Reviewer<select id="fb-response-reviewer" class="form-control"></select></label>
@@ -105,6 +112,11 @@
             <div id="fb-form-preview" class="feedback-form-preview"></div>
             <label>Overall comment<textarea id="fb-response-comment" class="form-control" rows="3" placeholder="Add strengths, risks and coaching notes."></textarea></label>
             <div id="fb-response-summary" class="feedback-summary"></div>
+        </section>
+
+        <section class="card feedback-card" id="performance">
+            <div class="feedback-card-head"><div><div class="eyebrow">180 performance</div><h2>Performance overview</h2><p>Your visible cycles, response progress and current stage.</p></div></div>
+            <div id="fb-performance-overview" class="performance-grid"></div>
         </section>
     </main>
 </div>

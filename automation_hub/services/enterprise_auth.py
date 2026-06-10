@@ -23,7 +23,7 @@ def ldap_enabled() -> bool:
 
 
 def _default_modules() -> list[str]:
-    raw = os.getenv("SSO_DEFAULT_MODULES", "feedback")
+    raw = os.getenv("SSO_DEFAULT_MODULES", "feedback_180")
     return [item.strip() for item in raw.split(",") if item.strip()]
 
 
@@ -66,14 +66,27 @@ def provision_user(
                 ),
             )
         else:
+            modules = auth.user_modules_from_record(row)
+            if "feedback" in modules and "feedback_180" not in modules:
+                modules = [
+                    "feedback_180" if item == "feedback" else item for item in modules
+                ]
             conn.execute(
                 """
                 UPDATE users SET auth_provider = ?, external_subject = ?,
                     first_name = COALESCE(NULLIF(?, ''), first_name),
-                    last_name = COALESCE(NULLIF(?, ''), last_name)
+                    last_name = COALESCE(NULLIF(?, ''), last_name),
+                    modules_json = ?
                 WHERE username = ?
                 """,
-                (provider, subject, first_name, last_name, username),
+                (
+                    provider,
+                    subject,
+                    first_name,
+                    last_name,
+                    json.dumps(modules),
+                    username,
+                ),
             )
         conn.commit()
         refreshed = conn.execute(

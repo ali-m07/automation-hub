@@ -44,7 +44,7 @@ function toggleDarkMode() {
 function updateDarkModeIcon(theme) {
     const icon = document.getElementById('dark-mode-icon');
     if (icon) {
-        icon.textContent = theme === 'dark' ? '☀️' : '🌙';
+        icon.textContent = theme === 'dark' ? 'Light' : 'Dark';
     }
 }
 

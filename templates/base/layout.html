@@ -39,7 +39,9 @@
             <a href="/external-db" class="sidebar-link">External database</a>
             {% endif %}
             {% if user and (user.role == 'admin' or 'feedback_180' in (user.modules or []) or 'feedback_180_admin' in (user.modules or [])) %}
-            <a href="/feedback" class="sidebar-link">Reviews &amp; Approvals</a>
+            <a href="/feedback#assessments" class="sidebar-link">My Assessments</a>
+            <a href="/feedback#performance" class="sidebar-link">180 Performance</a>
+            <a href="/feedback#tickets" class="sidebar-link">My Process Tickets</a>
             {% endif %}
             {% if user and (user.role == 'admin' or 'process_designer_admin' in (user.modules or [])) %}
             <a href="/process-designer" class="sidebar-link">Process Designer</a>
@@ -82,8 +84,8 @@
                 <input type="text" id="platform-search" class="form-control" placeholder="Search tables, templates, gallery, tickets…" style="width:220px; padding:8px 12px; margin-right:8px;" oninput="onPlatformSearchInput(this.value)" onfocus="onPlatformSearchFocus()">
                 <div id="platform-search-results" style="display:none; position:absolute; top:100%; left:0; margin-top:4px; width:320px; max-height:360px; overflow:auto; background:#fff; border:1px solid #e5e7eb; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,0.1); z-index:1001;"></div>
             </div>
-            <button type="button" class="top-nav-link" onclick="toggleDarkMode()" style="background:none; border:none; cursor:pointer; padding:8px;" title="Toggle dark mode">
-                <span id="dark-mode-icon">🌙</span>
+            <button type="button" class="theme-toggle" onclick="toggleDarkMode()" title="Toggle dark mode" aria-label="Toggle dark mode">
+                <span id="dark-mode-icon" aria-hidden="true">Dark</span>
             </button>
             <select id="language-selector" onchange="setLanguage(this.value)" style="padding:6px 10px; border:1px solid #e5e7eb; border-radius:6px; background:#fff; margin-right:8px;">
                 <option value="en">EN</option>

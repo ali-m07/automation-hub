@@ -148,6 +148,11 @@ function fbSetAdminMode() {
     const isAdmin = fbPermissions.can_manage_workflow;
     document.body.classList.toggle('fb-readonly-user', !isAdmin);
     document.querySelectorAll('[data-admin-only]').forEach((el) => { el.style.display = isAdmin ? '' : 'none'; });
+    const adminHeadings = ['Cycle setup', 'Jira-style workflow board', 'Participants', 'Question builder', 'Ticket form builder', 'Approvals and transitions'];
+    document.querySelectorAll('.feedback-card').forEach(card => {
+        const heading = card.querySelector('h2')?.textContent.trim();
+        if (adminHeadings.includes(heading)) card.style.display = isAdmin ? '' : 'none';
+    });
     ['fb-title', 'fb-cycle', 'fb-description', 'fb-deadline', 'fb-scale', 'fb-anonymous', 'fb-subjects', 'fb-reviewers'].forEach((id) => {
         const el = document.getElementById(id);
         if (el) el.disabled = !isAdmin;
@@ -171,6 +176,16 @@ function fbRenderAll() {
     fbRenderTickets();
     fbRenderPreview();
     fbRenderMetrics();
+    fbRenderPerformanceOverview();
+}
+
+function fbRenderPerformanceOverview() {
+    const target = document.getElementById('fb-performance-overview');
+    if (!target) return;
+    target.innerHTML = (fbProjects || []).map(project => {
+        const status = (project.workflow?.statuses || []).find(item => item.id === project.status)?.name || project.status || 'Draft';
+        return `<button type="button" class="performance-card" onclick="fbOpenProject('${fbEscape(project.id)}'); location.hash='assessments'"><span class="performance-status">${fbEscape(status)}</span><strong>${fbEscape(project.title || 'Performance cycle')}</strong><small>${(project.responses || []).length} response(s) · ${(project.questions || []).length} question(s)</small></button>`;
+    }).join('') || '<div class="feedback-empty">No 180 performance cycle is assigned to you yet.</div>';
 }
 
 function fbRenderFormFields() {
