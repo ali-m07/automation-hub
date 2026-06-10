@@ -19,7 +19,8 @@ FIELD_TYPES = {
     "date",
     "single_select",
     "multi_select",
-    "user_picker",
+    "single_user_picker",
+    "multi_user_picker",
     "checkbox",
     "html",
 }
@@ -262,5 +263,118 @@ async def save_workflow(request: Request):
             "SELECT * FROM workflow_definitions WHERE id = ?", (workflow_id,)
         ).fetchone()
         return JSONResponse({"success": True, "workflow": _workflow_dict(row)})
+    finally:
+        conn.close()
+
+
+@router.get("/roles-groups")
+async def list_roles_groups(request: Request):
+    user = _user(request)
+    if not _can_manage(user):
+        raise HTTPException(status_code=403, detail="Process admin access required")
+    conn = db.db_connect()
+    try:
+        roles = [
+            {
+                **dict(row),
+                "permissions": _json(row["permissions_json"], []),
+            }
+            for row in conn.execute("SELECT * FROM process_roles ORDER BY name")
+        ]
+        groups = []
+        for row in conn.execute("SELECT * FROM process_groups ORDER BY name"):
+            group = dict(row)
+            group["role_ids"] = [
+                item["role_id"]
+                for item in conn.execute(
+                    "SELECT role_id FROM process_group_roles WHERE group_id = ?",
+                    (row["id"],),
+                )
+            ]
+            group["members"] = [
+                item["username"]
+                for item in conn.execute(
+                    "SELECT username FROM process_group_members WHERE group_id = ?",
+                    (row["id"],),
+                )
+            ]
+            groups.append(group)
+        return JSONResponse({"success": True, "roles": roles, "groups": groups})
+    finally:
+        conn.close()
+
+
+@router.post("/roles")
+async def save_role(request: Request):
+    user = _user(request)
+    if not _can_manage(user):
+        raise HTTPException(status_code=403, detail="Process admin access required")
+    payload = await request.json()
+    role_id = str(payload.get("id") or f"role_{secrets.token_hex(5)}")
+    key = _slug(payload.get("key") or payload.get("name"), role_id)
+    conn = db.db_connect()
+    try:
+        conn.execute(
+            """
+            INSERT INTO process_roles(id, role_key, name, description,
+                permissions_json, created_at) VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET role_key=excluded.role_key,
+                name=excluded.name, description=excluded.description,
+                permissions_json=excluded.permissions_json
+            """,
+            (
+                role_id,
+                key,
+                str(payload.get("name") or key)[:160],
+                str(payload.get("description") or "")[:500],
+                json.dumps(payload.get("permissions") or []),
+                db.utc_now_iso(),
+            ),
+        )
+        conn.commit()
+        return JSONResponse({"success": True, "id": role_id})
+    finally:
+        conn.close()
+
+
+@router.post("/groups")
+async def save_group(request: Request):
+    user = _user(request)
+    if not _can_manage(user):
+        raise HTTPException(status_code=403, detail="Process admin access required")
+    payload = await request.json()
+    group_id = str(payload.get("id") or f"group_{secrets.token_hex(5)}")
+    key = _slug(payload.get("key") or payload.get("name"), group_id)
+    conn = db.db_connect()
+    try:
+        conn.execute(
+            """
+            INSERT INTO process_groups(id, group_key, name, description, created_at)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET group_key=excluded.group_key,
+                name=excluded.name, description=excluded.description
+            """,
+            (
+                group_id,
+                key,
+                str(payload.get("name") or key)[:160],
+                str(payload.get("description") or "")[:500],
+                db.utc_now_iso(),
+            ),
+        )
+        conn.execute("DELETE FROM process_group_roles WHERE group_id = ?", (group_id,))
+        conn.execute(
+            "DELETE FROM process_group_members WHERE group_id = ?", (group_id,)
+        )
+        conn.executemany(
+            "INSERT INTO process_group_roles(group_id, role_id) VALUES (?, ?)",
+            [(group_id, role_id) for role_id in payload.get("role_ids") or []],
+        )
+        conn.executemany(
+            "INSERT INTO process_group_members(group_id, username) VALUES (?, ?)",
+            [(group_id, username) for username in payload.get("members") or []],
+        )
+        conn.commit()
+        return JSONResponse({"success": True, "id": group_id})
     finally:
         conn.close()

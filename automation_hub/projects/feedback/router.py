@@ -37,6 +37,8 @@ FIELD_TYPES = {
     "single_select",
     "multi_select",
     "user_picker",
+    "single_user_picker",
+    "multi_user_picker",
     "checkbox",
 }
 HTML_TAGS = [

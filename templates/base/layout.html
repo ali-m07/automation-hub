@@ -87,10 +87,6 @@
             <button type="button" class="theme-toggle" onclick="toggleDarkMode()" title="Toggle dark mode" aria-label="Toggle dark mode">
                 <span id="dark-mode-icon" aria-hidden="true">Dark</span>
             </button>
-            <select id="language-selector" onchange="setLanguage(this.value)" style="padding:6px 10px; border:1px solid #e5e7eb; border-radius:6px; background:#fff; margin-right:8px;">
-                <option value="en">EN</option>
-                <option value="fa">FA</option>
-            </select>
             <div class="notifications-wrap" style="position:relative;">
                 <a href="#" class="top-nav-link" onclick="toggleNotificationsPanel(); return false;" id="notifications-trigger">Notifications <span id="notifications-badge" style="display:none; background:#ef4444; color:#fff; border-radius:10px; padding:2px 6px; font-size:0.75rem; margin-left:4px;">0</span></a>
                 <div id="notifications-panel" style="display:none; position:absolute; top:100%; right:0; margin-top:6px; width:320px; max-height:400px; overflow:auto; background:#fff; border:1px solid #e5e7eb; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,0.1); z-index:1000;">

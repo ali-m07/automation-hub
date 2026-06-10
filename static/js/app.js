@@ -180,13 +180,14 @@ const translations = {
     }
 };
 
-let currentLang = localStorage.getItem('language') || 'en';
+let currentLang = 'en';
 
 function setLanguage(lang) {
-    currentLang = lang;
-    localStorage.setItem('language', lang);
-    document.documentElement.setAttribute('lang', lang);
-    document.documentElement.setAttribute('dir', lang === 'fa' ? 'rtl' : 'ltr');
+    lang = 'en';
+    currentLang = 'en';
+    localStorage.setItem('language', 'en');
+    document.documentElement.setAttribute('lang', 'en');
+    document.documentElement.setAttribute('dir', 'ltr');
     // Update text elements (simplified - would need more comprehensive implementation)
     const t = translations[lang] || translations.en;
     const searchInput = document.getElementById('platform-search');

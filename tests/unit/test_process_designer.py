@@ -32,3 +32,8 @@ def test_scoped_field_requires_matching_module():
 
 def test_slug_normalizes_shared_keys():
     assert router._slug("Employee Department", "field") == "Employee_Department"
+
+
+def test_user_picker_variants_are_supported():
+    assert "single_user_picker" in router.FIELD_TYPES
+    assert "multi_user_picker" in router.FIELD_TYPES

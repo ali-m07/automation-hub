@@ -566,6 +566,39 @@ def init_database() -> None:
                 is_active INTEGER NOT NULL DEFAULT 1
             )
             """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS process_roles (
+                id TEXT PRIMARY KEY,
+                role_key TEXT NOT NULL UNIQUE,
+                name TEXT NOT NULL,
+                description TEXT,
+                permissions_json TEXT NOT NULL DEFAULT '[]',
+                created_at TEXT NOT NULL
+            )
+            """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS process_groups (
+                id TEXT PRIMARY KEY,
+                group_key TEXT NOT NULL UNIQUE,
+                name TEXT NOT NULL,
+                description TEXT,
+                created_at TEXT NOT NULL
+            )
+            """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS process_group_roles (
+                group_id TEXT NOT NULL,
+                role_id TEXT NOT NULL,
+                PRIMARY KEY (group_id, role_id)
+            )
+            """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS process_group_members (
+                group_id TEXT NOT NULL,
+                username TEXT NOT NULL,
+                PRIMARY KEY (group_id, username)
+            )
+            """)
         app_settings_keys = {
             safe_row_get(r, "key")
             for r in conn.execute("SELECT key FROM app_settings").fetchall()

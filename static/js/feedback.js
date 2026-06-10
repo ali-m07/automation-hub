@@ -260,7 +260,8 @@ function fbRenderTicketForm() {
         if (field.type === 'single_select') input = `<select class="form-control" data-ticket-field="${fbEscape(field.key)}"><option value="">Select...</option>${options}</select>`;
         if (field.type === 'multi_select') input = `<select multiple class="form-control" data-ticket-field="${fbEscape(field.key)}">${options}</select>`;
         if (field.type === 'checkbox') input = `<input type="checkbox" data-ticket-field="${fbEscape(field.key)}">`;
-        if (field.type === 'user_picker') input = `<input class="form-control" list="fb-user-options" data-ticket-field="${fbEscape(field.key)}" data-user-source="${fbEscape(field.user_source || 'database')}" oninput="fbSearchUsers(this.value, '${fbEscape(field.user_source || 'database')}')">`;
+        if (field.type === 'single_user_picker' || field.type === 'user_picker') input = `<input class="form-control" list="fb-user-options" data-ticket-field="${fbEscape(field.key)}" data-user-source="${fbEscape(field.user_source || 'database')}" oninput="fbSearchUsers(this.value, '${fbEscape(field.user_source || 'database')}')">`;
+        if (field.type === 'multi_user_picker') input = `<select multiple class="form-control" data-ticket-field="${fbEscape(field.key)}">${Array.from(document.getElementById('fb-user-options')?.options || []).map(option => `<option value="${fbEscape(option.value)}">${fbEscape(option.label || option.value)}</option>`).join('')}</select>`;
         return `<label data-ticket-field-wrap="${fbEscape(field.key)}">${fbEscape(field.label)}${field.required ? ' *' : ''}${input}<small>${fbEscape(field.help_text || '')}</small></label>`;
     }).join('');
 }

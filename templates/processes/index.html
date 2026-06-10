@@ -1,50 +1,90 @@
 {% extends "base/layout.html" %}
-
 {% block title %}Process Designer - Servexa{% endblock %}
-{% block subtitle %}Shared custom fields and reusable workflows for every module{% endblock %}
-
+{% block subtitle %}Structured fields, workflows, roles and groups{% endblock %}
 {% block content %}
-<header class="feedback-hero">
-    <div><div class="eyebrow">Platform administration</div><h1>Process Designer</h1><p class="subtitle">Build reusable fields and workflows once, then expose them globally or only to selected modules.</p></div>
-</header>
+<header class="feedback-hero"><div><div class="eyebrow">Platform administration</div><h1>Process Designer</h1><p class="subtitle">Create reusable building blocks with guided configuration instead of raw forms.</p></div></header>
 
 <div class="feedback-main">
     <section class="card feedback-card">
-        <div class="feedback-card-head"><div><h2>Shared custom field</h2><p>Global fields are reusable everywhere. Module-scoped fields appear only in selected products.</p></div><button class="btn btn-primary" onclick="pdSaveField()">Save field</button></div>
-        <div class="feedback-grid three">
-            <label>Label<input id="pd-field-label" class="form-control" placeholder="Department"></label>
-            <label>Key<input id="pd-field-key" class="form-control" placeholder="department"></label>
-            <label>Type<select id="pd-field-type" class="form-control"></select></label>
+        <div class="feedback-card-head"><div><h2>Custom field wizard</h2><p>Select a field type, configure its behavior, then choose where and for whom it is available.</p></div></div>
+        <div class="wizard-steps" aria-label="Field creation progress">
+            <button class="wizard-step active" data-step-button="1" onclick="pdGoStep(1)"><span>1</span>Type</button>
+            <button class="wizard-step" data-step-button="2" onclick="pdGoStep(2)"><span>2</span>Configuration</button>
+            <button class="wizard-step" data-step-button="3" onclick="pdGoStep(3)"><span>3</span>Access</button>
         </div>
-        <div class="feedback-grid two">
-            <label>Scope<select id="pd-field-scope" class="form-control"><option value="global">All modules</option><option value="modules">Selected modules</option></select></label>
-            <label>Allowed modules<select id="pd-field-modules" class="form-control" multiple size="7"></select></label>
+
+        <div class="wizard-panel" data-step-panel="1">
+            <div id="pd-field-types" class="field-type-grid"></div>
         </div>
-        <div class="feedback-grid two">
-            <label>Options, one per line<textarea id="pd-field-options" class="form-control" rows="4"></textarea></label>
-            <label>Visibility policy (JSON)<textarea id="pd-field-visibility" class="form-control code-input" rows="4" placeholder='{"roles":["admin"],"condition":{"field":"country","equals":"IR"}}'></textarea></label>
+
+        <div class="wizard-panel" data-step-panel="2" hidden>
+            <div class="feedback-grid two">
+                <label>Field label<input id="pd-field-label" class="form-control" placeholder="Department"></label>
+                <label>Field key<input id="pd-field-key" class="form-control" placeholder="department"></label>
+                <label>Placeholder<input id="pd-field-placeholder" class="form-control"></label>
+                <label>Help text<input id="pd-field-help" class="form-control"></label>
+            </div>
+            <div id="pd-type-settings"></div>
+            <div class="field-preview"><div class="eyebrow">Live preview</div><div id="pd-field-preview"></div></div>
+        </div>
+
+        <div class="wizard-panel" data-step-panel="3" hidden>
+            <div class="feedback-grid two">
+                <label>Scope<select id="pd-field-scope" class="form-control" onchange="pdToggleScope()"><option value="global">All modules</option><option value="modules">Selected modules</option></select></label>
+                <label id="pd-field-modules-wrap">Allowed modules<select id="pd-field-modules" class="form-control" multiple size="7"></select></label>
+                <label>Visible to roles<select id="pd-field-roles" class="form-control" multiple size="6"></select></label>
+                <label>Visible to groups<select id="pd-field-groups" class="form-control" multiple size="6"></select></label>
+            </div>
+            <label class="feedback-toggle"><input id="pd-field-required" type="checkbox"> Required field</label>
+        </div>
+
+        <div class="wizard-actions">
+            <button class="btn" id="pd-prev" onclick="pdPrevious()" disabled>Back</button>
+            <button class="btn btn-primary" id="pd-next" onclick="pdNext()">Continue</button>
+            <button class="btn btn-success" id="pd-save-field" onclick="pdSaveField()" hidden>Save field</button>
         </div>
         <div id="pd-fields" class="ticket-list"></div>
     </section>
 
     <section class="card feedback-card">
-        <div class="feedback-card-head"><div><h2>Reusable workflow</h2><p>Define statuses, approval transitions and who may maintain this workflow.</p></div><button class="btn btn-primary" onclick="pdSaveWorkflow()">Save workflow</button></div>
+        <div class="feedback-card-head"><div><h2>Roles and groups</h2><p>Create business roles, then assign one or more roles to a group of users.</p></div></div>
         <div class="feedback-grid two">
-            <label>Name<input id="pd-workflow-name" class="form-control" placeholder="Manager approval"></label>
-            <label>Key<input id="pd-workflow-key" class="form-control" placeholder="manager_approval"></label>
+            <div class="process-builder-row">
+                <h3>New role</h3>
+                <label>Name<input id="pd-role-name" class="form-control" placeholder="Performance approver"></label>
+                <label>Key<input id="pd-role-key" class="form-control" placeholder="performance_approver"></label>
+                <label>Description<textarea id="pd-role-description" class="form-control" rows="2"></textarea></label>
+                <label>Permissions, one per line<textarea id="pd-role-permissions" class="form-control" rows="4" placeholder="ticket.approve&#10;ticket.report"></textarea></label>
+                <button class="btn btn-primary" onclick="pdSaveRole()">Save role</button>
+            </div>
+            <div class="process-builder-row">
+                <h3>New group</h3>
+                <label>Name<input id="pd-group-name" class="form-control" placeholder="HR managers"></label>
+                <label>Key<input id="pd-group-key" class="form-control" placeholder="hr_managers"></label>
+                <label>Members, one username per line<textarea id="pd-group-members" class="form-control" rows="4"></textarea></label>
+                <label>Assigned roles<select id="pd-group-roles" class="form-control" multiple size="5"></select></label>
+                <button class="btn btn-primary" onclick="pdSaveGroup()">Save group</button>
+            </div>
+        </div>
+        <div class="feedback-grid two"><div id="pd-roles" class="ticket-list"></div><div id="pd-groups" class="ticket-list"></div></div>
+    </section>
+
+    <section class="card feedback-card">
+        <div class="feedback-card-head"><div><h2>Reusable workflow</h2><p>Define statuses and approval transitions for selected modules.</p></div><button class="btn btn-primary" onclick="pdSaveWorkflow()">Save workflow</button></div>
+        <div class="feedback-grid two">
+            <label>Name<input id="pd-workflow-name" class="form-control"></label><label>Key<input id="pd-workflow-key" class="form-control"></label>
             <label>Scope<select id="pd-workflow-scope" class="form-control"><option value="global">All modules</option><option value="modules">Selected modules</option></select></label>
             <label>Allowed modules<select id="pd-workflow-modules" class="form-control" multiple size="7"></select></label>
         </div>
         <label>Description<textarea id="pd-workflow-description" class="form-control" rows="2"></textarea></label>
         <div class="feedback-grid three">
-            <label>Statuses (JSON)<textarea id="pd-statuses" class="form-control code-input" rows="9">[{"id":"draft","name":"Draft"},{"id":"approval","name":"Manager approval"},{"id":"done","name":"Done"}]</textarea></label>
-            <label>Transitions (JSON)<textarea id="pd-transitions" class="form-control code-input" rows="9">[{"id":"submit","from":"draft","to":"approval","approver":"creator"},{"id":"approve","from":"approval","to":"done","approver":"manager"}]</textarea></label>
-            <label>Manage policy (JSON)<textarea id="pd-policy" class="form-control code-input" rows="9">{"roles":["admin"],"modules":["process_designer_admin"]}</textarea></label>
+            <label>Statuses (JSON)<textarea id="pd-statuses" class="form-control code-input" rows="8">[{"id":"draft","name":"Draft"},{"id":"approval","name":"Manager approval"},{"id":"done","name":"Done"}]</textarea></label>
+            <label>Transitions (JSON)<textarea id="pd-transitions" class="form-control code-input" rows="8">[{"id":"submit","from":"draft","to":"approval","approver":"creator"},{"id":"approve","from":"approval","to":"done","approver":"manager"}]</textarea></label>
+            <label>Manage policy (JSON)<textarea id="pd-policy" class="form-control code-input" rows="8">{"roles":["admin"]}</textarea></label>
         </div>
         <div id="pd-workflows" class="ticket-list"></div>
     </section>
     <div id="pd-status" class="status-box info" style="display:none"></div>
 </div>
 {% endblock %}
-
-{% block extra_js %}<script src="/static/js/process-designer.js?v=20260610"></script>{% endblock %}
+{% block extra_js %}<script src="/static/js/process-designer.js?v=20260610-wizard"></script>{% endblock %}
