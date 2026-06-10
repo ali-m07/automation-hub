@@ -32,31 +32,55 @@
         <div class="sidebar-section">
             <div class="sidebar-title">Workspace</div>
             <a href="/summary" class="sidebar-link">Summary</a>
+            {% if user and (user.role == 'admin' or 'feedback_180' in (user.modules or []) or 'feedback_180_admin' in (user.modules or [])) %}
+            <a href="/projects#my-requests" class="sidebar-link">My Tickets</a>
+            {% endif %}
+        </div>
+
+        <div class="sidebar-section">
+            <div class="sidebar-title">Projects &amp; Helpdesk</div>
+            <div id="sidebar-projects-list" style="display:flex; flex-direction:column; gap:2px;">
+                <!-- Loaded dynamically by JS -->
+            </div>
+            {% if user and (user.role == 'admin' or 'feedback_180' in (user.modules or []) or 'feedback_180_admin' in (user.modules or [])) %}
+            <a href="/projects" class="sidebar-link" style="font-size: 0.85rem; opacity: 0.85; display: flex; align-items: center; gap: 6px;">📂 Help Center Portal</a>
+            {% endif %}
+        </div>
+
+        <div class="sidebar-section">
+            <div class="sidebar-title">Creative &amp; Tools</div>
             {% if user and (user.role == 'admin' or 'data_tables_manual' in (user.modules or [])) %}
             <a href="/data" class="sidebar-link">Data &amp; Connectors</a>
             {% endif %}
             {% if user and (user.role == 'admin' or 'connectors_db' in (user.modules or [])) %}
             <a href="/external-db" class="sidebar-link">External database</a>
             {% endif %}
-            {% if user and (user.role == 'admin' or 'feedback_180' in (user.modules or []) or 'feedback_180_admin' in (user.modules or [])) %}
-            <a href="/projects" class="sidebar-link">Projects</a>
-            <a href="/projects#my-requests" class="sidebar-link">My Tickets</a>
-            {% endif %}
             {% if user and (user.role == 'admin' or 'process_designer_admin' in (user.modules or [])) %}
             <a href="/process-designer" class="sidebar-link">Process Designer</a>
             {% endif %}
+            {% if user and (user.role == 'admin' or 'creative_psd' in (user.modules or [])) %}
             <a href="/creative" class="sidebar-link">Creative Studio</a>
             <a href="/gallery" class="sidebar-link">File Repository</a>
+            {% endif %}
+            {% if user and (user.role == 'admin' or 'messaging_send' in (user.modules or [])) %}
             <a href="/messaging" class="sidebar-link">Messaging</a>
+            {% endif %}
             <a href="/support" class="sidebar-link">Support</a>
+        </div>
+
+        <div class="sidebar-section">
+            <div class="sidebar-title">Management</div>
+            {% if user and (user.role == 'admin' or 'feedback_180_admin' in (user.modules or [])) %}
+            <a href="/projects/admin" class="sidebar-link">Projects Settings</a>
+            {% endif %}
+            {% if user and user.role == 'admin' %}
+            <a href="/admin" class="sidebar-link">Platform Admin</a>
+            {% endif %}
         </div>
 
         <div class="sidebar-section">
             <div class="sidebar-title">Account</div>
             <a href="#" class="sidebar-link" onclick="toggleNotificationsPanel(); closeSidebar(); return false;">Notifications</a>
-            {% if user and user.role == 'admin' %}
-            <a href="/admin" class="sidebar-link">Admin</a>
-            {% endif %}
             <a href="#" class="sidebar-link" onclick="toggleProfilePanel(); closeSidebar(); return false;">Profile</a>
             <a href="#" class="sidebar-link" onclick="toggleSecurityPanel(); closeSidebar(); return false;">Security</a>
             <a href="/logout" class="sidebar-link sidebar-link-danger">Logout</a>
@@ -225,6 +249,51 @@
 
     <!-- Cache-buster to ensure latest UI loads -->
     <script src="/static/js/app.js?v=20260426-creative-fix"></script>
+    <script>
+        async function loadSidebarProjects() {
+            const listEl = document.getElementById('sidebar-projects-list');
+            if (!listEl) return;
+            try {
+                const res = await fetch('/api/feedback/projects', { credentials: 'include' });
+                const data = await res.json();
+                if (!data.success) return;
+                const projects = data.projects || [];
+                listEl.innerHTML = projects.map(p => `
+                    <a href="/projects/${encodeURIComponent(p.key || p.id)}" class="sidebar-link" style="padding: 8px 12px; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
+                        <span>${p.icon || '📋'}</span>
+                        <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;">${p.title}</span>
+                    </a>
+                `).join('');
+                highlightActiveSidebarLink();
+            } catch (e) {
+                console.error("Failed to load sidebar projects", e);
+            }
+        }
+
+        function highlightActiveSidebarLink() {
+            const path = window.location.pathname;
+            const hash = window.location.hash;
+            const links = document.querySelectorAll(".sidebar-link");
+            links.forEach(link => {
+                const href = link.getAttribute("href");
+                if (href === path || (href && href.includes("#") && (path + hash === href || (path === '/projects' && hash === '#my-requests' && href.endsWith('#my-requests'))))) {
+                    link.classList.add("active");
+                    link.style.background = "var(--bg-tertiary)";
+                    link.style.borderColor = "var(--border-color)";
+                } else {
+                    link.classList.remove("active");
+                    link.style.background = "";
+                    link.style.borderColor = "";
+                }
+            });
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            loadSidebarProjects();
+            highlightActiveSidebarLink();
+            window.addEventListener("hashchange", highlightActiveSidebarLink);
+        });
+    </script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

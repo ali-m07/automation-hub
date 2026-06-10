@@ -293,6 +293,10 @@
                 <label>Rating scale<select id="fb-scale" class="form-control"><option value="1-5">1 to 5</option><option value="1-10">1 to 10</option><option value="0-100">0 to 100</option></select></label>
             </div>
             <label style="margin-top: 12px;">Description<textarea id="fb-description" class="form-control" rows="3" placeholder="Explain who can use this request and what steps it goes through."></textarea></label>
+            <div class="feedback-grid two" style="margin-top: 12px;">
+                <label>Allowed Users (comma separated)<input id="fb-allowed-users" class="form-control" placeholder="user1, user2"></label>
+                <label>Allowed Groups/Roles (comma separated)<input id="fb-allowed-groups" class="form-control" placeholder="admin, manager"></label>
+            </div>
             <label class="feedback-toggle"><input id="fb-anonymous" type="checkbox"> Keep reviewer identity anonymous in performance summaries</label>
             <label class="feedback-toggle"><input id="fb-hidden" type="checkbox"> Hide project from user Help Center (Archive/Soft delete)</label>
         </section>

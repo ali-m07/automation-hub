@@ -87,13 +87,25 @@ async def summary_page(request: Request):
 @pages_router.get("/data", response_class=HTMLResponse, response_model=None)
 async def data_page(request: Request):
     """Data & Connectors page."""
-    return _render_page(request, "data/index.html")
+    user = auth.get_current_user(request)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    if user.get("role") != "admin" and not auth.user_has_module(
+        user, "data_tables_manual"
+    ):
+        return RedirectResponse(url="/summary", status_code=302)
+    return _render_page(request, "data/index.html", user=user)
 
 
 @pages_router.get("/creative", response_class=HTMLResponse, response_model=None)
 async def creative_page(request: Request):
     """Creative Studio page."""
-    return _render_page(request, "creative/index.html")
+    user = auth.get_current_user(request)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    if user.get("role") != "admin" and not auth.user_has_module(user, "creative_psd"):
+        return RedirectResponse(url="/summary", status_code=302)
+    return _render_page(request, "creative/index.html", user=user)
 
 
 @pages_router.get("/feedback", response_class=HTMLResponse, response_model=None)
@@ -211,19 +223,32 @@ async def ticket_detail(ticket_id: str, request: Request):
 @pages_router.get("/messaging", response_class=HTMLResponse, response_model=None)
 async def messaging_page(request: Request):
     """Messaging page."""
-    return _render_page(request, "messaging/index.html")
+    user = auth.get_current_user(request)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    if user.get("role") != "admin" and not auth.user_has_module(user, "messaging_send"):
+        return RedirectResponse(url="/summary", status_code=302)
+    return _render_page(request, "messaging/index.html", user=user)
 
 
 @pages_router.get("/gallery", response_class=HTMLResponse, response_model=None)
 async def gallery_page(request: Request):
     """Gallery/File Repository page."""
-    return _render_page(request, "gallery/index.html")
+    user = auth.get_current_user(request)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    if user.get("role") != "admin" and not auth.user_has_module(user, "creative_psd"):
+        return RedirectResponse(url="/summary", status_code=302)
+    return _render_page(request, "gallery/index.html", user=user)
 
 
 @pages_router.get("/support", response_class=HTMLResponse, response_model=None)
 async def support_page(request: Request):
     """Support/Tickets page."""
-    return _render_page(request, "support/index.html")
+    user = auth.get_current_user(request)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    return _render_page(request, "support/index.html", user=user)
 
 
 @pages_router.get("/external-db", response_class=HTMLResponse, response_model=None)

@@ -116,6 +116,8 @@ function fbCollectProject() {
         fbCurrent.workflow.deadline_days = Number(document.getElementById('fb-deadline')?.value || 0);
         fbCurrent.workflow.anonymous = Boolean(document.getElementById('fb-anonymous')?.checked);
         fbCurrent.hidden = Boolean(document.getElementById('fb-hidden')?.checked);
+        fbCurrent.allowed_users = (document.getElementById('fb-allowed-users')?.value || '').split(',').map(s => s.trim()).filter(Boolean);
+        fbCurrent.allowed_groups = (document.getElementById('fb-allowed-groups')?.value || '').split(',').map(s => s.trim()).filter(Boolean);
         fbCurrent.participants.subjects = fbLines(document.getElementById('fb-subjects')?.value);
         fbCurrent.participants.reviewers = fbLines(document.getElementById('fb-reviewers')?.value);
         fbCollectScreens();
@@ -1033,6 +1035,8 @@ function fbRenderSetup() {
     document.getElementById('fb-scale').value = `${fbCurrent.workflow?.scale_min || 1}-${fbCurrent.workflow?.scale_max || 5}`;
     document.getElementById('fb-anonymous').checked = Boolean(fbCurrent.workflow?.anonymous);
     if (document.getElementById('fb-hidden')) document.getElementById('fb-hidden').checked = Boolean(fbCurrent.hidden);
+    if (document.getElementById('fb-allowed-users')) document.getElementById('fb-allowed-users').value = (fbCurrent.allowed_users || []).join(', ');
+    if (document.getElementById('fb-allowed-groups')) document.getElementById('fb-allowed-groups').value = (fbCurrent.allowed_groups || []).join(', ');
 }
 
 function fbRenderProjectList() {
@@ -2128,6 +2132,16 @@ async function fbInitIssuePage(ticketId) {
             hiddenCheckbox.checked = Boolean(ticket.hidden);
         }
         
+        const allowedUsersInput = document.getElementById('fb-drawer-allowed-users');
+        if (allowedUsersInput) {
+            allowedUsersInput.value = (ticket.allowed_users || []).join(', ');
+        }
+        
+        const allowedGroupsInput = document.getElementById('fb-drawer-allowed-groups');
+        if (allowedGroupsInput) {
+            allowedGroupsInput.value = (ticket.allowed_groups || []).join(', ');
+        }
+        
         // Render pickers and properties
         const currentUsername = document.querySelector('.sidebar-user div')?.textContent.trim() || '';
         const isEditable = fbPermissions.can_manage_workflow ||
@@ -2406,6 +2420,31 @@ async function fbToggleTicketVisibility() {
     } catch (error) {
         fbSetStatus(error.message || 'Error updating ticket visibility.', 'error');
         hiddenCheckbox.checked = !isHidden; // Revert
+    }
+}
+
+async function fbUpdateTicketVisibilityACL() {
+    const allowedUsers = (document.getElementById('fb-drawer-allowed-users')?.value || '').split(',').map(s => s.trim()).filter(Boolean);
+    const allowedGroups = (document.getElementById('fb-drawer-allowed-groups')?.value || '').split(',').map(s => s.trim()).filter(Boolean);
+    
+    try {
+        const res = await fetch(`/api/feedback/tickets/${encodeURIComponent(fbActiveTicketId)}/update`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ticket: {
+                    field_values: {},
+                    allowed_users: allowedUsers,
+                    allowed_groups: allowedGroups
+                }
+            }),
+            credentials: 'include'
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.detail || data.error || 'Failed to update visibility ACL');
+        fbSetStatus('Ticket permissions updated.', 'success');
+    } catch (error) {
+        fbSetStatus(error.message || 'Error updating ticket permissions.', 'error');
     }
 }
 

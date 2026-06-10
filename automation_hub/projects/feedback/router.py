@@ -242,6 +242,18 @@ def _sanitize_project(
         (existing or {}).get("created_at") or clean.get("created_at") or now
     )
     clean["hidden"] = bool(project.get("hidden", (existing or {}).get("hidden", False)))
+    clean["allowed_users"] = [
+        str(u).strip()
+        for u in project.get("allowed_users", (existing or {}).get("allowed_users", []))
+        if str(u).strip()
+    ]
+    clean["allowed_groups"] = [
+        str(g).strip()
+        for g in project.get(
+            "allowed_groups", (existing or {}).get("allowed_groups", [])
+        )
+        if str(g).strip()
+    ]
     clean["updated_at"] = now
 
     workflow = clean.get("workflow") if isinstance(clean.get("workflow"), dict) else {}
@@ -337,16 +349,29 @@ def _project_visible(project: Dict[str, Any], user: Dict[str, Any]) -> bool:
         return True
     if project.get("hidden"):
         return False
-    username = user.get("username") or ""
+    username = (user.get("username") or "").strip().lower()
+    role = (user.get("role") or "").strip().lower()
+    user_modules = [m.strip().lower() for m in user.get("modules") or []]
+
+    allowed_users = [u.strip().lower() for u in project.get("allowed_users") or []]
+    allowed_groups = [g.strip().lower() for g in project.get("allowed_groups") or []]
+    if allowed_users or allowed_groups:
+        user_match = username in allowed_users
+        group_match = role in allowed_groups or any(
+            m in allowed_groups for m in user_modules
+        )
+        if not (user_match or group_match):
+            return False
+
     participants = project.get("participants") or {}
     manages_ticket = any(
-        ticket.get("manager_username") == username
+        (ticket.get("manager_username") or "").strip().lower() == username
         for ticket in project.get("tickets", [])
     )
     return (
-        username in participants.get("reviewers", [])
-        or username in participants.get("subjects", [])
-        or project.get("owner_username") == username
+        username in [s.strip().lower() for s in participants.get("subjects") or []]
+        or username in [r.strip().lower() for r in participants.get("reviewers") or []]
+        or (project.get("owner_username") or "").strip().lower() == username
         or manages_ticket
     )
 
@@ -376,11 +401,24 @@ def _ticket_visible(
         return True
     if ticket.get("hidden"):
         return False
-    username = user.get("username") or ""
+    username = (user.get("username") or "").strip().lower()
+    role = (user.get("role") or "").strip().lower()
+    user_modules = [m.strip().lower() for m in user.get("modules") or []]
+
+    allowed_users = [u.strip().lower() for u in ticket.get("allowed_users") or []]
+    allowed_groups = [g.strip().lower() for g in ticket.get("allowed_groups") or []]
+    if allowed_users or allowed_groups:
+        user_match = username in allowed_users
+        group_match = role in allowed_groups or any(
+            m in allowed_groups for m in user_modules
+        )
+        if not (user_match or group_match):
+            return False
+
     return username in {
-        ticket.get("created_by"),
-        ticket.get("assigned_to"),
-        ticket.get("manager_username"),
+        (ticket.get("created_by") or "").strip().lower(),
+        (ticket.get("assigned_to") or "").strip().lower(),
+        (ticket.get("manager_username") or "").strip().lower(),
     } or _project_visible(project, user)
 
 
@@ -828,6 +866,14 @@ async def update_feedback_ticket(project_id: str, ticket_id: str, request: Reque
         ticket["field_values"] = ticket.get("field_values") or {}
         for k, v in incoming["field_values"].items():
             ticket["field_values"][k] = v
+    if "allowed_users" in incoming:
+        ticket["allowed_users"] = [
+            str(u).strip() for u in incoming["allowed_users"] or []
+        ]
+    if "allowed_groups" in incoming:
+        ticket["allowed_groups"] = [
+            str(g).strip() for g in incoming["allowed_groups"] or []
+        ]
     ticket["updated_at"] = _now()
     ticket.setdefault("history", []).append(
         {
@@ -912,6 +958,14 @@ async def update_ticket_direct(ticket_id: str, request: Request):
         ticket["manager_username"] = str(incoming["manager_username"])[:160]
     if "field_values" in incoming and isinstance(incoming["field_values"], dict):
         ticket.setdefault("field_values", {}).update(incoming["field_values"])
+    if "allowed_users" in incoming:
+        ticket["allowed_users"] = [
+            str(u).strip() for u in incoming["allowed_users"] or []
+        ]
+    if "allowed_groups" in incoming:
+        ticket["allowed_groups"] = [
+            str(g).strip() for g in incoming["allowed_groups"] or []
+        ]
 
     ticket["updated_at"] = _now()
     ticket.setdefault("history", []).append(

@@ -302,6 +302,14 @@
                                 <input type="checkbox" id="fb-drawer-hidden-checkbox" onchange="fbToggleTicketVisibility()"> Hidden / Archived
                             </label>
                         </div>
+                        <div style="font-weight:700; color:var(--text-secondary);">Allowed Users</div>
+                        <div>
+                            <input type="text" id="fb-drawer-allowed-users" class="form-control" style="font-size:0.8rem; padding:4px 8px;" placeholder="user1, user2" onchange="fbUpdateTicketVisibilityACL()">
+                        </div>
+                        <div style="font-weight:700; color:var(--text-secondary);">Allowed Groups</div>
+                        <div>
+                            <input type="text" id="fb-drawer-allowed-groups" class="form-control" style="font-size:0.8rem; padding:4px 8px;" placeholder="admin, user" onchange="fbUpdateTicketVisibilityACL()">
+                        </div>
                         {% endif %}
                     </div>
 
