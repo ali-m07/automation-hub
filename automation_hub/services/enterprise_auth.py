@@ -53,6 +53,32 @@ def _servers() -> List[str]:
     return [item.strip() for item in raw.replace("\n", ",").split(",") if item.strip()]
 
 
+def _ldap_connection(user: str, password: str):
+    """Bind to the first available configured domain controller."""
+    from ldap3 import ALL, Connection, Server
+
+    errors = []
+    for host in _servers():
+        try:
+            server = Server(
+                host,
+                port=int(_setting("LDAP_PORT", "636")),
+                use_ssl=enabled("LDAP_USE_SSL"),
+                get_info=ALL,
+                connect_timeout=10,
+            )
+            return Connection(
+                server,
+                user=user,
+                password=password,
+                auto_bind=True,
+                receive_timeout=10,
+            )
+        except Exception as exc:
+            errors.append(f"{host}: {exc}")
+    raise ConnectionError("; ".join(errors) or "No LDAP servers configured")
+
+
 def oidc_enabled() -> bool:
     return enabled("OIDC_ENABLED") and bool(os.getenv("OIDC_DISCOVERY_URL"))
 
@@ -152,25 +178,11 @@ def authenticate_ldap(username: str, password: str) -> Optional[Dict[str, Any]]:
     """Authenticate against LDAP/Active Directory and provision the user."""
     if not ldap_enabled() or not password:
         return None
-    from ldap3 import ALL, Connection, Server, SUBTREE
-
-    server = Server(
-        _servers()[0],
-        port=int(_setting("LDAP_PORT", "636")),
-        use_ssl=enabled("LDAP_USE_SSL"),
-        get_info=ALL,
-        connect_timeout=10,
-    )
+    from ldap3 import SUBTREE
     user_principal = _setting("LDAP_USER_PRINCIPAL", "{username}").format(
         username=username
     )
-    connection = Connection(
-        server,
-        user=user_principal,
-        password=password,
-        auto_bind=True,
-        receive_timeout=10,
-    )
+    connection = _ldap_connection(user_principal, password)
     try:
         base_dn = _setting("LDAP_USER_BASE_DN") or _setting("LDAP_BASE_DN")
         search_filter = _setting(
@@ -204,22 +216,11 @@ def search_ldap_users(query: str) -> List[Dict[str, str]]:
     """Search Active Directory using a configured service account."""
     if not ldap_enabled() or not _setting("LDAP_BIND_USER"):
         return []
-    from ldap3 import ALL, Connection, Server, SUBTREE
+    from ldap3 import SUBTREE
     from ldap3.utils.conv import escape_filter_chars
 
-    server = Server(
-        _servers()[0],
-        port=int(_setting("LDAP_PORT", "636")),
-        use_ssl=enabled("LDAP_USE_SSL"),
-        get_info=ALL,
-        connect_timeout=10,
-    )
-    connection = Connection(
-        server,
-        user=_setting("LDAP_BIND_USER"),
-        password=_setting("LDAP_BIND_PASSWORD"),
-        auto_bind=True,
-        receive_timeout=10,
+    connection = _ldap_connection(
+        _setting("LDAP_BIND_USER"), _setting("LDAP_BIND_PASSWORD")
     )
     try:
         term = escape_filter_chars(query.strip() or "*")
