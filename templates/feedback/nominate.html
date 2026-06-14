@@ -205,25 +205,29 @@
             clip: rect(0 0 0 0);
         }
 
-        .evaluator-reason input {
+        .evaluator-reason textarea {
             width: 100%;
             height: 38px;
+            min-height: 38px;
             padding: 8px 11px;
             font-size: 13px;
             font-family: inherit;
+            line-height: 20px;
             border: 1px solid var(--gray-200);
             border-radius: 8px;
             background: white;
+            resize: none;
+            overflow: hidden;
             transition: border-color 0.2s, box-shadow 0.2s;
         }
 
-        .evaluator-reason input:focus {
+        .evaluator-reason textarea:focus {
             outline: none;
             border-color: var(--primary);
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
 
-        .evaluator-reason input::placeholder {
+        .evaluator-reason textarea::placeholder {
             color: var(--gray-400);
         }
 
@@ -912,9 +916,9 @@
                             <div class="evaluator-reason">
                                 <label>Reason for Nomination</label>
                                 <span class="evaluator-mobile-label">Reason</span>
-                                <input type="text" aria-label="Reason for nominating ${eval.email}"
-                                    placeholder="Add reason..." value="${escapeAttribute(eval.reason || '')}"
-                                    oninput="updateReason('${eval.email}', this.value)">
+                                <textarea rows="1" aria-label="Reason for nominating ${eval.email}"
+                                    placeholder="Add reason..."
+                                    oninput="updateReason('${eval.email}', this.value); autoResizeReason(this)">${escapeHtml(eval.reason || '')}</textarea>
                             </div>
                             <button class="delete-btn" onclick="removeEvaluator('${eval.email}')" title="Remove">
                                 <i class="fas fa-times"></i>
@@ -923,6 +927,7 @@
                     `).join('')}
                 </div>
             `;
+            container.querySelectorAll('.evaluator-reason textarea').forEach(autoResizeReason);
         }
 
         function escapeAttribute(value) {
@@ -931,6 +936,18 @@
                 .replaceAll('"', '&quot;')
                 .replaceAll('<', '&lt;')
                 .replaceAll('>', '&gt;');
+        }
+
+        function escapeHtml(value) {
+            return String(value)
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;');
+        }
+
+        function autoResizeReason(textarea) {
+            textarea.style.height = '38px';
+            textarea.style.height = `${Math.max(38, textarea.scrollHeight)}px`;
         }
 
         function updateReason(email, reason) {
