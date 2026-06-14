@@ -1168,10 +1168,18 @@ def _get_user_info(username: str) -> Dict[str, Any]:
     """
     # First try to get from Employee Roster using email
     try:
-        # Construct email from username if it doesn't contain @
-        email = username if "@" in username else f"{username}@snapp.ir"
-        emp = employee_roster.get_employee_by_email(email)
-        if emp:
+        emails = (
+            [username]
+            if "@" in username
+            else [
+                f"{username}@snapp.cab",
+                f"{username}@snapp.ir",
+            ]
+        )
+        for email in emails:
+            emp = employee_roster.get_employee_by_email(email)
+            if not emp:
+                continue
             return {
                 "username": emp.get("username", ""),
                 "first_name": (
@@ -1487,8 +1495,24 @@ async def submit_evaluator_nomination(request: Request):
                 detail="Each evaluator must have a reason for nomination",
             )
         email = str(eval_item.get("email") or "").strip().lower()
-        if not eval_item.get("username") and email:
-            eval_item["username"] = email.split("@", 1)[0]
+        roster_user = employee_roster.get_employee_by_email(email) if email else None
+        if not roster_user:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Evaluator {email or 'without email'} was not found in Employee Roster",
+            )
+        eval_item.update(
+            {
+                "username": roster_user.get("username", ""),
+                "email": roster_user.get("email", ""),
+                "full_name": roster_user.get("e_full_name")
+                or roster_user.get("full_name", ""),
+                "job_title": roster_user.get("job_title", ""),
+                "team": roster_user.get("team", ""),
+                "sub_team": roster_user.get("sub_team", ""),
+                "vertical": roster_user.get("vertical", ""),
+            }
+        )
 
     store = _load_evaluator_store()
 
@@ -1761,9 +1785,33 @@ async def add_evaluator_as_manager(nomination_id: str, request: Request):
             status_code=403, detail="Only the assigned manager can add evaluators"
         )
 
+    evaluator_info = _get_user_info(evaluator_username)
+    evaluator_email = evaluator_info.get("email", "")
+    roster_user = (
+        employee_roster.get_employee_by_email(evaluator_email)
+        if evaluator_email
+        else None
+    )
+    if not roster_user:
+        raise HTTPException(
+            status_code=400, detail="Evaluator was not found in Employee Roster"
+        )
+    if any(
+        item.get("email") == roster_user.get("email")
+        or item.get("username") == roster_user.get("username")
+        for item in nomination.get("evaluators", [])
+    ):
+        raise HTTPException(status_code=409, detail="Evaluator is already in this list")
+
     # Add new evaluator
     new_evaluator = {
-        "username": evaluator_username,
+        "username": roster_user.get("username", ""),
+        "email": roster_user.get("email", ""),
+        "full_name": roster_user.get("e_full_name") or roster_user.get("full_name", ""),
+        "job_title": roster_user.get("job_title", ""),
+        "team": roster_user.get("team", ""),
+        "sub_team": roster_user.get("sub_team", ""),
+        "vertical": roster_user.get("vertical", ""),
         "reason": reason,
         "status": "pending",
         "added_by": username,
