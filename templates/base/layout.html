@@ -36,7 +36,7 @@
             <div class="sidebar-title">Workspace</div>
             <a href="/summary" class="sidebar-link">Summary</a>
             {% if user %}
-            <a href="/projects#my-requests" class="sidebar-link">My Tickets</a>
+            <a href="/projects/my-requests" class="sidebar-link">My Tickets</a>
             {% endif %}
         </div>
 
@@ -311,12 +311,11 @@
 
         function highlightActiveSidebarLink() {
             const path = window.location.pathname;
-            const hash = window.location.hash;
             const links = document.querySelectorAll(".sidebar-link");
             links.forEach(link => {
                 const href = link.getAttribute("href");
                 const serverMarkedActive = link.classList.contains("active");
-                if (serverMarkedActive || (href === path && path !== '/feedback') || (href && href.includes("#") && (path + hash === href || (path === '/projects' && hash === '#my-requests' && href.endsWith('#my-requests'))))) {
+                if (serverMarkedActive || (href === path && path !== '/feedback')) {
                     link.classList.add("active");
                 } else {
                     link.classList.remove("active");

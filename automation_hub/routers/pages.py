@@ -153,6 +153,15 @@ async def projects_admin(request: Request):
     return _render_page(request, "feedback/admin.html", user=user)
 
 
+@pages_router.get("/projects/my-requests", response_class=HTMLResponse, response_model=None)
+async def my_requests_page(request: Request):
+    """Dedicated URL for the signed-in user's ticket requests."""
+    user = auth.get_current_user(request)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    return _render_page(request, "feedback/projects.html", user=user)
+
+
 @pages_router.get(
     "/projects/{project_key}", response_class=HTMLResponse, response_model=None
 )

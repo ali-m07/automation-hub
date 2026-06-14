@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import secrets
 from typing import Any, Dict, List, Optional
 
@@ -28,6 +29,7 @@ _SETTING_KEYS = {
     "LDAP_USER_PRINCIPAL": "ldap_user_principal",
     "LDAP_USER_FILTER": "ldap_user_filter",
     "LDAP_DIRECTORY_FILTER": "ldap_directory_filter",
+    "LDAP_DEPARTMENT_GROUPS_ENABLED": "ldap_department_groups_enabled",
 }
 
 
@@ -90,6 +92,50 @@ def ldap_enabled() -> bool:
 def _default_modules() -> list[str]:
     raw = os.getenv("SSO_DEFAULT_MODULES", "feedback_180")
     return [item.strip() for item in raw.split(",") if item.strip()]
+
+
+def _sync_department_group(conn, username: str, department: str, now: str) -> None:
+    if not enabled("LDAP_DEPARTMENT_GROUPS_ENABLED") or not department.strip():
+        return
+
+    slug = re.sub(r"[^a-z0-9]+", "-", department.strip().lower()).strip("-")
+    if not slug:
+        return
+    group_id = f"ldap-department-{slug}"
+    conn.execute(
+        """
+        INSERT INTO process_groups(id, group_key, name, description, created_at)
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(group_key) DO UPDATE SET
+            name = excluded.name,
+            description = excluded.description
+        """,
+        (
+            group_id,
+            group_id,
+            department.strip(),
+            "Automatically managed from LDAP department membership.",
+            now,
+        ),
+    )
+    conn.execute(
+        """
+        DELETE FROM process_group_members
+        WHERE username = ?
+          AND group_id IN (
+              SELECT id FROM process_groups
+              WHERE group_key LIKE 'ldap-department-%' AND id <> ?
+          )
+        """,
+        (username, group_id),
+    )
+    conn.execute(
+        """
+        INSERT OR IGNORE INTO process_group_members(group_id, username)
+        VALUES (?, ?)
+        """,
+        (group_id, username),
+    )
 
 
 def provision_user(
@@ -160,6 +206,7 @@ def provision_user(
                     username,
                 ),
             )
+        _sync_department_group(conn, username, department, now)
         conn.commit()
         refreshed = conn.execute(
             """

@@ -2018,7 +2018,11 @@ function fbRenderWorkflowCanvas(project, isEditable, containerId, nodesId, svgId
 
 // Re-architected multi-page initializations
 async function fbInitPage() {
-    const path = window.location.pathname;
+    let path = window.location.pathname;
+    if (path === '/projects' && window.location.hash === '#my-requests') {
+        window.history.replaceState({}, '', '/projects/my-requests');
+        path = window.location.pathname;
+    }
     
     try {
         const metaRes = await fetch('/api/ticketing/meta', { credentials: 'include' });
@@ -2041,7 +2045,7 @@ async function fbInitPage() {
         el.style.display = isAdmin ? '' : 'none';
     });
 
-    if (path === '/projects') {
+    if (path === '/projects' || path === '/projects/my-requests') {
         fbInitProjectsPage();
     } else if (path === '/projects/admin') {
         fbInitAdminPage();
@@ -2059,6 +2063,9 @@ async function fbInitPage() {
 function fbInitProjectsPage() {
     fbRenderPortal();
     fbRenderMyRequests();
+    if (window.location.pathname === '/projects/my-requests') {
+        document.getElementById('fb-my-requests-tbody')?.closest('section')?.scrollIntoView({block: 'start'});
+    }
 }
 
 function fbInitBoardPage(projectKey) {

@@ -127,18 +127,27 @@ def _send_ticket_reply_notification(
 page_router = APIRouter(tags=["admin"])
 
 
+ADMIN_SECTIONS = {
+    "overview", "users", "ldap", "notifications", "upload-limits",
+    "data-tables", "db-connectors", "tickets", "audit", "webhooks",
+    "smtp", "diagnostics",
+}
+
+
 @page_router.get("/admin", response_class=HTMLResponse)
-async def admin_page(request: Request):
+@page_router.get("/admin/{section}", response_class=HTMLResponse)
+async def admin_page(request: Request, section: str = "overview"):
     user = auth.get_current_user(request)
     if not user or user.get("role") != "admin":
         return RedirectResponse(url="/login", status_code=302)
     templates = getattr(request.app.state, "templates", None)
     if not templates:
         return JSONResponse({"error": "Templates not available"}, status_code=500)
+    active_tab = section if section in ADMIN_SECTIONS else "overview"
     return templates.TemplateResponse(
         request=request,
         name="admin/admin.html",
-        context={"request": request, "user": user},
+        context={"request": request, "user": user, "active_tab": active_tab},
     )
 
 
@@ -1055,7 +1064,7 @@ async def admin_get_auth_config(request: Request):
             "'auth_mode','ldap_enabled','ldap_server','ldap_port','ldap_use_ssl',"
             "'ldap_servers','ldap_base_dn','ldap_user_base_dn','ldap_group_base_dn',"
             "'ldap_bind_dn','ldap_bind_password','ldap_user_principal','ldap_user_filter',"
-            "'ldap_directory_filter'"
+            "'ldap_directory_filter','ldap_department_groups_enabled'"
             ")"
         ).fetchall()
     finally:
@@ -1079,6 +1088,9 @@ async def admin_get_auth_config(request: Request):
         "ldap_user_principal": raw.get("ldap_user_principal") or "{username}@snapp.local",
         "ldap_directory_filter": raw.get("ldap_directory_filter")
         or "(&(objectClass=user)(|(sAMAccountName={query})(displayName={query})(mail={query})))",
+        "ldap_department_groups_enabled": (
+            raw.get("ldap_department_groups_enabled") or "0"
+        ) == "1",
     }
     return JSONResponse({"success": True, "config": config})
 
@@ -1115,6 +1127,9 @@ async def admin_update_auth_config(request: Request):
         body.get("ldap_directory_filter")
         or "(&(objectClass=user)(|(sAMAccountName={query})(displayName={query})(mail={query})))"
     ).strip()
+    ldap_department_groups_enabled = bool(
+        body.get("ldap_department_groups_enabled", False)
+    )
 
     # ذخیره در app_settings
     conn = _db()
@@ -1142,6 +1157,10 @@ async def admin_update_auth_config(request: Request):
         _set("ldap_user_filter", ldap_user_filter)
         _set("ldap_user_principal", ldap_user_principal)
         _set("ldap_directory_filter", ldap_directory_filter)
+        _set(
+            "ldap_department_groups_enabled",
+            "1" if ldap_department_groups_enabled else "0",
+        )
         conn.commit()
     finally:
         conn.close()
