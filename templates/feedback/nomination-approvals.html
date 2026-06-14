@@ -1293,8 +1293,12 @@
         async function removeManagerAddedEvaluator(nominationId, evaluatorUsername) {
             try {
                 const response = await fetch(
-                    `/api/feedback/evaluator-nomination/${nominationId}/manager-added-evaluator/${encodeURIComponent(evaluatorUsername)}`,
-                    {method: 'DELETE'}
+                    `/api/feedback/evaluator-nomination/${nominationId}/remove-manager-added-evaluator`,
+                    {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({evaluator_username: evaluatorUsername})
+                    }
                 );
                 const data = await response.json();
                 if (data.success) {

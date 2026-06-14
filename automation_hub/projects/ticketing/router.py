@@ -1812,15 +1812,17 @@ async def add_evaluator_as_manager(nomination_id: str, request: Request):
     return JSONResponse({"success": True, "nomination": nomination})
 
 
-@feedback_handlers.delete(
-    "/evaluator-nomination/{nomination_id}/manager-added-evaluator/{evaluator_username}"
+@feedback_handlers.post(
+    "/evaluator-nomination/{nomination_id}/remove-manager-added-evaluator"
 )
-async def remove_manager_added_evaluator(
-    nomination_id: str, evaluator_username: str, request: Request
-):
+async def remove_manager_added_evaluator(nomination_id: str, request: Request):
     """Remove an evaluator that was added directly by the assigned manager."""
     user = _require_feedback_access(request)
     username = user.get("username", "")
+    payload = await request.json()
+    evaluator_username = payload.get("evaluator_username", "")
+    if not evaluator_username:
+        raise HTTPException(status_code=400, detail="Evaluator is required")
     store = _load_evaluator_store()
     nomination = next(
         (n for n in store.get("nominations", []) if n.get("id") == nomination_id), None
