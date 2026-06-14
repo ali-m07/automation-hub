@@ -357,6 +357,27 @@
             margin-top: 8px;
         }
 
+        .evaluator-picker-help {
+            margin: 0 0 16px;
+            color: var(--gray-500);
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .evaluator-picker-filters {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .evaluator-picker-filters > input {
+            width: 100%;
+            min-width: 0;
+            height: 44px;
+        }
+
         @media (max-width: 820px) {
             .filters {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -385,6 +406,10 @@
                 grid-column: 2;
                 grid-row: 1 / 4;
             }
+
+            .evaluator-picker-filters {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
         }
 
         @media (max-width: 640px) {
@@ -396,6 +421,10 @@
             .search-box {
                 width: 100%;
                 min-width: 0;
+            }
+
+            .evaluator-picker-filters {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -781,7 +810,10 @@
                 </button>
             </div>
             <div class="modal-body" style="padding: 24px;">
-                <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-bottom:16px;">
+                <p class="evaluator-picker-help">
+                    If someone is missing from the current list, search the employee roster by team, sub-team, vertical, or email and add them as an evaluator.
+                </p>
+                <div class="evaluator-picker-filters">
                     <input class="filter-select" id="addTeamFilter" list="addTeamOptions" placeholder="1. Search team" oninput="searchUsersToAdd()" autocomplete="off">
                     <datalist id="addTeamOptions"></datalist>
                     <input class="filter-select" id="addSubTeamFilter" list="addSubTeamOptions" placeholder="2. Search sub-team" oninput="searchUsersToAdd()" autocomplete="off">
