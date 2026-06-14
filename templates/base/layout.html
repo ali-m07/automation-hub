@@ -35,7 +35,7 @@
         <div class="sidebar-section">
             <div class="sidebar-title">Workspace</div>
             <a href="/summary" class="sidebar-link">Summary</a>
-            {% if user and (user.role == 'admin' or 'feedback_180' in (user.modules or []) or 'feedback_180_admin' in (user.modules or [])) %}
+            {% if user %}
             <a href="/projects#my-requests" class="sidebar-link">My Tickets</a>
             {% endif %}
         </div>
@@ -289,7 +289,7 @@
             const listEl = document.getElementById('sidebar-projects-list');
             if (!listEl) return;
             try {
-                const res = await fetch('/api/feedback/projects', { credentials: 'include' });
+                const res = await fetch('/api/ticketing/projects', { credentials: 'include' });
                 const data = await res.json();
                 if (!data.success) return;
                 const projects = data.projects || [];

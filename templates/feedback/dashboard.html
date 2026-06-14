@@ -1,0 +1,35 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Feedback - Servexa{% endblock %}
+{% block subtitle %}Your 180 feedback workspace{% endblock %}
+
+{% block content %}
+<header>
+    <div class="eyebrow">Feedback</div>
+    <h1>Feedback workspace</h1>
+    <p class="subtitle">Nominate evaluators, review requests, and follow your evaluation activity.</p>
+</header>
+
+<div class="performance-grid">
+    <a class="performance-card" href="/feedback/nominate">
+        <span class="performance-status">Start</span>
+        <strong>Nominate Evaluators</strong>
+        <small>Select colleagues who can provide useful feedback about your work.</small>
+    </a>
+    <a class="performance-card" href="/feedback">
+        <span class="performance-status">Personal</span>
+        <strong>My Evaluations</strong>
+        <small>View your current feedback cycle and evaluation status.</small>
+    </a>
+    <a class="performance-card" href="/feedback/nomination-approvals">
+        <span class="performance-status">Team</span>
+        <strong>Team Feedback</strong>
+        <small>Review evaluator nominations assigned to you as a manager.</small>
+    </a>
+    <a class="performance-card" href="/feedback">
+        <span class="performance-status">Insights</span>
+        <strong>Reports</strong>
+        <small>Feedback reporting will live here, separately from ticket reports.</small>
+    </a>
+</div>
+{% endblock %}

@@ -31,6 +31,7 @@ from automation_hub.routers import (
     health_router,
     pages_router,
     feedback_router,
+    ticketing_router,
     processes_router,
     processes_page_router,
 )
@@ -182,6 +183,7 @@ app.include_router(
 app.include_router(connectors_router)  # /api/db-connectors/*
 app.include_router(data_router)  # /api/data/*
 app.include_router(feedback_router)  # /api/feedback/*
+app.include_router(ticketing_router)  # /api/ticketing/*
 app.include_router(processes_page_router)  # GET /process-designer
 app.include_router(processes_router)  # /api/processes/*
 app.include_router(

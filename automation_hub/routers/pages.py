@@ -110,8 +110,18 @@ async def creative_page(request: Request):
 
 @pages_router.get("/feedback", response_class=HTMLResponse, response_model=None)
 async def feedback_page(request: Request):
-    """Redirect legacy feedback page to projects dashboard."""
-    return RedirectResponse(url="/projects", status_code=302)
+    """Standalone Feedback dashboard."""
+    user = auth.get_current_user(request)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    modules = user.get("modules") or []
+    if (
+        user.get("role") != "admin"
+        and "feedback_180" not in modules
+        and "feedback" not in modules
+    ):
+        return RedirectResponse(url="/summary", status_code=302)
+    return _render_page(request, "feedback/dashboard.html", user=user)
 
 
 @pages_router.get("/projects", response_class=HTMLResponse, response_model=None)
@@ -160,7 +170,7 @@ async def project_board(project_key: str, request: Request):
     ):
         return RedirectResponse(url="/summary", status_code=302)
 
-    from automation_hub.projects.feedback.router import _load_store, _project_visible
+    from automation_hub.projects.ticketing.router import _load_store, _project_visible
 
     store = _load_store()
     project = next(
@@ -202,7 +212,7 @@ async def ticket_detail(ticket_id: str, request: Request):
     ):
         return RedirectResponse(url="/summary", status_code=302)
 
-    from automation_hub.projects.feedback.router import (
+    from automation_hub.projects.ticketing.router import (
         _load_store,
         _ticket_visible,
         _find_ticket_and_project,

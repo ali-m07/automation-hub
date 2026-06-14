@@ -3,6 +3,7 @@ app.db
 data_pool.json
 data_pools/*.json
 feedback_evaluator_nominations.json
+feedback_180_projects.json
 .env
 .env.*
 !.env.example

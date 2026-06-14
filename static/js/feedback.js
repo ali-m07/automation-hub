@@ -370,7 +370,7 @@ function fbRenderTicketForm() {
 
 async function fbSearchUsers(query, forcedSource = '') {
     const source = forcedSource || document.getElementById('fb-user-source')?.value || 'database';
-    const res = await fetch(`/api/feedback/users?source=${encodeURIComponent(source)}&query=${encodeURIComponent(query || '')}`, { credentials: 'include' });
+    const res = await fetch(`/api/ticketing/users?source=${encodeURIComponent(source)}&query=${encodeURIComponent(query || '')}`, { credentials: 'include' });
     const data = await res.json();
     document.getElementById('fb-user-options').innerHTML = (data.users || []).map(user => `<option value="${fbEscape(user.username)}">${fbEscape(user.label)} - ${fbEscape(user.email || '')}</option>`).join('');
 }
@@ -492,7 +492,7 @@ async function fbSearchUsersForPicker(input, dropdown, source, onSelect) {
         dropdown.classList.add('d-none');
         return;
     }
-    const res = await fetch(`/api/feedback/users?source=${encodeURIComponent(source)}&query=${encodeURIComponent(query)}`, { credentials: 'include' });
+    const res = await fetch(`/api/ticketing/users?source=${encodeURIComponent(source)}&query=${encodeURIComponent(query)}`, { credentials: 'include' });
     const data = await res.json();
     if (!data.success || !data.users || data.users.length === 0) {
         dropdown.innerHTML = '<div class="user-autocomplete-item text-muted">No users found</div>';
@@ -589,7 +589,7 @@ async function fbTicketDrop(event, toStatusId) {
     
     fbSetStatus(`Transitioning ticket ${ticketId}...`, 'info');
     try {
-        const res = await fetch(`/api/feedback/projects/${encodeURIComponent(project.id)}/tickets/${encodeURIComponent(ticketId)}/transition`, {
+        const res = await fetch(`/api/ticketing/projects/${encodeURIComponent(project.id)}/tickets/${encodeURIComponent(ticketId)}/transition`, {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
@@ -650,7 +650,7 @@ async function fbCreateTicket() {
     
     fbSetStatus('Creating ticket...', 'info');
     try {
-        const res = await fetch(`/api/feedback/projects/${encodeURIComponent(fbCurrent.id)}/tickets`, {
+        const res = await fetch(`/api/ticketing/projects/${encodeURIComponent(fbCurrent.id)}/tickets`, {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
@@ -745,7 +745,7 @@ async function fbSubmitDrawerComment() {
     
     fbSetStatus('Adding comment...', 'info');
     try {
-        const res = await fetch(`/api/feedback/projects/${encodeURIComponent(project.id)}/tickets/${encodeURIComponent(ticketId)}/comments`, {
+        const res = await fetch(`/api/ticketing/projects/${encodeURIComponent(project.id)}/tickets/${encodeURIComponent(ticketId)}/comments`, {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
@@ -774,7 +774,7 @@ async function fbRunDrawerTransition(transitionId) {
     
     fbSetStatus('Executing transition...', 'info');
     try {
-        const res = await fetch(`/api/feedback/projects/${encodeURIComponent(project.id)}/tickets/${encodeURIComponent(ticketId)}/transition`, {
+        const res = await fetch(`/api/ticketing/projects/${encodeURIComponent(project.id)}/tickets/${encodeURIComponent(ticketId)}/transition`, {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
@@ -815,7 +815,7 @@ async function fbUpdateTicketField(key, value) {
     };
     
     try {
-        const res = await fetch(`/api/feedback/projects/${encodeURIComponent(project.id)}/tickets/${encodeURIComponent(ticketId)}/update`, {
+        const res = await fetch(`/api/ticketing/projects/${encodeURIComponent(project.id)}/tickets/${encodeURIComponent(ticketId)}/update`, {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
@@ -848,7 +848,7 @@ async function fbUpdateDrawerProperty(property, value) {
     };
     
     try {
-        const res = await fetch(`/api/feedback/projects/${encodeURIComponent(project.id)}/tickets/${encodeURIComponent(ticketId)}/update`, {
+        const res = await fetch(`/api/ticketing/projects/${encodeURIComponent(project.id)}/tickets/${encodeURIComponent(ticketId)}/update`, {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
@@ -1404,12 +1404,12 @@ function fbOpenProject(id) {
 
 async function fbLoadProjects() {
     try {
-        const metaRes = await fetch('/api/feedback/meta', { credentials: 'include' });
+        const metaRes = await fetch('/api/ticketing/meta', { credentials: 'include' });
         const meta = await metaRes.json();
         if (!meta.success) throw new Error(meta.detail || meta.error || 'Could not load module metadata');
         fbPermissions = meta.permissions || fbPermissions;
 
-        const res = await fetch('/api/feedback/projects', { credentials: 'include' });
+        const res = await fetch('/api/ticketing/projects', { credentials: 'include' });
         const data = await res.json();
         if (!data.success) throw new Error(data.detail || data.error || 'Could not load projects');
         fbPermissions = data.permissions || fbPermissions;
@@ -1438,7 +1438,7 @@ async function fbSaveProject() {
     fbSaving = true;
     fbSetStatus('Saving 180 admin configuration...', 'info');
     try {
-        const res = await fetch('/api/feedback/projects', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ project: fbCurrent }) });
+        const res = await fetch('/api/ticketing/projects', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ project: fbCurrent }) });
         const data = await res.json();
         if (!data.success) throw new Error(data.detail || data.error || 'Save failed');
         fbCurrent = data.project;
@@ -1459,7 +1459,7 @@ async function fbSubmitDemoResponse() {
     if (!fbCurrent.id) return fbSetStatus('Ask a 180 admin to save and launch a cycle before responses are submitted.', 'error');
     const response = { subject: document.getElementById('fb-response-subject')?.value || '', reviewer: document.getElementById('fb-response-reviewer')?.value || '', answers, comment: document.getElementById('fb-response-comment')?.value || '' };
     try {
-        const res = await fetch(`/api/feedback/projects/${encodeURIComponent(fbCurrent.id)}/responses`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ response }) });
+        const res = await fetch(`/api/ticketing/projects/${encodeURIComponent(fbCurrent.id)}/responses`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ response }) });
         const data = await res.json();
         if (!data.success) throw new Error(data.detail || data.error || 'Response failed');
         fbCurrent.responses = fbCurrent.responses || [];
@@ -1662,7 +1662,7 @@ async function fbSubmitPortalRequest() {
     
     fbSetStatus('Submitting your request...', 'info');
     try {
-        const res = await fetch(`/api/feedback/projects/${encodeURIComponent(project.id)}/tickets`, {
+        const res = await fetch(`/api/ticketing/projects/${encodeURIComponent(project.id)}/tickets`, {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
@@ -2021,12 +2021,12 @@ async function fbInitPage() {
     const path = window.location.pathname;
     
     try {
-        const metaRes = await fetch('/api/feedback/meta', { credentials: 'include' });
+        const metaRes = await fetch('/api/ticketing/meta', { credentials: 'include' });
         const meta = await metaRes.json();
         if (!meta.success) throw new Error(meta.detail || meta.error || 'Could not load module metadata');
         fbPermissions = meta.permissions || fbPermissions;
 
-        const res = await fetch('/api/feedback/projects', { credentials: 'include' });
+        const res = await fetch('/api/ticketing/projects', { credentials: 'include' });
         const data = await res.json();
         if (!data.success) throw new Error(data.detail || data.error || 'Could not load projects');
         fbPermissions = data.permissions || fbPermissions;
@@ -2081,7 +2081,7 @@ function fbInitBoardPage(projectKey) {
     // Setup export link
     const exportBtn = document.getElementById('fb-export-mine-csv');
     if (exportBtn) {
-        exportBtn.href = `/api/feedback/tickets/report.csv?scope=mine&project_id=${encodeURIComponent(fbCurrent.id)}`;
+        exportBtn.href = `/api/ticketing/tickets/report.csv?scope=mine&project_id=${encodeURIComponent(fbCurrent.id)}`;
     }
     
     // Set settings link
@@ -2095,7 +2095,7 @@ async function fbInitIssuePage(ticketId) {
     fbActiveTicketId = ticketId;
     
     try {
-        const res = await fetch(`/api/feedback/tickets/${encodeURIComponent(ticketId)}`, { credentials: 'include' });
+        const res = await fetch(`/api/ticketing/tickets/${encodeURIComponent(ticketId)}`, { credentials: 'include' });
         const data = await res.json();
         if (!data.success) throw new Error(data.detail || 'Could not load ticket details');
         
@@ -2226,7 +2226,7 @@ async function fbUpdateTicketDirect(ticketId, field, value) {
                 [field]: value
             }
         };
-        const res = await fetch(`/api/feedback/tickets/${encodeURIComponent(ticketId)}/update`, {
+        const res = await fetch(`/api/ticketing/tickets/${encodeURIComponent(ticketId)}/update`, {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
@@ -2251,7 +2251,7 @@ async function fbUpdateTicketCustomFieldDirect(ticketId, key, value) {
                 }
             }
         };
-        const res = await fetch(`/api/feedback/tickets/${encodeURIComponent(ticketId)}/update`, {
+        const res = await fetch(`/api/ticketing/tickets/${encodeURIComponent(ticketId)}/update`, {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
@@ -2269,7 +2269,7 @@ async function fbUpdateTicketCustomFieldDirect(ticketId, key, value) {
 async function fbRunDirectTransition(transitionId) {
     fbSetStatus('Executing transition...', 'info');
     try {
-        const res = await fetch(`/api/feedback/tickets/${encodeURIComponent(fbActiveTicketId)}/transition`, {
+        const res = await fetch(`/api/ticketing/tickets/${encodeURIComponent(fbActiveTicketId)}/transition`, {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
@@ -2408,7 +2408,7 @@ async function fbToggleTicketVisibility() {
     const isHidden = hiddenCheckbox.checked;
     
     try {
-        const res = await fetch(`/api/feedback/tickets/${encodeURIComponent(fbActiveTicketId)}/hide`, {
+        const res = await fetch(`/api/ticketing/tickets/${encodeURIComponent(fbActiveTicketId)}/hide`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ hidden: isHidden }),
@@ -2428,7 +2428,7 @@ async function fbUpdateTicketVisibilityACL() {
     const allowedGroups = (document.getElementById('fb-drawer-allowed-groups')?.value || '').split(',').map(s => s.trim()).filter(Boolean);
     
     try {
-        const res = await fetch(`/api/feedback/tickets/${encodeURIComponent(fbActiveTicketId)}/update`, {
+        const res = await fetch(`/api/ticketing/tickets/${encodeURIComponent(fbActiveTicketId)}/update`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

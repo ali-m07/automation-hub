@@ -13,6 +13,7 @@ from automation_hub.projects.messaging.router import router as messaging_router
 from automation_hub.projects.downloads.router import router as downloads_router
 from automation_hub.projects.gallery.router import router as gallery_router
 from automation_hub.projects.jobs.router import router as jobs_router
+from automation_hub.projects.ticketing.router import router as ticketing_router
 from automation_hub.projects.feedback.router import router as feedback_router
 from automation_hub.projects.processes.router import (
     router as processes_router,
@@ -36,6 +37,7 @@ __all__ = [
     "health_router",
     "pages_router",
     "feedback_router",
+    "ticketing_router",
     "processes_router",
     "processes_page_router",
 ]
