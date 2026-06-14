@@ -1358,8 +1358,11 @@ async def get_my_nomination(request: Request):
 
         # Enrich evaluators with user info
         for eval_item in nomination.get("evaluators", []):
-            eval_info = _get_user_info(eval_item.get("username", ""))
-            eval_item.update(eval_info)
+            lookup = eval_item.get("username") or eval_item.get("email", "")
+            eval_info = _get_user_info(lookup)
+            for key, value in eval_info.items():
+                if value not in (None, "", []):
+                    eval_item[key] = value
 
     return JSONResponse({"success": True, "nomination": nomination})
 
@@ -1387,7 +1390,9 @@ async def get_my_nomination_history(request: Request):
             evaluator_info = _get_user_info(
                 evaluator.get("username") or evaluator.get("email", "")
             )
-            evaluator.update(evaluator_info)
+            for key, value in evaluator_info.items():
+                if value not in (None, "", []):
+                    evaluator[key] = value
     return JSONResponse({"success": True, "nominations": nominations})
 
 
@@ -1412,8 +1417,11 @@ async def get_manager_requests(request: Request):
         nomination["nominator_info"] = nominator_info
 
         for eval_item in nomination.get("evaluators", []):
-            eval_info = _get_user_info(eval_item.get("username", ""))
-            eval_item.update(eval_info)
+            lookup = eval_item.get("username") or eval_item.get("email", "")
+            eval_info = _get_user_info(lookup)
+            for key, value in eval_info.items():
+                if value not in (None, "", []):
+                    eval_item[key] = value
 
     return JSONResponse({"success": True, "nominations": nominations})
 
@@ -1443,6 +1451,9 @@ async def submit_evaluator_nomination(request: Request):
                 status_code=400,
                 detail="Each evaluator must have a reason for nomination",
             )
+        email = str(eval_item.get("email") or "").strip().lower()
+        if not eval_item.get("username") and email:
+            eval_item["username"] = email.split("@", 1)[0]
 
     store = _load_evaluator_store()
 

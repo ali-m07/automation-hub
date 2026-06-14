@@ -807,7 +807,7 @@
                 const response = await fetch('/api/feedback/evaluator-nomination/my-nomination');
                 const data = await response.json();
 
-                if (data.nomination) {
+                if (data.nomination && Array.isArray(data.nomination.evaluators) && data.nomination.evaluators.length) {
                     const nom = data.nomination;
                     document.getElementById('currentStatus').style.display = 'block';
                     const date = new Date(nom.submitted_at);
@@ -1182,6 +1182,7 @@
 
             // Add new evaluator
             const newEvaluator = {
+                username: normalizedEmail.split('@')[0],
                 email: email,
                 full_name: fullName,
                 job_title: jobTitle,
