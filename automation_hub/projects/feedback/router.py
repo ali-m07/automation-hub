@@ -61,6 +61,11 @@ router.add_api_route(
     methods=["POST"],
 )
 router.add_api_route(
+    "/evaluator-nomination/{nomination_id}/remove-manager-added-evaluator",
+    legacy.remove_manager_added_evaluator,
+    methods=["POST"],
+)
+router.add_api_route(
     "/evaluator-nomination/{nomination_id}/close",
     legacy.close_nomination,
     methods=["POST"],
