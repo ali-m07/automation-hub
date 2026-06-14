@@ -786,19 +786,18 @@
                 console.log('=== loadCurrentUser ===');
                 console.log('currentUser:', currentUser);
 
-                // Hardcode manager for admin user - always show Edris Hosseini
-                // No need to check API response
-                document.getElementById('managerEmail').textContent = 'edris.hosseini@snapp.cab';
-                document.getElementById('managerAvatar').textContent = 'EH';
-                document.getElementById('managerName').textContent = 'Edris Hosseini';
-                console.log('Manager hardcoded to: Edris Hosseini (edris.hosseini@snapp.cab)');
+                const manager = data.manager || {};
+                const managerEmail = manager.email || currentUser.manager_username || '';
+                const managerName = manager.full_name || managerEmail.split('@')[0] || 'Manager not assigned';
+                document.getElementById('managerEmail').textContent = managerEmail || 'Ask admin to assign your manager';
+                document.getElementById('managerEmailValue').value = managerEmail;
+                document.getElementById('managerAvatar').textContent = getInitials(managerName);
+                document.getElementById('managerName').textContent = managerName;
 
             } catch (error) {
                 console.error('Error loading user:', error);
-                // Still show hardcoded manager even on error
-                document.getElementById('managerEmail').textContent = 'edris.hosseini@snapp.cab';
-                document.getElementById('managerAvatar').textContent = 'EH';
-                document.getElementById('managerName').textContent = 'Edris Hosseini';
+                document.getElementById('managerEmail').textContent = 'Manager unavailable';
+                document.getElementById('managerName').textContent = 'Manager not assigned';
             }
         }
 

@@ -453,7 +453,7 @@ async def me(request: Request):
     conn = _db()
     try:
         row = conn.execute(
-            "SELECT first_name, last_name, email, department FROM users WHERE username = ?",
+            "SELECT first_name, last_name, email, department, manager_username FROM users WHERE username = ?",
             (user["username"],),
         ).fetchone()
     finally:
@@ -465,6 +465,7 @@ async def me(request: Request):
             "last_name": db.safe_row_get(row, "last_name") or "",
             "email": db.safe_row_get(row, "email") or user.get("username", ""),
             "department": db.safe_row_get(row, "department") or "",
+            "manager_username": db.safe_row_get(row, "manager_username") or "",
         }
     return JSONResponse({"authenticated": True, "user": user})
 

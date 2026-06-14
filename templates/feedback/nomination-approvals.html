@@ -613,6 +613,7 @@
         let allNominations = [];
         let currentNominationId = null;
         let searchTimeout = null;
+        const focusedNominationId = new URLSearchParams(window.location.search).get('nomination');
 
         document.addEventListener('DOMContentLoaded', loadRequests);
         document.addEventListener('DOMContentLoaded', loadRosterFilters);
@@ -687,6 +688,7 @@
             const verticalFilter = document.getElementById('verticalFilter').value;
 
             let filtered = allNominations.filter(nom => {
+                if (focusedNominationId && nom.id !== focusedNominationId) return false;
                 const matchesSearch = !search ||
                     nom.nominator_info?.full_name?.toLowerCase().includes(search) ||
                     nom.evaluators?.some(e =>
@@ -736,7 +738,7 @@
                         <div class="request-header">
                             <div class="request-info">
                                 <h3>Evaluator Nomination Request</h3>
-                                <p>Submitted by <strong>${nom.nominator_info?.full_name || nom.nominator_username}</strong> on ${submittedDate}</p>
+                                <p>Submitted by <a href="/feedback/nomination-approvals?nomination=${encodeURIComponent(nom.id)}" style="font-weight:700; color:var(--primary); text-decoration:none;">${nom.nominator_info?.full_name || nom.nominator_username}</a> on ${submittedDate}</p>
                             </div>
                             <span class="request-status status-${nom.status}">
                                 <i class="fas fa-${nom.status === 'closed' ? 'check' : nom.status === 'pending' ? 'clock' : 'exclamation-circle'}"></i>

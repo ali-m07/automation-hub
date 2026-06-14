@@ -1210,7 +1210,7 @@ def _get_user_info(username: str) -> Dict[str, Any]:
     try:
         row = conn.execute(
             """
-            SELECT username, first_name, last_name, email, role, modules_json, department
+            SELECT username, first_name, last_name, email, role, modules_json, department, manager_username
             FROM users
             WHERE username = ?
             """,
@@ -1232,7 +1232,7 @@ def _get_user_info(username: str) -> Dict[str, Any]:
                 "sub_team": "",
                 "vertical": "",
                 "job_title": "",
-                "manager_username": "",
+                "manager_username": row["manager_username"] or "",
             }
         return {}
     finally:
@@ -1314,10 +1314,13 @@ async def evaluator_nomination_meta(request: Request):
     """Get metadata for evaluator nomination system."""
     user = _require_feedback_access(request)
     user_info = _get_user_info(user.get("username", ""))
+    manager_username = user_info.get("manager_username", "")
+    manager_info = _get_user_info(manager_username) if manager_username else {}
     return JSONResponse(
         {
             "success": True,
             "current_user": user_info,
+            "manager": manager_info,
             "permissions": {
                 "can_nominate": True,
                 "can_approve": True,
@@ -1550,7 +1553,7 @@ async def approve_evaluator(nomination_id: str, request: Request):
     if not nomination:
         raise HTTPException(status_code=404, detail="Nomination not found")
 
-    if nomination.get("manager_username") != username:
+    if user.get("role") != "admin" and nomination.get("manager_username") != username:
         raise HTTPException(
             status_code=403, detail="Only the assigned manager can approve"
         )
@@ -1691,7 +1694,7 @@ async def reject_evaluator(nomination_id: str, request: Request):
     if not nomination:
         raise HTTPException(status_code=404, detail="Nomination not found")
 
-    if nomination.get("manager_username") != username:
+    if user.get("role") != "admin" and nomination.get("manager_username") != username:
         raise HTTPException(
             status_code=403, detail="Only the assigned manager can reject"
         )
@@ -1752,7 +1755,7 @@ async def add_evaluator_as_manager(nomination_id: str, request: Request):
     if not nomination:
         raise HTTPException(status_code=404, detail="Nomination not found")
 
-    if nomination.get("manager_username") != username:
+    if user.get("role") != "admin" and nomination.get("manager_username") != username:
         raise HTTPException(
             status_code=403, detail="Only the assigned manager can add evaluators"
         )
@@ -1761,7 +1764,7 @@ async def add_evaluator_as_manager(nomination_id: str, request: Request):
     new_evaluator = {
         "username": evaluator_username,
         "reason": reason,
-        "status": "approved",  # Manager-added evaluators are auto-approved
+        "status": "pending",
         "added_by": username,
         "added_at": _now(),
     }

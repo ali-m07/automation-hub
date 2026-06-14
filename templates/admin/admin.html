@@ -1092,6 +1092,14 @@
                             <input id="edit-last-name" class="form-control" value="${user.last_name || ''}" />
                         </div>
                         <div class="form-group" style="margin:0;">
+                            <label>Department</label>
+                            <input id="edit-department" class="form-control" value="${user.department || ''}" />
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label>Manager username / email</label>
+                            <input id="edit-manager-username" class="form-control" value="${user.manager_username || ''}" placeholder="manager@snapp.cab" />
+                        </div>
+                        <div class="form-group" style="margin:0;">
                             <label>Role</label>
                             <select id="edit-role" class="form-control">
                                 <option value="user" ${user.role === 'user' ? 'selected' : ''}>user</option>
@@ -1356,6 +1364,8 @@
                 const newEmail = document.getElementById('edit-email').value.trim().toLowerCase();
                 const first_name = document.getElementById('edit-first-name').value.trim();
                 const last_name = document.getElementById('edit-last-name').value.trim();
+                const department = document.getElementById('edit-department').value.trim();
+                const manager_username = document.getElementById('edit-manager-username').value.trim().toLowerCase();
                 const role = document.getElementById('edit-role').value;
                 const status = document.getElementById('edit-status').value;
 
@@ -1365,7 +1375,7 @@
                         method: 'POST',
                         credentials: 'include',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ first_name, last_name, role, status }),
+                        body: JSON.stringify({ first_name, last_name, department, manager_username, role, status }),
                     });
                     const parsed = await readJsonSafe(res);
                     const data = parsed.data || {};

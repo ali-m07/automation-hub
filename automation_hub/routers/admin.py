@@ -182,7 +182,7 @@ async def admin_list_users(
         total_row = conn.execute("SELECT COUNT(*) AS c FROM users").fetchone()
         total = total_row["c"] if total_row else 0
         rows = conn.execute(
-            "SELECT username,role,level,modules_json,email,status,first_name,last_name,created_at,last_login_at FROM users ORDER BY username LIMIT ? OFFSET ?",
+            "SELECT username,role,level,modules_json,email,status,first_name,last_name,department,manager_username,created_at,last_login_at FROM users ORDER BY username LIMIT ? OFFSET ?",
             (limit, offset),
         ).fetchall()
     finally:
@@ -199,6 +199,8 @@ async def admin_list_users(
                 "status": db.safe_row_get(r, "status") or "active",
                 "first_name": db.safe_row_get(r, "first_name") or "",
                 "last_name": db.safe_row_get(r, "last_name") or "",
+                "department": db.safe_row_get(r, "department") or "",
+                "manager_username": db.safe_row_get(r, "manager_username") or "",
                 "created_at": db.safe_row_get(r, "created_at") or "",
                 "last_login_at": db.safe_row_get(r, "last_login_at") or "",
             }
@@ -605,6 +607,12 @@ async def admin_update_user(username: str, request: Request):
     if "last_name" in body:
         fields.append("last_name = ?")
         values.append(last_name)
+    if "department" in body:
+        fields.append("department = ?")
+        values.append((body.get("department") or "").strip())
+    if "manager_username" in body:
+        fields.append("manager_username = ?")
+        values.append((body.get("manager_username") or "").strip().lower())
     if role:
         fields.append("role = ?")
         values.append(role)
