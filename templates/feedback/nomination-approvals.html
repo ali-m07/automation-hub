@@ -304,6 +304,59 @@
             text-decoration: none;
         }
 
+        .picker-user {
+            padding: 12px;
+            border: 1px solid transparent;
+            border-radius: var(--radius);
+        }
+
+        .picker-user:hover,
+        .picker-user.selected {
+            background: var(--gray-50);
+            border-color: var(--border);
+        }
+
+        .picker-user-summary {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+        }
+
+        .picker-reason {
+            display: none;
+            margin: 12px 0 0 52px;
+        }
+
+        .picker-user.selected .picker-reason {
+            display: block;
+        }
+
+        .picker-reason textarea {
+            width: 100%;
+            min-height: 44px;
+            max-height: 160px;
+            padding: 10px 12px;
+            font: inherit;
+            font-size: 13px;
+            line-height: 1.5;
+            resize: vertical;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+        }
+
+        .picker-reason textarea:focus {
+            outline: 3px solid rgb(59 130 246 / 0.16);
+            border-color: var(--primary);
+        }
+
+        .picker-reason-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
         @media (max-width: 820px) {
             .manager-inbox-row {
                 grid-template-columns: minmax(0, 1fr) auto;
@@ -733,6 +786,17 @@
                            oninput="searchUsersToAdd()">
                 </div>
                 <div id="addUserResults" style="max-height: 300px; overflow-y: auto;"></div>
+                <div id="addEvaluatorReasonPanel" style="display:none; margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+                    <label for="addEvaluatorReason" style="display:block; margin-bottom:6px; font-size:13px; font-weight:600; color:var(--gray-700);">Reason</label>
+                    <textarea id="addEvaluatorReason" rows="1" placeholder="Why should this person evaluate the employee?"
+                              style="width:100%; min-height:44px; max-height:160px; padding:10px 12px; font:inherit; font-size:13px; line-height:1.5; resize:vertical; border:1px solid var(--border); border-radius:8px;"></textarea>
+                    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:8px;">
+                        <button type="button" class="btn btn-outline btn-sm" onclick="cancelEvaluatorSelection()">Cancel</button>
+                        <button type="button" class="btn btn-primary btn-sm" id="confirmAddEvaluatorButton" onclick="addEvaluatorAsManager()">
+                            <i class="fas fa-plus"></i> Add Evaluator
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -745,6 +809,7 @@
     <script>
         let allNominations = [];
         let currentNominationId = null;
+        let selectedEvaluatorUsername = null;
         let searchTimeout = null;
         const focusedNominationId = new URLSearchParams(window.location.search).get('nomination');
 
@@ -1054,6 +1119,10 @@
             document.getElementById('addSubTeamFilter').value = '';
             document.getElementById('addVerticalFilter').value = '';
             document.getElementById('addUserResults').innerHTML = '';
+            selectedEvaluatorUsername = null;
+            document.getElementById('addEvaluatorReason').value = '';
+            document.getElementById('addEvaluatorReasonPanel').style.display = 'none';
+            document.getElementById('confirmAddEvaluatorButton').disabled = false;
             document.getElementById('addEvaluatorSearch').focus();
         }
 
@@ -1061,6 +1130,8 @@
             document.getElementById('userPickerModal').style.display = 'none';
             document.getElementById('userPickerModal').classList.remove('active');
             currentNominationId = null;
+            selectedEvaluatorUsername = null;
+            document.getElementById('addEvaluatorReasonPanel').style.display = 'none';
         }
 
         async function searchUsersToAdd() {
@@ -1091,7 +1162,7 @@
                         <div style="display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 8px; cursor: pointer; transition: background 0.2s;"
                              onmouseover="this.style.background='var(--gray-50)'"
                              onmouseout="this.style.background='transparent'"
-                             onclick="addEvaluatorAsManager('${user.username}', '${user.full_name}', '${user.job_title || ''}', '${user.team || ''}', '${user.vertical || ''}')">
+                             onclick="selectEvaluatorForAdd(this, '${user.username}')">
                             <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), #8b5cf6); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 14px;">
                                 ${getInitials(user.full_name)}
                             </div>
@@ -1109,16 +1180,48 @@
             }, 300);
         }
 
-        async function addEvaluatorAsManager(username, fullName, jobTitle, team, vertical) {
-            const reason = prompt('Enter reason for adding this evaluator:');
-            if (!reason) return;
+        function selectEvaluatorForAdd(row, username) {
+            document.querySelectorAll('#addUserResults > div').forEach(item => {
+                item.style.background = 'transparent';
+                item.style.outline = 'none';
+            });
+            row.style.background = 'var(--gray-50)';
+            row.style.outline = '2px solid var(--primary)';
+            selectedEvaluatorUsername = username;
+            document.getElementById('addEvaluatorReasonPanel').style.display = 'block';
+            document.getElementById('addEvaluatorReason').focus();
+        }
+
+        function cancelEvaluatorSelection() {
+            selectedEvaluatorUsername = null;
+            document.getElementById('addEvaluatorReason').value = '';
+            document.getElementById('addEvaluatorReasonPanel').style.display = 'none';
+            document.querySelectorAll('#addUserResults > div').forEach(item => {
+                item.style.background = 'transparent';
+                item.style.outline = 'none';
+            });
+        }
+
+        async function addEvaluatorAsManager() {
+            const reasonInput = document.getElementById('addEvaluatorReason');
+            const reason = reasonInput.value.trim();
+            if (!selectedEvaluatorUsername) {
+                showToast('Please select an evaluator', 'error');
+                return;
+            }
+            if (!reason) {
+                reasonInput.focus();
+                showToast('Please enter a reason', 'error');
+                return;
+            }
 
             try {
+                document.getElementById('confirmAddEvaluatorButton').disabled = true;
                 const response = await fetch(`/api/feedback/evaluator-nomination/${currentNominationId}/add-evaluator`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        evaluator_username: username,
+                        evaluator_username: selectedEvaluatorUsername,
                         reason: reason
                     })
                 });
@@ -1130,9 +1233,11 @@
                     loadRequests();
                 } else {
                     showToast(data.error || 'Error adding evaluator', 'error');
+                    document.getElementById('confirmAddEvaluatorButton').disabled = false;
                 }
             } catch (error) {
                 showToast('Error adding evaluator', 'error');
+                document.getElementById('confirmAddEvaluatorButton').disabled = false;
             }
         }
 
