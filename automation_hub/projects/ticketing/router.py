@@ -1210,7 +1210,7 @@ def _get_user_info(username: str) -> Dict[str, Any]:
     try:
         row = conn.execute(
             """
-            SELECT username, first_name, last_name, email, role, modules_json, team, vertical, job_title, manager_username
+            SELECT username, first_name, last_name, email, role, modules_json, department
             FROM users
             WHERE username = ?
             """,
@@ -1228,10 +1228,11 @@ def _get_user_info(username: str) -> Dict[str, Any]:
                 "modules": (
                     json.loads(row["modules_json"]) if row["modules_json"] else []
                 ),
-                "team": row["team"] or "",
-                "vertical": row["vertical"] or "",
-                "job_title": row["job_title"] or "",
-                "manager_username": row["manager_username"] or "",
+                "team": row["department"] or "",
+                "sub_team": "",
+                "vertical": "",
+                "job_title": "",
+                "manager_username": "",
             }
         return {}
     finally:
@@ -1280,15 +1281,15 @@ def _search_users(query: str, limit: int = 50) -> List[Dict[str, Any]]:
         pattern = f"%{query.strip()}%"
         rows = conn.execute(
             """
-            SELECT username, first_name, last_name, email, team, vertical, job_title, manager_username
+            SELECT username, first_name, last_name, email, department
             FROM users
             WHERE status = 'active' AND (
                 first_name LIKE ? OR last_name LIKE ? OR username LIKE ? OR
-                email LIKE ? OR team LIKE ? OR vertical LIKE ? OR job_title LIKE ?
+                email LIKE ? OR department LIKE ?
             )
             ORDER BY first_name, last_name LIMIT ?
             """,
-            (pattern, pattern, pattern, pattern, pattern, pattern, pattern, limit),
+            (pattern, pattern, pattern, pattern, pattern, limit),
         ).fetchall()
         return [
             {
@@ -1296,10 +1297,11 @@ def _search_users(query: str, limit: int = 50) -> List[Dict[str, Any]]:
                 "full_name": f"{row['first_name'] or ''} {row['last_name'] or ''}".strip()
                 or row["username"],
                 "email": row["email"] or "",
-                "team": row["team"] or "",
-                "vertical": row["vertical"] or "",
-                "job_title": row["job_title"] or "",
-                "manager_username": row["manager_username"] or "",
+                "team": row["department"] or "",
+                "sub_team": "",
+                "vertical": "",
+                "job_title": "",
+                "manager_username": "",
             }
             for row in rows
         ]
