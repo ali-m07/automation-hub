@@ -127,85 +127,65 @@
         }
 
         .evaluators-list {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            padding: 2px;
+            overflow-x: auto;
+            border: 1px solid var(--gray-200);
+            border-radius: 12px;
+        }
+
+        .evaluator-table {
+            min-width: 820px;
+        }
+
+        .evaluator-table-header,
+        .evaluator-card {
+            display: grid;
+            grid-template-columns: minmax(210px, 1.25fr) minmax(160px, 1fr) minmax(130px, 0.8fr) minmax(260px, 1.6fr) 40px;
+            align-items: center;
+            gap: 14px;
+            width: 100%;
+            padding: 9px 14px;
+        }
+
+        .evaluator-table-header {
+            background: var(--gray-50);
+            border-bottom: 1px solid var(--gray-200);
+            color: var(--gray-500);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
         }
 
         .evaluator-card {
-            display: grid;
-            grid-template-columns: 40px minmax(180px, 0.8fr) minmax(260px, 1.5fr) 32px;
-            align-items: center;
-            gap: 10px;
-            width: 100%;
-            padding: 10px 10px 10px 12px;
-            background: var(--gray-50);
-            border-radius: 14px;
-            border: 1px solid var(--gray-200);
-            transition: all 0.2s ease;
+            min-height: 54px;
+            background: white;
+            border-bottom: 1px solid var(--gray-100);
+            transition: background 0.15s ease;
+        }
+
+        .evaluator-card:last-child {
+            border-bottom: 0;
         }
 
         .evaluator-card:hover {
-            border-color: var(--gray-300);
-            box-shadow: var(--shadow);
+            background: var(--gray-50);
         }
 
-        .evaluator-avatar {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        .evaluator-cell {
+            min-width: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 13px;
+            color: var(--gray-700);
+        }
+
+        .evaluator-email-cell {
             display: flex;
             align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: 600;
-            font-size: 12px;
-            flex-shrink: 0;
-        }
-
-        .evaluator-info {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .evaluator-email {
-            font-size: 13px;
-            font-weight: 600;
+            gap: 9px;
             color: var(--gray-900);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .evaluator-name {
-            font-size: 11px;
-            color: var(--gray-600);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .evaluator-details {
-            display: none;
-        }
-
-        .detail-item {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            font-size: 12px;
-            color: var(--gray-500);
-            background: white;
-            padding: 4px 10px;
-            border-radius: 4px;
-            border: 1px solid var(--gray-200);
-        }
-
-        .detail-item i {
-            font-size: 10px;
-            color: var(--gray-400);
+            font-weight: 600;
         }
 
         .evaluator-reason {
@@ -416,16 +396,6 @@
         .email-result-item.keyboard-active {
             background: var(--primary-light);
             outline: 2px solid rgba(59, 130, 246, 0.28);
-        }
-
-        @media (max-width: 760px) {
-            .evaluator-card {
-                grid-template-columns: 36px minmax(0, 1fr) 30px;
-            }
-
-            .evaluator-reason {
-                grid-column: 1 / -1;
-            }
         }
 
         .email-result-item .email {
@@ -730,7 +700,7 @@
             }
         }
 
-        function renderEvaluators() {
+        function renderEvaluatorsLegacy() {
             const container = document.getElementById('evaluatorsList');
             const emptyState = document.getElementById('emptyState');
             const submitBtn = document.getElementById('submitBtn');
@@ -787,6 +757,50 @@
         function getInitials(name) {
             if (!name) return '?';
             return name.split(/[.@]/)[0].slice(0,2).toUpperCase();
+        }
+
+        function renderEvaluators() {
+            const container = document.getElementById('evaluatorsList');
+            const emptyState = document.getElementById('emptyState');
+            const submitBtn = document.getElementById('submitBtn');
+            const selectedCount = document.getElementById('selectedCount');
+            if (selectedCount) selectedCount.textContent = evaluators.length;
+
+            if (!evaluators.length) {
+                container.innerHTML = '';
+                if (emptyState) {
+                    container.appendChild(emptyState);
+                    emptyState.style.display = 'block';
+                }
+                if (submitBtn) submitBtn.disabled = true;
+                return;
+            }
+
+            if (emptyState) emptyState.style.display = 'none';
+            if (submitBtn) submitBtn.disabled = false;
+            container.innerHTML = `
+                <div class="evaluator-table">
+                    <div class="evaluator-table-header">
+                        <span>Email</span><span>Name</span><span>Team</span><span>Reason</span><span></span>
+                    </div>
+                    ${evaluators.map(eval => `
+                        <div class="evaluator-card">
+                            <div class="evaluator-cell evaluator-email-cell" title="${escapeAttribute(eval.email || '')}">${eval.email || ''}</div>
+                            <div class="evaluator-cell" title="${escapeAttribute(eval.full_name || '')}">${eval.full_name || '—'}</div>
+                            <div class="evaluator-cell" title="${escapeAttribute(eval.team || '')}">${eval.team || '—'}</div>
+                            <div class="evaluator-reason">
+                                <label>Reason for Nomination</label>
+                                <input type="text" aria-label="Reason for nominating ${eval.email}"
+                                    placeholder="Add reason..." value="${escapeAttribute(eval.reason || '')}"
+                                    oninput="updateReason('${eval.email}', this.value)">
+                            </div>
+                            <button class="delete-btn" onclick="removeEvaluator('${eval.email}')" title="Remove">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
         }
 
         function escapeAttribute(value) {
