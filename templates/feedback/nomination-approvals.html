@@ -1194,9 +1194,10 @@
         function renderEvaluatorRow(nominationId, eval) {
             const statusClass = eval.status || 'pending';
             const managerAdded = Boolean(eval.added_by);
+            const evaluatorId = eval.username || eval.email || '';
 
             return `
-                <div class="evaluator-row ${statusClass}" id="eval-${nominationId}-${eval.username}">
+                <div class="evaluator-row ${statusClass}" id="eval-${nominationId}-${evaluatorId}">
                     <div class="evaluator-avatar">
                         ${getInitials(eval.full_name || eval.username)}
                     </div>
@@ -1212,39 +1213,39 @@
                             <strong>Reason:</strong> ${eval.reason || 'No reason provided'}
                             ${eval.rejection_reason ? `<br><strong style="color: var(--danger);">Rejection Reason:</strong> ${eval.rejection_reason}` : ''}
                         </div>
-                        <div id="rejection-input-${nominationId}-${eval.username}" style="display: none;" class="rejection-input">
+                        <div id="rejection-input-${nominationId}-${evaluatorId}" style="display: none;" class="rejection-input">
                             <textarea placeholder="Reason for rejection (optional)"></textarea>
                             <div class="btns">
-                                <button class="btn btn-outline btn-sm" onclick="cancelReject('${nominationId}', '${eval.username}')">Cancel</button>
-                                <button class="btn btn-danger btn-sm" onclick="confirmReject('${nominationId}', '${eval.username}')">Confirm Reject</button>
+                                <button class="btn btn-outline btn-sm" onclick="cancelReject('${nominationId}', '${evaluatorId}')">Cancel</button>
+                                <button class="btn btn-danger btn-sm" onclick="confirmReject('${nominationId}', '${evaluatorId}')">Confirm Reject</button>
                             </div>
                         </div>
                     </div>
                     <div class="evaluator-actions">
                         ${managerAdded ? `
                             <button class="action-btn reject-btn" title="Remove evaluator"
-                                    onclick="removeManagerAddedEvaluator('${nominationId}', '${eval.username}')">
+                                    onclick="removeManagerAddedEvaluator('${nominationId}', '${evaluatorId}')">
                                 <i class="fas fa-times"></i> Remove
                             </button>
                         ` : statusClass === 'approved' ? `
                             <span class="status-indicator approved">
                                 <i class="fas fa-check-circle"></i> Approved
                             </span>
-                            <button class="action-btn reject-btn" onclick="showRejectInput('${nominationId}', '${eval.username}')">
+                            <button class="action-btn reject-btn" onclick="showRejectInput('${nominationId}', '${evaluatorId}')">
                                 <i class="fas fa-rotate"></i> Change to Reject
                             </button>
                         ` : statusClass === 'rejected' ? `
                             <span class="status-indicator rejected">
                                 <i class="fas fa-times-circle"></i> Rejected
                             </span>
-                            <button class="action-btn approve-btn" onclick="approveEvaluator('${nominationId}', '${eval.username}')">
+                            <button class="action-btn approve-btn" onclick="approveEvaluator('${nominationId}', '${evaluatorId}')">
                                 <i class="fas fa-rotate"></i> Change to Approve
                             </button>
                         ` : `
-                            <button class="action-btn approve-btn" onclick="approveEvaluator('${nominationId}', '${eval.username}')">
+                            <button class="action-btn approve-btn" onclick="approveEvaluator('${nominationId}', '${evaluatorId}')">
                                 <i class="fas fa-check"></i> Approve
                             </button>
-                            <button class="action-btn reject-btn" onclick="showRejectInput('${nominationId}', '${eval.username}')">
+                            <button class="action-btn reject-btn" onclick="showRejectInput('${nominationId}', '${evaluatorId}')">
                                 <i class="fas fa-times"></i> Reject
                             </button>
                         `}

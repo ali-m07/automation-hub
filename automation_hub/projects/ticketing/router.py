@@ -1576,16 +1576,22 @@ async def approve_evaluator(nomination_id: str, request: Request):
             status_code=403, detail="Only the assigned manager can approve"
         )
 
-    # Find and update the evaluator
+    evaluator_found = False
     for eval_item in nomination.get("evaluators", []):
-        if eval_item.get("username") == evaluator_username:
+        item_email = str(eval_item.get("email") or "").lower()
+        item_username = str(eval_item.get("username") or "").lower()
+        requested = str(evaluator_username or "").lower()
+        if requested in {item_username, item_email, item_email.split("@", 1)[0]}:
             eval_item["status"] = "approved"
             eval_item["approved_by"] = username
             eval_item["approved_at"] = _now()
             eval_item.pop("rejected_by", None)
             eval_item.pop("rejected_at", None)
             eval_item.pop("rejection_reason", None)
+            evaluator_found = True
             break
+    if not evaluator_found:
+        raise HTTPException(status_code=404, detail="Evaluator not found")
 
     # Check if all evaluators are processed
     all_processed = all(
@@ -1708,16 +1714,22 @@ async def reject_evaluator(nomination_id: str, request: Request):
             status_code=403, detail="Only the assigned manager can reject"
         )
 
-    # Find and update the evaluator
+    evaluator_found = False
     for eval_item in nomination.get("evaluators", []):
-        if eval_item.get("username") == evaluator_username:
+        item_email = str(eval_item.get("email") or "").lower()
+        item_username = str(eval_item.get("username") or "").lower()
+        requested = str(evaluator_username or "").lower()
+        if requested in {item_username, item_email, item_email.split("@", 1)[0]}:
             eval_item["status"] = "rejected"
             eval_item["rejected_by"] = username
             eval_item["rejected_at"] = _now()
             eval_item["rejection_reason"] = rejection_reason
             eval_item.pop("approved_by", None)
             eval_item.pop("approved_at", None)
+            evaluator_found = True
             break
+    if not evaluator_found:
+        raise HTTPException(status_code=404, detail="Evaluator not found")
 
     # Check if all evaluators are processed
     all_processed = all(
