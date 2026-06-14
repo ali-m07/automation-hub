@@ -605,6 +605,18 @@ def init_database() -> None:
                 PRIMARY KEY (group_id, username)
             )
             """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS feedback_evaluator_nominations (
+                id TEXT PRIMARY KEY,
+                nominator_username TEXT NOT NULL,
+                manager_username TEXT NOT NULL,
+                evaluators_json TEXT NOT NULL DEFAULT '[]',
+                status TEXT NOT NULL DEFAULT 'pending',
+                submitted_at TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """)
         app_settings_keys = {
             safe_row_get(r, "key")
             for r in conn.execute("SELECT key FROM app_settings").fetchall()

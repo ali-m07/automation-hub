@@ -1096,23 +1096,69 @@ def _evaluator_store_path() -> Path:
 
 
 def _load_evaluator_store() -> Dict[str, Any]:
-    path = _evaluator_store_path()
-    if not path.exists():
-        return {"nominations": []}
+    conn = db.db_connect(db.get_db_file())
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
-        return {"nominations": []}
-    if not isinstance(data, dict) or not isinstance(data.get("nominations"), list):
-        return {"nominations": []}
-    return data
+        rows = conn.execute(
+            """
+            SELECT id, nominator_username, manager_username, evaluators_json,
+                   status, submitted_at, created_at, updated_at
+            FROM feedback_evaluator_nominations
+            ORDER BY created_at
+            """
+        ).fetchall()
+        nominations = []
+        for row in rows:
+            item = dict(row)
+            item["evaluators"] = json.loads(item.pop("evaluators_json") or "[]")
+            nominations.append(item)
+        if nominations:
+            return {"nominations": nominations}
+    finally:
+        conn.close()
+
+    path = _evaluator_store_path()
+    if path.exists():
+        try:
+            legacy = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(legacy, dict) and isinstance(legacy.get("nominations"), list):
+                _save_evaluator_store(legacy)
+                return legacy
+        except Exception:
+            pass
+    return {"nominations": []}
 
 
 def _save_evaluator_store(data: Dict[str, Any]) -> None:
-    path = _evaluator_store_path()
-    tmp = path.with_suffix(".tmp")
-    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-    tmp.replace(path)
+    conn = db.db_connect(db.get_db_file())
+    try:
+        for nomination in data.get("nominations", []):
+            conn.execute(
+                """
+                INSERT INTO feedback_evaluator_nominations (
+                    id, nominator_username, manager_username, evaluators_json,
+                    status, submitted_at, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    manager_username = excluded.manager_username,
+                    evaluators_json = excluded.evaluators_json,
+                    status = excluded.status,
+                    submitted_at = excluded.submitted_at,
+                    updated_at = excluded.updated_at
+                """,
+                (
+                    nomination["id"],
+                    nomination.get("nominator_username", ""),
+                    nomination.get("manager_username", ""),
+                    json.dumps(nomination.get("evaluators", []), ensure_ascii=False),
+                    nomination.get("status", "pending"),
+                    nomination.get("submitted_at"),
+                    nomination.get("created_at") or _now(),
+                    nomination.get("updated_at") or _now(),
+                ),
+            )
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def _get_user_info(username: str) -> Dict[str, Any]:
@@ -1129,7 +1175,8 @@ def _get_user_info(username: str) -> Dict[str, Any]:
                 "username": emp.get("username", ""),
                 "first_name": emp.get("full_name", "").split()[0] if emp.get("full_name") else "",
                 "last_name": " ".join(emp.get("full_name", "").split()[1:]) if emp.get("full_name") else "",
-                "full_name": emp.get("full_name", ""),
+                "full_name": emp.get("e_full_name") or emp.get("full_name", ""),
+                "e_full_name": emp.get("e_full_name", ""),
                 "email": emp.get("email", ""),
                 "role": "user",
                 "modules": ["feedback_180"],
@@ -1189,7 +1236,8 @@ def _search_users(query: str, limit: int = 50) -> List[Dict[str, Any]]:
             return [
                 {
                     "username": emp.get("username", ""),
-                    "full_name": emp.get("full_name", ""),
+                    "full_name": emp.get("e_full_name") or emp.get("full_name", ""),
+                    "e_full_name": emp.get("e_full_name", ""),
                     "email": emp.get("email", ""),
                     "team": emp.get("team", ""),
                     "vertical": emp.get("vertical", ""),

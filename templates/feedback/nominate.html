@@ -128,27 +128,22 @@
 
         .evaluators-list {
             display: flex;
-            flex-flow: row nowrap;
+            flex-direction: column;
             gap: 10px;
-            overflow-x: auto;
-            padding: 2px 2px 10px;
-            scroll-snap-type: x proximity;
-            scrollbar-width: thin;
-            scrollbar-color: var(--gray-300) transparent;
+            padding: 2px;
         }
 
         .evaluator-card {
-            display: flex;
+            display: grid;
+            grid-template-columns: 40px minmax(180px, 0.8fr) minmax(260px, 1.5fr) 32px;
             align-items: center;
             gap: 10px;
-            min-width: 280px;
-            max-width: 320px;
+            width: 100%;
             padding: 10px 10px 10px 12px;
             background: var(--gray-50);
             border-radius: 14px;
             border: 1px solid var(--gray-200);
             transition: all 0.2s ease;
-            scroll-snap-align: start;
         }
 
         .evaluator-card:hover {
@@ -215,7 +210,7 @@
 
         .evaluator-reason {
             width: 100%;
-            margin-top: 6px;
+            margin-top: 0;
         }
 
         .evaluator-reason label {
@@ -228,9 +223,9 @@
 
         .evaluator-reason input {
             width: 100%;
-            height: 30px;
-            padding: 5px 9px;
-            font-size: 12px;
+            height: 38px;
+            padding: 8px 11px;
+            font-size: 13px;
             font-family: inherit;
             border: 1px solid var(--gray-200);
             border-radius: 8px;
@@ -416,6 +411,21 @@
 
         .email-result-item:hover {
             background: var(--gray-50);
+        }
+
+        .email-result-item.keyboard-active {
+            background: var(--primary-light);
+            outline: 2px solid rgba(59, 130, 246, 0.28);
+        }
+
+        @media (max-width: 760px) {
+            .evaluator-card {
+                grid-template-columns: 36px minmax(0, 1fr) 30px;
+            }
+
+            .evaluator-reason {
+                grid-column: 1 / -1;
+            }
         }
 
         .email-result-item .email {
@@ -622,7 +632,8 @@
                     <i class="fas fa-search search-icon"></i>
                     <input type="text" class="search-input" id="userSearch"
                            placeholder="Search by email (e.g. ali.mansouri)"
-                           oninput="searchUsers()" autocomplete="off">
+                           oninput="searchUsers()" onkeydown="handleUserSearchKeydown(event)"
+                           autocomplete="off" aria-controls="userResults" aria-autocomplete="list">
                 </div>
                 <p class="search-hint">Type an email address to search</p>
                 <div id="userResults" class="email-results"></div>
@@ -664,6 +675,8 @@
         let currentUser = null;
         let currentUserManager = null;
         let searchTimeout = null;
+        let currentEvaluatorResults = [];
+        let activeEvaluatorResultIndex = -1;
 
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
@@ -759,8 +772,8 @@
                                 type="text"
                                 aria-label="Reason for nominating ${eval.email}"
                                 placeholder="Add a short reason..."
-                                value="${eval.reason || ''}"
-                                onchange="updateReason('${eval.email}', this.value)"
+                                value="${escapeAttribute(eval.reason || '')}"
+                                oninput="updateReason('${eval.email}', this.value)"
                             >
                         </div>
                     </div>
@@ -774,6 +787,14 @@
         function getInitials(name) {
             if (!name) return '?';
             return name.split(/[.@]/)[0].slice(0,2).toUpperCase();
+        }
+
+        function escapeAttribute(value) {
+            return String(value)
+                .replaceAll('&', '&amp;')
+                .replaceAll('"', '&quot;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;');
         }
 
         function updateReason(email, reason) {
@@ -793,6 +814,8 @@
             document.getElementById('userPickerModal').classList.add('active');
             document.getElementById('userSearch').value = '';
             document.getElementById('userResults').innerHTML = '';
+            currentEvaluatorResults = [];
+            activeEvaluatorResultIndex = -1;
             document.getElementById('userSearch').focus();
         }
 
@@ -882,6 +905,8 @@
                     const users = data.users || [];
 
                     if (users.length === 0) {
+                        currentEvaluatorResults = [];
+                        activeEvaluatorResultIndex = -1;
                         document.getElementById('userResults').innerHTML = '<div class="no-results">No emails found</div>';
                         return;
                     }
@@ -907,15 +932,21 @@
                     console.log('Available users after filter:', availableUsers.map(u => u.email));
 
                     if (availableUsers.length === 0) {
+                        currentEvaluatorResults = [];
+                        activeEvaluatorResultIndex = -1;
                         document.getElementById('userResults').innerHTML = '<div class="no-results">All matching emails already added</div>';
                         return;
                     }
 
-                    document.getElementById('userResults').innerHTML = availableUsers.map(user => `
-                        <div class="email-result-item" onclick="selectUser('${user.email}', '${user.full_name || ''}', '${user.job_title || ''}', '${user.team || ''}', '${user.sub_team || ''}', '${user.vertical || ''}', '${user.line_manager_email || ''}', '${user.line_manager_name || ''}')">
+                    currentEvaluatorResults = availableUsers;
+                    activeEvaluatorResultIndex = 0;
+                    document.getElementById('userResults').innerHTML = availableUsers.map((user, index) => `
+                        <div class="email-result-item${index === 0 ? ' keyboard-active' : ''}"
+                             role="option" aria-selected="${index === 0}"
+                             onclick="selectUserByIndex(${index})">
                             <span class="email">${user.email}</span>
                             <span class="meta">
-                                ${user.full_name || ''}
+                                ${user.e_full_name || user.full_name || ''}
                                 ${user.team ? ' • ' + user.team : ''}
                                 ${user.sub_team ? ' / ' + user.sub_team : ''}
                                 ${user.vertical ? ' • ' + user.vertical : ''}
@@ -927,6 +958,48 @@
                     document.getElementById('userResults').innerHTML = '<div class="no-results">Error searching</div>';
                 }
             }, 300);
+        }
+
+        function updateActiveEvaluatorResult() {
+            document.querySelectorAll('#userResults .email-result-item').forEach((item, index) => {
+                const active = index === activeEvaluatorResultIndex;
+                item.classList.toggle('keyboard-active', active);
+                item.setAttribute('aria-selected', active ? 'true' : 'false');
+                if (active) item.scrollIntoView({ block: 'nearest' });
+            });
+        }
+
+        function handleUserSearchKeydown(event) {
+            if (!currentEvaluatorResults.length) return;
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                activeEvaluatorResultIndex = (activeEvaluatorResultIndex + 1) % currentEvaluatorResults.length;
+                updateActiveEvaluatorResult();
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                activeEvaluatorResultIndex = (activeEvaluatorResultIndex - 1 + currentEvaluatorResults.length) % currentEvaluatorResults.length;
+                updateActiveEvaluatorResult();
+            } else if (event.key === 'Enter') {
+                event.preventDefault();
+                selectUserByIndex(activeEvaluatorResultIndex);
+            } else if (event.key === 'Escape') {
+                closeUserPicker();
+            }
+        }
+
+        function selectUserByIndex(index) {
+            const user = currentEvaluatorResults[index];
+            if (!user) return;
+            selectUser(
+                user.email,
+                user.e_full_name || user.full_name || '',
+                user.job_title || '',
+                user.team || '',
+                user.sub_team || '',
+                user.vertical || '',
+                user.line_manager_email || '',
+                user.line_manager_name || ''
+            );
         }
 
         function selectUser(email, fullName, jobTitle, team, subTeam, vertical, managerEmail, managerName) {
