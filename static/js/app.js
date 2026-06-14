@@ -3101,23 +3101,16 @@ setInterval(() => {
 // Initialize default data grid and table list on first load
 window.addEventListener('DOMContentLoaded', async () => {
     // Load list of existing tables and render as pills
-    try {
-        await refreshUsers();
-        await refreshTables();
-        // Notifications badge (unread count)
-        const notifRes = await fetch('/api/notifications', { credentials: 'include' });
-        const notifData = await notifRes.json();
-        if (notifData.success && (notifData.unread_count || 0) > 0) {
-            const badgeEl = document.getElementById('notifications-badge');
-            if (badgeEl) {
-                badgeEl.textContent = notifData.unread_count;
-                badgeEl.style.display = 'inline';
-            }
+    if (document.getElementById('tables-list')) {
+        try {
+            await refreshUsers();
+            await refreshTables();
+        } catch (e) {
+            // Keep the data hub usable when an optional source is unavailable.
         }
-    } catch (e) {
-        // ignore and keep default
     }
 
+    if (!document.getElementById('data-grid')) return;
     ensureTabulatorLoaded(() => {
         initDataGrid();
         showTablesHub();

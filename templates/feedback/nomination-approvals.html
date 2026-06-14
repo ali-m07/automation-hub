@@ -1492,9 +1492,9 @@
                 const data = await response.json();
                 if (data.success) {
                     showToast('Nomination closed', 'success');
-                    loadRequests();
+                    window.location.href = '/feedback/nomination-approvals';
                 } else {
-                    showToast(data.error || 'Error closing', 'error');
+                    showToast(data.detail || data.error || 'Error closing', 'error');
                 }
             } catch (error) {
                 showToast('Error closing nomination', 'error');

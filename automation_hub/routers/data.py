@@ -183,12 +183,13 @@ async def list_tables(request: Request):
                 """
                 SELECT DISTINCT m.table_id, m.title, m.owner_username, m.created_at, m.updated_at,
                        m.last_opened_at, m.storage_backend, m.promote_status,
-                       CASE WHEN f.username IS NULL THEN 0 ELSE 1 END AS is_favorite
+                       CASE WHEN f.username IS NULL THEN 0 ELSE 1 END AS is_favorite,
+                       COALESCE(m.last_opened_at, m.updated_at) AS sort_at
                 FROM tables_meta m
                 LEFT JOIN table_grants g ON g.table_id = m.table_id
                 LEFT JOIN table_favorites f ON f.table_id = m.table_id AND f.username = %s
                 WHERE m.owner_username = %s OR g.grantee_username = %s
-                ORDER BY COALESCE(m.last_opened_at, m.updated_at) DESC
+                ORDER BY sort_at DESC
                 """,
                 (username, username, username),
             )

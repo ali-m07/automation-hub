@@ -1877,10 +1877,10 @@ async def close_nomination(nomination_id: str, request: Request):
     if not nomination:
         raise HTTPException(status_code=404, detail="Nomination not found")
 
-    if nomination.get("manager_username") != username:
+    if user.get("role") != "admin" and nomination.get("manager_username") != username:
         raise HTTPException(
             status_code=403,
-            detail="Only the assigned manager can close this nomination",
+            detail="Only the assigned manager or an admin can close this nomination",
         )
 
     # Check all evaluators are processed
