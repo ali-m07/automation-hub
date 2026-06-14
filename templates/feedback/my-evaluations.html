@@ -10,6 +10,9 @@
     .evaluation-head { display: flex; justify-content: space-between; gap: 16px; padding: 18px 20px; background: var(--bg-secondary); border-bottom: 1px solid var(--border-color); }
     .evaluation-meta { color: var(--text-secondary); font-size: 0.85rem; margin-top: 4px; }
     .evaluation-status { align-self: flex-start; padding: 5px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--on-accent-soft); font-size: 0.75rem; font-weight: 800; text-transform: capitalize; }
+    .evaluation-actions { display: flex; align-items: center; gap: 10px; }
+    .evaluation-edit { display: inline-flex; align-items: center; min-height: 36px; padding: 7px 13px; border-radius: 9px; background: var(--accent); color: white; text-decoration: none; font-size: 0.82rem; font-weight: 700; }
+    .evaluation-locked { color: var(--text-secondary); font-size: 0.78rem; }
     .evaluation-table { width: 100%; border-collapse: collapse; }
     .evaluation-table th, .evaluation-table td { padding: 12px 20px; text-align: left; border-bottom: 1px solid var(--border-color); vertical-align: top; }
     .evaluation-table th { color: var(--text-secondary); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; }
@@ -39,13 +42,22 @@
     <article class="evaluation-card">
         <div class="evaluation-head">
             <div>
-                <strong>{{ nomination.id }}</strong>
+                <strong>Evaluator nomination</strong>
                 <div class="evaluation-meta">
-                    Submitted {{ nomination.submitted_at or nomination.created_at or 'Not submitted' }}
+                    Submitted {{ nomination.submitted_display }}
                     &middot; Manager: {{ nomination.manager_info.full_name or nomination.manager_username or '-' }}
                 </div>
             </div>
-            <span class="evaluation-status">{{ nomination.status or 'pending' }}</span>
+            <div class="evaluation-actions">
+                {% if nomination.can_edit %}
+                <a class="evaluation-edit" href="/feedback/nominate">Edit nomination</a>
+                {% else %}
+                <span class="evaluation-locked">Manager review started</span>
+                {% endif %}
+                <span class="evaluation-status">
+                    {% if nomination.status == 'pending' %}Waiting for manager{% else %}{{ nomination.status }}{% endif %}
+                </span>
+            </div>
         </div>
         <table class="evaluation-table">
             <thead><tr><th>Evaluator</th><th>Email</th><th>Team</th><th>Reason</th><th>Status</th></tr></thead>

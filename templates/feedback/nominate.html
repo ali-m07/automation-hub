@@ -1242,7 +1242,7 @@
                         year: 'numeric', month: 'long', day: 'numeric'
                     });
                 } else {
-                    showToast(data.error || 'Error submitting', 'error');
+                    showToast(data.detail || data.error || 'Error submitting', 'error');
                 }
             } catch (error) {
                 console.error('Error:', error);

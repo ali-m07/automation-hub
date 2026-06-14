@@ -302,6 +302,22 @@ async def my_evaluations_page(request: Request):
         reverse=True,
     )
     for nomination in nominations:
+        nomination["can_edit"] = nomination.get("status") == "pending" and not any(
+            evaluator.get("status") in {"approved", "rejected"}
+            for evaluator in nomination.get("evaluators", [])
+        )
+        submitted_at = nomination.get("submitted_at") or nomination.get("created_at")
+        if submitted_at:
+            try:
+                from datetime import datetime
+
+                nomination["submitted_display"] = datetime.fromisoformat(
+                    submitted_at.replace("Z", "+00:00")
+                ).strftime("%B %d, %Y at %H:%M")
+            except (TypeError, ValueError):
+                nomination["submitted_display"] = submitted_at
+        else:
+            nomination["submitted_display"] = "Not submitted"
         nomination["manager_info"] = _get_user_info(
             nomination.get("manager_username", "")
         )

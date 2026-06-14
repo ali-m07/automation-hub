@@ -1500,6 +1500,15 @@ async def submit_evaluator_nomination(request: Request):
     )
 
     if existing:
+        manager_has_acted = any(
+            evaluator.get("status") in {"approved", "rejected"}
+            for evaluator in existing.get("evaluators", [])
+        )
+        if manager_has_acted:
+            raise HTTPException(
+                status_code=409,
+                detail="This nomination can no longer be edited because the manager has already reviewed it.",
+            )
         # Update existing nomination
         existing["evaluators"] = evaluators
         existing["manager_username"] = manager_username
