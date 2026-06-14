@@ -648,10 +648,47 @@
         let currentEvaluatorResults = [];
         let activeEvaluatorResultIndex = -1;
 
+        function draftStorageKey() {
+            return `servexa:evaluator-draft:${currentUser?.username || 'anonymous'}`;
+        }
+
+        function saveDraft() {
+            if (!currentUser) return;
+            const managerEmail = document.getElementById('managerEmailValue')?.value || '';
+            localStorage.setItem(draftStorageKey(), JSON.stringify({
+                evaluators,
+                manager_email: managerEmail,
+                updated_at: new Date().toISOString()
+            }));
+        }
+
+        function restoreDraft() {
+            if (!currentUser) return false;
+            try {
+                const draft = JSON.parse(localStorage.getItem(draftStorageKey()) || 'null');
+                if (!draft || !Array.isArray(draft.evaluators) || !draft.evaluators.length) return false;
+                evaluators = draft.evaluators;
+                if (draft.manager_email) {
+                    document.getElementById('managerEmailValue').value = draft.manager_email;
+                    document.getElementById('managerEmail').textContent = draft.manager_email;
+                }
+                renderEvaluators();
+                return true;
+            } catch (error) {
+                localStorage.removeItem(draftStorageKey());
+                return false;
+            }
+        }
+
+        function clearDraft() {
+            localStorage.removeItem(draftStorageKey());
+        }
+
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
             await loadCurrentUser();
-            await loadExistingNomination();
+            const hasSubmittedNomination = await loadExistingNomination();
+            if (!hasSubmittedNomination) restoreDraft();
         });
 
         async function loadCurrentUser() {
@@ -694,10 +731,12 @@
 
                     evaluators = nom.evaluators || [];
                     renderEvaluators();
+                    return true;
                 }
             } catch (error) {
                 console.error('Error loading nomination:', error);
             }
+            return false;
         }
 
         function renderEvaluatorsLegacy() {
@@ -815,12 +854,14 @@
             const eval = evaluators.find(e => e.email === email);
             if (eval) {
                 eval.reason = reason;
+                saveDraft();
             }
         }
 
         function removeEvaluator(email) {
             evaluators = evaluators.filter(e => e.email !== email);
             renderEvaluators();
+            saveDraft();
         }
 
         // User Picker Modal
@@ -895,6 +936,7 @@
             document.getElementById('managerEmail').textContent = email;
             // Set the hidden field value for submission
             document.getElementById('managerEmailValue').value = email;
+            saveDraft();
 
             closeManagerPicker();
             showToast('Manager selected: ' + email, 'success');
@@ -1055,6 +1097,7 @@
             console.log('Successfully added. New count:', evaluators.length);
 
             renderEvaluators();
+            saveDraft();
             closeUserPicker();
             showToast('Evaluator added successfully', 'success');
         }
@@ -1090,6 +1133,7 @@
                 const data = await response.json();
 
                 if (data.success) {
+                    clearDraft();
                     showToast('Nomination submitted for approval!', 'success');
                     document.getElementById('currentStatus').style.display = 'block';
                     const date = new Date();

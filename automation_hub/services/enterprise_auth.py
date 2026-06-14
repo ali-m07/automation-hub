@@ -226,6 +226,7 @@ def authenticate_ldap(username: str, password: str) -> Optional[Dict[str, Any]]:
     if not ldap_enabled() or not password:
         return None
     from ldap3 import SUBTREE
+
     user_principal = _setting("LDAP_USER_PRINCIPAL", "{username}").format(
         username=username
     )
@@ -239,7 +240,15 @@ def authenticate_ldap(username: str, password: str) -> Optional[Dict[str, Any]]:
             base_dn,
             search_filter,
             search_scope=SUBTREE,
-            attributes=["mail", "userPrincipalName", "givenName", "sn", "displayName", "department", "objectGUID"],
+            attributes=[
+                "mail",
+                "userPrincipalName",
+                "givenName",
+                "sn",
+                "displayName",
+                "department",
+                "objectGUID",
+            ],
             size_limit=1,
         )
         if not connection.entries:
@@ -281,7 +290,13 @@ def search_ldap_users(query: str) -> List[Dict[str, str]]:
             _setting("LDAP_USER_BASE_DN") or _setting("LDAP_BASE_DN"),
             template.format(query=term),
             search_scope=SUBTREE,
-            attributes=["sAMAccountName", "displayName", "mail", "userPrincipalName", "department"],
+            attributes=[
+                "sAMAccountName",
+                "displayName",
+                "mail",
+                "userPrincipalName",
+                "department",
+            ],
             size_limit=50,
         )
         return [

@@ -128,9 +128,18 @@ page_router = APIRouter(tags=["admin"])
 
 
 ADMIN_SECTIONS = {
-    "overview", "users", "ldap", "notifications", "upload-limits",
-    "data-tables", "db-connectors", "tickets", "audit", "webhooks",
-    "smtp", "diagnostics",
+    "overview",
+    "users",
+    "ldap",
+    "notifications",
+    "upload-limits",
+    "data-tables",
+    "db-connectors",
+    "tickets",
+    "audit",
+    "webhooks",
+    "smtp",
+    "diagnostics",
 }
 
 
@@ -1078,19 +1087,23 @@ async def admin_get_auth_config(request: Request):
         "ldap_port": int(raw.get("ldap_port") or "389"),
         "ldap_use_ssl": (raw.get("ldap_use_ssl") or "0") == "1",
         "ldap_base_dn": raw.get("ldap_base_dn") or "",
-        "ldap_user_base_dn": raw.get("ldap_user_base_dn") or raw.get("ldap_base_dn") or "",
+        "ldap_user_base_dn": raw.get("ldap_user_base_dn")
+        or raw.get("ldap_base_dn")
+        or "",
         "ldap_group_base_dn": raw.get("ldap_group_base_dn") or "",
         "ldap_bind_dn": raw.get("ldap_bind_dn") or "",
         # برای امنیت، پسورد را به UI برنمی‌گردانیم؛ فقط وجود/عدم وجودش در UI هندل می‌شود.
         "ldap_bind_password_set": bool(raw.get("ldap_bind_password")),
         "ldap_user_filter": raw.get("ldap_user_filter")
         or "(&(objectClass=user)(sAMAccountName={username}))",
-        "ldap_user_principal": raw.get("ldap_user_principal") or "{username}@snapp.local",
+        "ldap_user_principal": raw.get("ldap_user_principal")
+        or "{username}@snapp.local",
         "ldap_directory_filter": raw.get("ldap_directory_filter")
         or "(&(objectClass=user)(|(sAMAccountName={query})(displayName={query})(mail={query})))",
         "ldap_department_groups_enabled": (
             raw.get("ldap_department_groups_enabled") or "0"
-        ) == "1",
+        )
+        == "1",
     }
     return JSONResponse({"success": True, "config": config})
 
@@ -1199,11 +1212,7 @@ async def admin_test_ldap(request: Request):
             bind_password = db.safe_row_get(row, "value") or ""
         finally:
             conn.close()
-    base_dn = (
-        body.get("ldap_user_base_dn")
-        or body.get("ldap_base_dn")
-        or ""
-    ).strip()
+    base_dn = (body.get("ldap_user_base_dn") or body.get("ldap_base_dn") or "").strip()
     results = []
     for host in servers:
         result = {"server": host, "port": port, "success": False}
@@ -1576,14 +1585,12 @@ async def admin_list_sql_tables(request: Request):
         }
         with get_sql_connection(conn_config) as conn:
             cursor = conn.cursor()
-            cursor.execute(
-                """
+            cursor.execute("""
                 SELECT TABLE_SCHEMA, TABLE_NAME
                 FROM INFORMATION_SCHEMA.TABLES
                 WHERE TABLE_TYPE = 'BASE TABLE'
                 ORDER BY TABLE_SCHEMA, TABLE_NAME
-                """
-            )
+                """)
             rows = cursor.fetchall() or []
         tables = []
         for schema, name in rows:
@@ -1613,15 +1620,13 @@ async def admin_list_pending_tables(request: Request):
         )
     with pg.pg_connect() as conn:
         with conn.cursor() as cur:
-            cur.execute(
-                """
+            cur.execute("""
                 SELECT table_id, title, owner_username, created_at, updated_at, promote_status, storage_backend
                 FROM tables_meta
                 WHERE promote_status IN ('pending_review')
                 ORDER BY updated_at DESC
                 LIMIT 200
-                """
-            )
+                """)
             rows = cur.fetchall() or []
     items = []
     for r in rows:
@@ -1738,14 +1743,12 @@ async def export_jobs_report(
     auth.require_admin(request, auth.get_current_user)
     conn = _db()
     try:
-        rows = conn.execute(
-            """
+        rows = conn.execute("""
             SELECT id, username, status, created_at, updated_at
             FROM job_queue
             ORDER BY created_at DESC
             LIMIT 10000
-            """
-        ).fetchall()
+            """).fetchall()
     finally:
         conn.close()
     import io
@@ -1786,14 +1789,12 @@ async def export_audit_report(
     auth.require_admin(request, auth.get_current_user)
     conn = _db()
     try:
-        rows = conn.execute(
-            """
+        rows = conn.execute("""
             SELECT username, action, details, ip_address, user_agent, created_at
             FROM audit_log
             ORDER BY created_at DESC
             LIMIT 10000
-            """
-        ).fetchall()
+            """).fetchall()
     finally:
         conn.close()
     import io

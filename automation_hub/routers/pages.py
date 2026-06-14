@@ -153,7 +153,9 @@ async def projects_admin(request: Request):
     return _render_page(request, "feedback/admin.html", user=user)
 
 
-@pages_router.get("/projects/my-requests", response_class=HTMLResponse, response_model=None)
+@pages_router.get(
+    "/projects/my-requests", response_class=HTMLResponse, response_model=None
+)
 async def my_requests_page(request: Request):
     """Dedicated URL for the signed-in user's ticket requests."""
     user = auth.get_current_user(request)
@@ -242,7 +244,9 @@ async def ticket_detail(ticket_id: str, request: Request):
     )
 
 
-@pages_router.get("/feedback/nominate", response_class=HTMLResponse, response_model=None)
+@pages_router.get(
+    "/feedback/nominate", response_class=HTMLResponse, response_model=None
+)
 async def evaluator_nomination_page(request: Request):
     """Evaluator Nomination page - for employees to nominate their evaluators."""
     user = auth.get_current_user(request)
@@ -268,7 +272,9 @@ async def evaluator_nomination_page(request: Request):
     )
 
 
-@pages_router.get("/feedback/nomination-approvals", response_class=HTMLResponse, response_model=None)
+@pages_router.get(
+    "/feedback/nomination-approvals", response_class=HTMLResponse, response_model=None
+)
 async def nomination_approvals_page(request: Request):
     """Manager Approval page - for managers to approve/reject evaluator nominations."""
     user = auth.get_current_user(request)

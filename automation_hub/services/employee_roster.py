@@ -29,6 +29,7 @@ def get_connection():
     """Get a SQL Server connection context manager."""
     try:
         import pyodbc
+
         conn_str = get_connection_string()
         conn = pyodbc.connect(conn_str, timeout=30)
         try:
@@ -36,7 +37,9 @@ def get_connection():
         finally:
             conn.close()
     except ImportError:
-        raise ImportError("pyodbc is required for SQL Server connection. Install with: pip install pyodbc")
+        raise ImportError(
+            "pyodbc is required for SQL Server connection. Install with: pip install pyodbc"
+        )
     except Exception as e:
         raise ConnectionError(f"Failed to connect to SQL Server: {e}")
 
@@ -55,9 +58,7 @@ def test_connection() -> bool:
 
 
 def search_employees(
-    query: str = "",
-    limit: int = 50,
-    active_only: bool = True
+    query: str = "", limit: int = 50, active_only: bool = True
 ) -> List[Dict[str, Any]]:
     """Search employees from the Chargoon roster by EMAIL ONLY.
 
@@ -115,28 +116,42 @@ def search_employees(
             for row in rows:
                 emp = dict(zip(columns, row))
                 # Filter active in Python to avoid type conversion issues
-                if active_only and emp.get("Active") not in (1, "1", "Active", "active", True):
+                if active_only and emp.get("Active") not in (
+                    1,
+                    "1",
+                    "Active",
+                    "active",
+                    True,
+                ):
                     continue
-                employees.append({
-                    "username": emp.get("ESnappEmail", "").split("@")[0] if emp.get("ESnappEmail") else "",
-                    "personnel_no": emp.get("PersonnelNo", ""),
-                    "full_name": emp.get("FullName", ""),
-                    "e_full_name": emp.get("EFullName", ""),
-                    "email": emp.get("ESnappEmail", ""),
-                    "job_title": emp.get("Title", ""),
-                    "team": emp.get("Team", "") or emp.get("SubTeam", ""),
-                    "sub_team": emp.get("SubTeam", ""),
-                    "vertical": emp.get("Vertical", ""),
-                    "sub_vertical": emp.get("SubVertical", ""),
-                    "main_department": emp.get("MainDepartment", ""),
-                    "line_manager_name": emp.get("LineManagerName", ""),
-                    "line_manager_email": emp.get("Line_Manager_Email", ""),
-                    "top_manager_name": emp.get("TopManagerName", ""),
-                    "top_manager_email": emp.get("Top_Manager_Email", ""),
-                    "line_line_manager": emp.get("Line_Line_Manager", ""),
-                    "line_line_manager_email": emp.get("Line_Line_Manager_Email", ""),
-                    "active": bool(emp.get("Active", False)),
-                })
+                employees.append(
+                    {
+                        "username": (
+                            emp.get("ESnappEmail", "").split("@")[0]
+                            if emp.get("ESnappEmail")
+                            else ""
+                        ),
+                        "personnel_no": emp.get("PersonnelNo", ""),
+                        "full_name": emp.get("FullName", ""),
+                        "e_full_name": emp.get("EFullName", ""),
+                        "email": emp.get("ESnappEmail", ""),
+                        "job_title": emp.get("Title", ""),
+                        "team": emp.get("Team", "") or emp.get("SubTeam", ""),
+                        "sub_team": emp.get("SubTeam", ""),
+                        "vertical": emp.get("Vertical", ""),
+                        "sub_vertical": emp.get("SubVertical", ""),
+                        "main_department": emp.get("MainDepartment", ""),
+                        "line_manager_name": emp.get("LineManagerName", ""),
+                        "line_manager_email": emp.get("Line_Manager_Email", ""),
+                        "top_manager_name": emp.get("TopManagerName", ""),
+                        "top_manager_email": emp.get("Top_Manager_Email", ""),
+                        "line_line_manager": emp.get("Line_Line_Manager", ""),
+                        "line_line_manager_email": emp.get(
+                            "Line_Line_Manager_Email", ""
+                        ),
+                        "active": bool(emp.get("Active", False)),
+                    }
+                )
 
             return employees
 
@@ -184,7 +199,11 @@ def get_employee_by_email(email: str) -> Optional[Dict[str, Any]]:
             emp = dict(zip(columns, row))
 
             return {
-                "username": emp.get("ESnappEmail", "").split("@")[0] if emp.get("ESnappEmail") else "",
+                "username": (
+                    emp.get("ESnappEmail", "").split("@")[0]
+                    if emp.get("ESnappEmail")
+                    else ""
+                ),
                 "personnel_no": emp.get("PersonnelNo", ""),
                 "full_name": emp.get("FullName", ""),
                 "e_full_name": emp.get("EFullName", ""),

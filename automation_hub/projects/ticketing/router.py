@@ -1086,7 +1086,10 @@ async def hide_ticket_direct(ticket_id: str, request: Request):
 
 # ============ Evaluator Nomination & Approval System ============
 
-EVALUATOR_STORE_PATH = Path(os.getenv("APP_DATA_DIR", ".")).resolve() / "feedback_evaluator_nominations.json"
+EVALUATOR_STORE_PATH = (
+    Path(os.getenv("APP_DATA_DIR", ".")).resolve()
+    / "feedback_evaluator_nominations.json"
+)
 
 
 def _evaluator_store_path() -> Path:
@@ -1098,14 +1101,12 @@ def _evaluator_store_path() -> Path:
 def _load_evaluator_store() -> Dict[str, Any]:
     conn = db.db_connect(db.get_db_file())
     try:
-        rows = conn.execute(
-            """
+        rows = conn.execute("""
             SELECT id, nominator_username, manager_username, evaluators_json,
                    status, submitted_at, created_at, updated_at
             FROM feedback_evaluator_nominations
             ORDER BY created_at
-            """
-        ).fetchall()
+            """).fetchall()
         nominations = []
         for row in rows:
             item = dict(row)
@@ -1173,8 +1174,14 @@ def _get_user_info(username: str) -> Dict[str, Any]:
         if emp:
             return {
                 "username": emp.get("username", ""),
-                "first_name": emp.get("full_name", "").split()[0] if emp.get("full_name") else "",
-                "last_name": " ".join(emp.get("full_name", "").split()[1:]) if emp.get("full_name") else "",
+                "first_name": (
+                    emp.get("full_name", "").split()[0] if emp.get("full_name") else ""
+                ),
+                "last_name": (
+                    " ".join(emp.get("full_name", "").split()[1:])
+                    if emp.get("full_name")
+                    else ""
+                ),
                 "full_name": emp.get("e_full_name") or emp.get("full_name", ""),
                 "e_full_name": emp.get("e_full_name", ""),
                 "email": emp.get("email", ""),
@@ -1185,7 +1192,11 @@ def _get_user_info(username: str) -> Dict[str, Any]:
                 "vertical": emp.get("vertical", ""),
                 "sub_vertical": emp.get("sub_vertical", ""),
                 "job_title": emp.get("job_title", ""),
-                "manager_username": emp.get("line_manager_email", "").split("@")[0] if emp.get("line_manager_email") else "",
+                "manager_username": (
+                    emp.get("line_manager_email", "").split("@")[0]
+                    if emp.get("line_manager_email")
+                    else ""
+                ),
                 "manager_email": emp.get("line_manager_email", ""),
                 "line_manager_name": emp.get("line_manager_name", ""),
                 "top_manager_email": emp.get("top_manager_email", ""),
@@ -1210,7 +1221,8 @@ def _get_user_info(username: str) -> Dict[str, Any]:
                 "username": row["username"],
                 "first_name": row["first_name"] or "",
                 "last_name": row["last_name"] or "",
-                "full_name": f"{row['first_name'] or ''} {row['last_name'] or ''}".strip() or row["username"],
+                "full_name": f"{row['first_name'] or ''} {row['last_name'] or ''}".strip()
+                or row["username"],
                 "email": row["email"] or "",
                 "role": row["role"] or "user",
                 "modules": json.loads(row["modules"]) if row["modules"] else [],
@@ -1231,7 +1243,9 @@ def _search_users(query: str, limit: int = 50) -> List[Dict[str, Any]]:
     """
     # Try to get users from Employee Roster (SQL Server)
     try:
-        employees = employee_roster.search_employees(query=query, limit=limit, active_only=True)
+        employees = employee_roster.search_employees(
+            query=query, limit=limit, active_only=True
+        )
         if employees:
             return [
                 {
@@ -1242,7 +1256,11 @@ def _search_users(query: str, limit: int = 50) -> List[Dict[str, Any]]:
                     "team": emp.get("team", ""),
                     "vertical": emp.get("vertical", ""),
                     "job_title": emp.get("job_title", ""),
-                    "manager_username": emp.get("line_manager_email", "").split("@")[0] if emp.get("line_manager_email") else "",
+                    "manager_username": (
+                        emp.get("line_manager_email", "").split("@")[0]
+                        if emp.get("line_manager_email")
+                        else ""
+                    ),
                     "sub_team": emp.get("sub_team", ""),
                     "sub_vertical": emp.get("sub_vertical", ""),
                     "line_manager_name": emp.get("line_manager_name", ""),
@@ -1273,7 +1291,8 @@ def _search_users(query: str, limit: int = 50) -> List[Dict[str, Any]]:
         return [
             {
                 "username": row["username"],
-                "full_name": f"{row['first_name'] or ''} {row['last_name'] or ''}".strip() or row["username"],
+                "full_name": f"{row['first_name'] or ''} {row['last_name'] or ''}".strip()
+                or row["username"],
                 "email": row["email"] or "",
                 "team": row["team"] or "",
                 "vertical": row["vertical"] or "",
@@ -1291,14 +1310,16 @@ async def evaluator_nomination_meta(request: Request):
     """Get metadata for evaluator nomination system."""
     user = _require_feedback_access(request)
     user_info = _get_user_info(user.get("username", ""))
-    return JSONResponse({
-        "success": True,
-        "current_user": user_info,
-        "permissions": {
-            "can_nominate": True,
-            "can_approve": True,
+    return JSONResponse(
+        {
+            "success": True,
+            "current_user": user_info,
+            "permissions": {
+                "can_nominate": True,
+                "can_approve": True,
+            },
         }
-    })
+    )
 
 
 @feedback_handlers.get("/evaluator-nomination/users/search")
@@ -1320,9 +1341,12 @@ async def get_my_nomination(request: Request):
     store = _load_evaluator_store()
 
     nomination = next(
-        (n for n in store.get("nominations", [])
-         if n.get("nominator_username") == username and n.get("status") != "closed"),
-        None
+        (
+            n
+            for n in store.get("nominations", [])
+            if n.get("nominator_username") == username and n.get("status") != "closed"
+        ),
+        None,
     )
 
     if nomination:
@@ -1349,7 +1373,8 @@ async def get_manager_requests(request: Request):
 
     # Get all pending nominations assigned to this manager
     nominations = [
-        n for n in store.get("nominations", [])
+        n
+        for n in store.get("nominations", [])
         if n.get("manager_username") == username
         and n.get("status") in ["pending", "partial"]
     ]
@@ -1377,7 +1402,9 @@ async def submit_evaluator_nomination(request: Request):
     manager_username = payload.get("manager_username", "")
 
     if not evaluators:
-        raise HTTPException(status_code=400, detail="At least one evaluator is required")
+        raise HTTPException(
+            status_code=400, detail="At least one evaluator is required"
+        )
 
     if not manager_username:
         raise HTTPException(status_code=400, detail="Manager is required")
@@ -1385,15 +1412,22 @@ async def submit_evaluator_nomination(request: Request):
     # Validate each evaluator has a reason
     for eval_item in evaluators:
         if not eval_item.get("reason", "").strip():
-            raise HTTPException(status_code=400, detail="Each evaluator must have a reason for nomination")
+            raise HTTPException(
+                status_code=400,
+                detail="Each evaluator must have a reason for nomination",
+            )
 
     store = _load_evaluator_store()
 
     # Check if user already has an active nomination
     existing = next(
-        (n for n in store.get("nominations", [])
-         if n.get("nominator_username") == nominator_username and n.get("status") != "closed"),
-        None
+        (
+            n
+            for n in store.get("nominations", [])
+            if n.get("nominator_username") == nominator_username
+            and n.get("status") != "closed"
+        ),
+        None,
     )
 
     if existing:
@@ -1432,15 +1466,16 @@ async def approve_evaluator(nomination_id: str, request: Request):
 
     store = _load_evaluator_store()
     nomination = next(
-        (n for n in store.get("nominations", []) if n.get("id") == nomination_id),
-        None
+        (n for n in store.get("nominations", []) if n.get("id") == nomination_id), None
     )
 
     if not nomination:
         raise HTTPException(status_code=404, detail="Nomination not found")
 
     if nomination.get("manager_username") != username:
-        raise HTTPException(status_code=403, detail="Only the assigned manager can approve")
+        raise HTTPException(
+            status_code=403, detail="Only the assigned manager can approve"
+        )
 
     # Find and update the evaluator
     for eval_item in nomination.get("evaluators", []):
@@ -1459,8 +1494,12 @@ async def approve_evaluator(nomination_id: str, request: Request):
     if all_processed:
         nomination["status"] = "closed"
     else:
-        any_approved = any(e.get("status") == "approved" for e in nomination.get("evaluators", []))
-        any_rejected = any(e.get("status") == "rejected" for e in nomination.get("evaluators", []))
+        any_approved = any(
+            e.get("status") == "approved" for e in nomination.get("evaluators", [])
+        )
+        any_rejected = any(
+            e.get("status") == "rejected" for e in nomination.get("evaluators", [])
+        )
         if any_approved and any_rejected:
             nomination["status"] = "partial"
         elif any_approved:
@@ -1483,15 +1522,16 @@ async def reject_evaluator(nomination_id: str, request: Request):
 
     store = _load_evaluator_store()
     nomination = next(
-        (n for n in store.get("nominations", []) if n.get("id") == nomination_id),
-        None
+        (n for n in store.get("nominations", []) if n.get("id") == nomination_id), None
     )
 
     if not nomination:
         raise HTTPException(status_code=404, detail="Nomination not found")
 
     if nomination.get("manager_username") != username:
-        raise HTTPException(status_code=403, detail="Only the assigned manager can reject")
+        raise HTTPException(
+            status_code=403, detail="Only the assigned manager can reject"
+        )
 
     # Find and update the evaluator
     for eval_item in nomination.get("evaluators", []):
@@ -1511,8 +1551,12 @@ async def reject_evaluator(nomination_id: str, request: Request):
     if all_processed:
         nomination["status"] = "closed"
     else:
-        any_approved = any(e.get("status") == "approved" for e in nomination.get("evaluators", []))
-        any_rejected = any(e.get("status") == "rejected" for e in nomination.get("evaluators", []))
+        any_approved = any(
+            e.get("status") == "approved" for e in nomination.get("evaluators", [])
+        )
+        any_rejected = any(
+            e.get("status") == "rejected" for e in nomination.get("evaluators", [])
+        )
         if any_approved and any_rejected:
             nomination["status"] = "partial"
         elif any_rejected and not any_approved:
@@ -1539,15 +1583,16 @@ async def add_evaluator_as_manager(nomination_id: str, request: Request):
 
     store = _load_evaluator_store()
     nomination = next(
-        (n for n in store.get("nominations", []) if n.get("id") == nomination_id),
-        None
+        (n for n in store.get("nominations", []) if n.get("id") == nomination_id), None
     )
 
     if not nomination:
         raise HTTPException(status_code=404, detail="Nomination not found")
 
     if nomination.get("manager_username") != username:
-        raise HTTPException(status_code=403, detail="Only the assigned manager can add evaluators")
+        raise HTTPException(
+            status_code=403, detail="Only the assigned manager can add evaluators"
+        )
 
     # Add new evaluator
     new_evaluator = {
@@ -1572,15 +1617,17 @@ async def close_nomination(nomination_id: str, request: Request):
 
     store = _load_evaluator_store()
     nomination = next(
-        (n for n in store.get("nominations", []) if n.get("id") == nomination_id),
-        None
+        (n for n in store.get("nominations", []) if n.get("id") == nomination_id), None
     )
 
     if not nomination:
         raise HTTPException(status_code=404, detail="Nomination not found")
 
     if nomination.get("manager_username") != username:
-        raise HTTPException(status_code=403, detail="Only the assigned manager can close this nomination")
+        raise HTTPException(
+            status_code=403,
+            detail="Only the assigned manager can close this nomination",
+        )
 
     # Check all evaluators are processed
     all_processed = all(
@@ -1589,7 +1636,9 @@ async def close_nomination(nomination_id: str, request: Request):
     )
 
     if not all_processed:
-        raise HTTPException(status_code=400, detail="All evaluators must be processed before closing")
+        raise HTTPException(
+            status_code=400, detail="All evaluators must be processed before closing"
+        )
 
     nomination["status"] = "closed"
     nomination["closed_at"] = _now()
