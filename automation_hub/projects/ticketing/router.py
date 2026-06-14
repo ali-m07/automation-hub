@@ -1612,10 +1612,10 @@ async def approve_evaluator(nomination_id: str, request: Request):
     created_ticket = None
     if evaluator_info and evaluator_info.get("status") == "approved":
         # Find a feedback project to create the ticket in
-        store = _load_store()
+        ticket_store = _load_store()
         feedback_projects = [
             p
-            for p in store.get("projects", [])
+            for p in ticket_store.get("projects", [])
             if p.get("key") and p.get("key").upper().startswith("FB")
         ]
         if feedback_projects:
@@ -1678,7 +1678,7 @@ async def approve_evaluator(nomination_id: str, request: Request):
             }
             project.setdefault("tickets", []).append(ticket)
             project["updated_at"] = _now()
-            _save_store(store)
+            _save_store(ticket_store)
             created_ticket = ticket
             print(
                 f"[FEEDBACK] Created ticket {ticket_id} for evaluator {eval_username} - visible to nominator {nomination.get('nominator_username', '')}"
