@@ -1834,12 +1834,15 @@ async def remove_manager_added_evaluator(
             detail="Only the assigned manager can remove this evaluator",
         )
 
+    requested = str(evaluator_username or "").lower()
+
+    def matches_evaluator(item: Dict[str, Any]) -> bool:
+        item_email = str(item.get("email") or "").lower()
+        item_username = str(item.get("username") or "").lower()
+        return requested in {item_username, item_email, item_email.split("@", 1)[0]}
+
     evaluator = next(
-        (
-            item
-            for item in nomination.get("evaluators", [])
-            if item.get("username") == evaluator_username
-        ),
+        (item for item in nomination.get("evaluators", []) if matches_evaluator(item)),
         None,
     )
     if not evaluator:
@@ -1851,9 +1854,7 @@ async def remove_manager_added_evaluator(
         )
 
     nomination["evaluators"] = [
-        item
-        for item in nomination.get("evaluators", [])
-        if item.get("username") != evaluator_username
+        item for item in nomination.get("evaluators", []) if not matches_evaluator(item)
     ]
     nomination["updated_at"] = _now()
     _save_evaluator_store(store)

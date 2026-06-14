@@ -1195,6 +1195,7 @@
             const statusClass = eval.status || 'pending';
             const managerAdded = Boolean(eval.added_by);
             const evaluatorId = eval.username || eval.email || '';
+            const evaluatorDomId = evaluatorId.replace(/[^a-zA-Z0-9_-]/g, '_');
 
             return `
                 <div class="evaluator-row ${statusClass}" id="eval-${nominationId}-${evaluatorId}">
@@ -1213,11 +1214,11 @@
                             <strong>Reason:</strong> ${eval.reason || 'No reason provided'}
                             ${eval.rejection_reason ? `<br><strong style="color: var(--danger);">Rejection Reason:</strong> ${eval.rejection_reason}` : ''}
                         </div>
-                        <div id="rejection-input-${nominationId}-${evaluatorId}" style="display: none;" class="rejection-input">
+                        <div id="rejection-input-${nominationId}-${evaluatorDomId}" style="display: none;" class="rejection-input">
                             <textarea placeholder="Reason for rejection (optional)"></textarea>
                             <div class="btns">
-                                <button class="btn btn-outline btn-sm" onclick="cancelReject('${nominationId}', '${evaluatorId}')">Cancel</button>
-                                <button class="btn btn-danger btn-sm" onclick="confirmReject('${nominationId}', '${evaluatorId}')">Confirm Reject</button>
+                                <button class="btn btn-outline btn-sm" onclick="cancelReject('${nominationId}', '${evaluatorId}', '${evaluatorDomId}')">Cancel</button>
+                                <button class="btn btn-danger btn-sm" onclick="confirmReject('${nominationId}', '${evaluatorId}', '${evaluatorDomId}')">Confirm Reject</button>
                             </div>
                         </div>
                     </div>
@@ -1231,7 +1232,7 @@
                             <span class="status-indicator approved">
                                 <i class="fas fa-check-circle"></i> Approved
                             </span>
-                            <button class="action-btn reject-btn" onclick="showRejectInput('${nominationId}', '${evaluatorId}')">
+                            <button class="action-btn reject-btn" onclick="showRejectInput('${nominationId}', '${evaluatorDomId}')">
                                 <i class="fas fa-rotate"></i> Change to Reject
                             </button>
                         ` : statusClass === 'rejected' ? `
@@ -1245,7 +1246,7 @@
                             <button class="action-btn approve-btn" onclick="approveEvaluator('${nominationId}', '${evaluatorId}')">
                                 <i class="fas fa-check"></i> Approve
                             </button>
-                            <button class="action-btn reject-btn" onclick="showRejectInput('${nominationId}', '${evaluatorId}')">
+                            <button class="action-btn reject-btn" onclick="showRejectInput('${nominationId}', '${evaluatorDomId}')">
                                 <i class="fas fa-times"></i> Reject
                             </button>
                         `}
@@ -1307,16 +1308,16 @@
             }
         }
 
-        function showRejectInput(nominationId, evaluatorUsername) {
-            document.getElementById(`rejection-input-${nominationId}-${evaluatorUsername}`).style.display = 'block';
+        function showRejectInput(nominationId, evaluatorDomId) {
+            document.getElementById(`rejection-input-${nominationId}-${evaluatorDomId}`).style.display = 'block';
         }
 
-        function cancelReject(nominationId, evaluatorUsername) {
-            document.getElementById(`rejection-input-${nominationId}-${evaluatorUsername}`).style.display = 'none';
+        function cancelReject(nominationId, evaluatorUsername, evaluatorDomId) {
+            document.getElementById(`rejection-input-${nominationId}-${evaluatorDomId}`).style.display = 'none';
         }
 
-        async function confirmReject(nominationId, evaluatorUsername) {
-            const reason = document.querySelector(`#rejection-input-${nominationId}-${evaluatorUsername} textarea`).value;
+        async function confirmReject(nominationId, evaluatorUsername, evaluatorDomId) {
+            const reason = document.getElementById(`rejection-input-${nominationId}-${evaluatorDomId}`).querySelector('textarea').value;
 
             try {
                 const response = await fetch(`/api/feedback/evaluator-nomination/${nominationId}/reject-evaluator`, {
@@ -1333,7 +1334,7 @@
                     showToast('Evaluator rejected', 'success');
                     loadRequests();
                 } else {
-                    showToast(data.error || 'Error rejecting', 'error');
+                    showToast(data.detail || data.error || 'Error rejecting', 'error');
                 }
             } catch (error) {
                 showToast('Error rejecting evaluator', 'error');
