@@ -167,15 +167,14 @@
 
         /* Filters */
         .filters {
-            display: flex;
+            display: grid;
+            grid-template-columns: minmax(260px, 2fr) repeat(3, minmax(150px, 1fr));
             gap: 12px;
             margin-bottom: 20px;
-            flex-wrap: wrap;
         }
 
         .search-box {
-            flex: 1;
-            min-width: 200px;
+            min-width: 0;
             position: relative;
         }
 
@@ -206,7 +205,8 @@
             border: 1px solid var(--border);
             border-radius: var(--radius);
             background: white;
-            min-width: 160px;
+            width: 100%;
+            min-width: 0;
         }
 
         .manager-inbox {
@@ -358,6 +358,14 @@
         }
 
         @media (max-width: 820px) {
+            .filters {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .search-box {
+                grid-column: 1 / -1;
+            }
+
             .manager-inbox-row {
                 grid-template-columns: minmax(0, 1fr) auto;
                 gap: 12px;
@@ -381,7 +389,6 @@
 
         @media (max-width: 640px) {
             .filters {
-                display: grid;
                 grid-template-columns: 1fr;
             }
 
@@ -899,7 +906,9 @@
             });
 
             // Update pending count
-            const pendingCount = allNominations.filter(n => n.status !== 'closed').length;
+            const pendingCount = focusedNominationId
+                ? filtered.reduce((count, nomination) => count + (nomination.evaluators?.length || 0), 0)
+                : allNominations.filter(n => n.status !== 'closed').length;
             document.getElementById('pendingCount').textContent = `(${pendingCount})`;
 
             if (filtered.length === 0) {
@@ -995,7 +1004,7 @@
 
         function renderEvaluatorRow(nominationId, eval) {
             const statusClass = eval.status || 'pending';
-            const isProcessed = statusClass === 'approved' || statusClass === 'rejected';
+            const managerAdded = Boolean(eval.added_by);
 
             return `
                 <div class="evaluator-row ${statusClass}" id="eval-${nominationId}-${eval.username}">
@@ -1023,7 +1032,12 @@
                         </div>
                     </div>
                     <div class="evaluator-actions">
-                        ${statusClass === 'pending' ? `
+                        ${managerAdded ? `
+                            <button class="action-btn reject-btn" title="Remove evaluator"
+                                    onclick="removeManagerAddedEvaluator('${nominationId}', '${eval.username}')">
+                                <i class="fas fa-times"></i> Remove
+                            </button>
+                        ` : statusClass === 'pending' ? `
                             <button class="action-btn approve-btn" onclick="approveEvaluator('${nominationId}', '${eval.username}')">
                                 <i class="fas fa-check"></i> Approve
                             </button>
@@ -1073,6 +1087,24 @@
                 }
             } catch (error) {
                 showToast('Error approving evaluator', 'error');
+            }
+        }
+
+        async function removeManagerAddedEvaluator(nominationId, evaluatorUsername) {
+            try {
+                const response = await fetch(
+                    `/api/feedback/evaluator-nomination/${nominationId}/manager-added-evaluator/${encodeURIComponent(evaluatorUsername)}`,
+                    {method: 'DELETE'}
+                );
+                const data = await response.json();
+                if (data.success) {
+                    showToast('Evaluator removed', 'success');
+                    loadRequests();
+                } else {
+                    showToast(data.detail || data.error || 'Error removing evaluator', 'error');
+                }
+            } catch (error) {
+                showToast('Error removing evaluator', 'error');
             }
         }
 

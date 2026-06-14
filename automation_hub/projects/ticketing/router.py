@@ -1806,13 +1806,63 @@ async def add_evaluator_as_manager(nomination_id: str, request: Request):
         "sub_team": roster_user.get("sub_team", ""),
         "vertical": roster_user.get("vertical", ""),
         "reason": reason,
-        "status": "pending",
+        "status": "approved",
         "added_by": username,
         "added_at": _now(),
+        "approved_by": username,
+        "approved_at": _now(),
     }
     nomination.setdefault("evaluators", []).append(new_evaluator)
     nomination["updated_at"] = _now()
 
+    _save_evaluator_store(store)
+    return JSONResponse({"success": True, "nomination": nomination})
+
+
+@feedback_handlers.delete(
+    "/evaluator-nomination/{nomination_id}/manager-added-evaluator/{evaluator_username}"
+)
+async def remove_manager_added_evaluator(
+    nomination_id: str, evaluator_username: str, request: Request
+):
+    """Remove an evaluator that was added directly by the assigned manager."""
+    user = _require_feedback_access(request)
+    username = user.get("username", "")
+    store = _load_evaluator_store()
+    nomination = next(
+        (n for n in store.get("nominations", []) if n.get("id") == nomination_id), None
+    )
+
+    if not nomination:
+        raise HTTPException(status_code=404, detail="Nomination not found")
+    if user.get("role") != "admin" and nomination.get("manager_username") != username:
+        raise HTTPException(
+            status_code=403,
+            detail="Only the assigned manager can remove this evaluator",
+        )
+
+    evaluator = next(
+        (
+            item
+            for item in nomination.get("evaluators", [])
+            if item.get("username") == evaluator_username
+        ),
+        None,
+    )
+    if not evaluator:
+        raise HTTPException(status_code=404, detail="Evaluator not found")
+    if not evaluator.get("added_by"):
+        raise HTTPException(
+            status_code=400,
+            detail="Only evaluators added by the manager can be removed here",
+        )
+
+    nomination["evaluators"] = [
+        item
+        for item in nomination.get("evaluators", [])
+        if item.get("username") != evaluator_username
+    ]
+    nomination["updated_at"] = _now()
     _save_evaluator_store(store)
     return JSONResponse({"success": True, "nomination": nomination})
 
