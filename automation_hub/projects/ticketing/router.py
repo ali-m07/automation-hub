@@ -1210,7 +1210,7 @@ def _get_user_info(username: str) -> Dict[str, Any]:
     try:
         row = conn.execute(
             """
-            SELECT username, first_name, last_name, email, role, modules, team, vertical, job_title, manager_username
+            SELECT username, first_name, last_name, email, role, modules_json, team, vertical, job_title, manager_username
             FROM users
             WHERE username = ?
             """,
@@ -1225,7 +1225,9 @@ def _get_user_info(username: str) -> Dict[str, Any]:
                 or row["username"],
                 "email": row["email"] or "",
                 "role": row["role"] or "user",
-                "modules": json.loads(row["modules"]) if row["modules"] else [],
+                "modules": (
+                    json.loads(row["modules_json"]) if row["modules_json"] else []
+                ),
                 "team": row["team"] or "",
                 "vertical": row["vertical"] or "",
                 "job_title": row["job_title"] or "",
@@ -1323,14 +1325,41 @@ async def evaluator_nomination_meta(request: Request):
 
 
 @feedback_handlers.get("/evaluator-nomination/users/search")
-async def search_evaluator_users(request: Request, q: str = ""):
+async def search_evaluator_users(
+    request: Request,
+    q: str = "",
+    team: str = "",
+    sub_team: str = "",
+    vertical: str = "",
+):
     """Search users for evaluator selection - EMAIL ONLY."""
     _require_feedback_access(request)
     # Search with minimum 1 character for email
-    if not q or len(q.strip()) < 1:
+    if not any((q.strip(), team.strip(), sub_team.strip(), vertical.strip())):
         return JSONResponse({"success": True, "users": []})
-    users = _search_users(q.strip())
+    users = employee_roster.search_employees(
+        query=q.strip(),
+        limit=100,
+        active_only=True,
+        team=team.strip(),
+        sub_team=sub_team.strip(),
+        vertical=vertical.strip(),
+    )
     return JSONResponse({"success": True, "users": users})
+
+
+@feedback_handlers.get("/evaluator-nomination/users/filters")
+async def evaluator_user_filters(request: Request):
+    """Return roster dimensions used by the manager evaluator picker."""
+    _require_feedback_access(request)
+    return JSONResponse(
+        {
+            "success": True,
+            "teams": employee_roster.get_all_teams(),
+            "sub_teams": employee_roster.get_all_sub_teams(),
+            "verticals": employee_roster.get_all_verticals(),
+        }
+    )
 
 
 @feedback_handlers.get("/evaluator-nomination/my-nomination")
@@ -1407,7 +1436,7 @@ async def get_manager_requests(request: Request):
     nominations = [
         n
         for n in store.get("nominations", [])
-        if n.get("manager_username") == username
+        if (user.get("role") == "admin" or n.get("manager_username") == username)
         and n.get("status") in ["pending", "partial"]
     ]
 

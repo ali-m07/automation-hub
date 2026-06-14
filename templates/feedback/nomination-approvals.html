@@ -563,6 +563,9 @@
             <select class="filter-select" id="teamFilter" onchange="applyFilters()">
                 <option value="">All Teams</option>
             </select>
+            <select class="filter-select" id="subTeamFilter" onchange="applyFilters()">
+                <option value="">All Sub-teams</option>
+            </select>
             <select class="filter-select" id="verticalFilter" onchange="applyFilters()">
                 <option value="">All Verticals</option>
             </select>
@@ -588,9 +591,12 @@
                 </button>
             </div>
             <div class="modal-body" style="padding: 24px;">
-                <div style="margin-bottom: 16px;">
-                    <input type="text" id="addEvaluatorSearch" placeholder="Search by name, job title, team..."
-                           style="width: 100%; padding: 12px 14px; font-size: 14px; border: 1px solid var(--border); border-radius: 8px;"
+                <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-bottom:16px;">
+                    <select class="filter-select" id="addTeamFilter" onchange="searchUsersToAdd()"><option value="">1. All Teams</option></select>
+                    <select class="filter-select" id="addSubTeamFilter" onchange="searchUsersToAdd()"><option value="">2. All Sub-teams</option></select>
+                    <select class="filter-select" id="addVerticalFilter" onchange="searchUsersToAdd()"><option value="">3. All Verticals</option></select>
+                    <input type="email" id="addEvaluatorSearch" placeholder="4. Email"
+                           style="width:100%; padding:10px 14px; font-size:14px; border:1px solid var(--border); border-radius:8px;"
                            oninput="searchUsersToAdd()">
                 </div>
                 <div id="addUserResults" style="max-height: 300px; overflow-y: auto;"></div>
@@ -609,6 +615,29 @@
         let searchTimeout = null;
 
         document.addEventListener('DOMContentLoaded', loadRequests);
+        document.addEventListener('DOMContentLoaded', loadRosterFilters);
+
+        async function loadRosterFilters() {
+            try {
+                const response = await fetch('/api/feedback/evaluator-nomination/users/filters');
+                const data = await response.json();
+                fillSelect('addTeamFilter', data.teams || []);
+                fillSelect('addSubTeamFilter', data.sub_teams || []);
+                fillSelect('addVerticalFilter', data.verticals || []);
+            } catch (error) {
+                console.error('Error loading roster filters:', error);
+            }
+        }
+
+        function fillSelect(id, values) {
+            const select = document.getElementById(id);
+            values.forEach(value => {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = value;
+                select.appendChild(option);
+            });
+        }
 
         async function loadRequests() {
             try {
@@ -624,20 +653,26 @@
 
         function loadFilterOptions() {
             const teams = new Set();
+            const subTeams = new Set();
             const verticals = new Set();
 
             allNominations.forEach(nom => {
                 nom.evaluators?.forEach(eval => {
                     if (eval.team) teams.add(eval.team);
+                    if (eval.sub_team) subTeams.add(eval.sub_team);
                     if (eval.vertical) verticals.add(eval.vertical);
                 });
             });
 
             const teamSelect = document.getElementById('teamFilter');
+            const subTeamSelect = document.getElementById('subTeamFilter');
             const verticalSelect = document.getElementById('verticalFilter');
 
             teams.forEach(team => {
                 teamSelect.innerHTML += `<option value="${team}">${team}</option>`;
+            });
+            subTeams.forEach(subTeam => {
+                subTeamSelect.innerHTML += `<option value="${subTeam}">${subTeam}</option>`;
             });
             verticals.forEach(vertical => {
                 verticalSelect.innerHTML += `<option value="${vertical}">${vertical}</option>`;
@@ -648,20 +683,29 @@
             const container = document.getElementById('requestsList');
             const search = document.getElementById('searchInput').value.toLowerCase();
             const teamFilter = document.getElementById('teamFilter').value;
+            const subTeamFilter = document.getElementById('subTeamFilter').value;
             const verticalFilter = document.getElementById('verticalFilter').value;
 
             let filtered = allNominations.filter(nom => {
                 const matchesSearch = !search ||
                     nom.nominator_info?.full_name?.toLowerCase().includes(search) ||
-                    nom.evaluators?.some(e => e.full_name?.toLowerCase().includes(search));
+                    nom.evaluators?.some(e =>
+                        e.full_name?.toLowerCase().includes(search) ||
+                        e.email?.toLowerCase().includes(search) ||
+                        e.team?.toLowerCase().includes(search) ||
+                        e.sub_team?.toLowerCase().includes(search) ||
+                        e.vertical?.toLowerCase().includes(search)
+                    );
 
                 const matchesTeam = !teamFilter ||
                     nom.evaluators?.some(e => e.team === teamFilter);
 
                 const matchesVertical = !verticalFilter ||
                     nom.evaluators?.some(e => e.vertical === verticalFilter);
+                const matchesSubTeam = !subTeamFilter ||
+                    nom.evaluators?.some(e => e.sub_team === subTeamFilter);
 
-                return matchesSearch && matchesTeam && matchesVertical;
+                return matchesSearch && matchesTeam && matchesSubTeam && matchesVertical;
             });
 
             // Update pending count
@@ -730,6 +774,7 @@
                         <div class="evaluator-meta">
                             ${eval.job_title ? `<span><i class="fas fa-briefcase"></i> ${eval.job_title}</span>` : ''}
                             ${eval.team ? `<span><i class="fas fa-users"></i> ${eval.team}</span>` : ''}
+                            ${eval.sub_team ? `<span><i class="fas fa-diagram-project"></i> ${eval.sub_team}</span>` : ''}
                             ${eval.vertical ? `<span><i class="fas fa-layer-group"></i> ${eval.vertical}</span>` : ''}
                         </div>
                         <div class="evaluator-reason">
@@ -837,6 +882,9 @@
             document.getElementById('userPickerModal').style.display = 'flex';
             document.getElementById('userPickerModal').classList.add('active');
             document.getElementById('addEvaluatorSearch').value = '';
+            document.getElementById('addTeamFilter').value = '';
+            document.getElementById('addSubTeamFilter').value = '';
+            document.getElementById('addVerticalFilter').value = '';
             document.getElementById('addUserResults').innerHTML = '';
             document.getElementById('addEvaluatorSearch').focus();
         }
@@ -849,16 +897,20 @@
 
         async function searchUsersToAdd() {
             const query = document.getElementById('addEvaluatorSearch').value.trim();
+            const team = document.getElementById('addTeamFilter').value;
+            const subTeam = document.getElementById('addSubTeamFilter').value;
+            const vertical = document.getElementById('addVerticalFilter').value;
 
             if (searchTimeout) clearTimeout(searchTimeout);
-            if (query.length < 2) {
+            if (!query && !team && !subTeam && !vertical) {
                 document.getElementById('addUserResults').innerHTML = '';
                 return;
             }
 
             searchTimeout = setTimeout(async () => {
                 try {
-                    const response = await fetch(`/api/feedback/evaluator-nomination/users/search?q=${encodeURIComponent(query)}`);
+                    const params = new URLSearchParams({q: query, team, sub_team: subTeam, vertical});
+                    const response = await fetch(`/api/feedback/evaluator-nomination/users/search?${params}`);
                     const data = await response.json();
                     const users = data.users || [];
 
@@ -877,6 +929,8 @@
                             </div>
                             <div>
                                 <div style="font-size: 14px; font-weight: 600; color: var(--gray-900);">${user.full_name}</div>
+                                <div style="font-size: 12px; color: var(--gray-500);">${user.email || ''}</div>
+                                <div style="font-size: 12px; color: var(--gray-500);">${user.team || '-'} / ${user.sub_team || '-'} / ${user.vertical || '-'}</div>
                                 <div style="font-size: 12px; color: var(--gray-500);">${user.job_title || ''} ${user.team ? '• ' + user.team : ''}</div>
                             </div>
                         </div>

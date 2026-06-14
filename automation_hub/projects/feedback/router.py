@@ -21,6 +21,11 @@ router.add_api_route(
     methods=["GET"],
 )
 router.add_api_route(
+    "/evaluator-nomination/users/filters",
+    legacy.evaluator_user_filters,
+    methods=["GET"],
+)
+router.add_api_route(
     "/evaluator-nomination/my-nomination",
     legacy.get_my_nomination,
     methods=["GET"],

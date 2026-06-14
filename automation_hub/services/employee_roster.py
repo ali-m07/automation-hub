@@ -58,7 +58,12 @@ def test_connection() -> bool:
 
 
 def search_employees(
-    query: str = "", limit: int = 50, active_only: bool = True
+    query: str = "",
+    limit: int = 50,
+    active_only: bool = True,
+    team: str = "",
+    sub_team: str = "",
+    vertical: str = "",
 ) -> List[Dict[str, Any]]:
     """Search employees from the Chargoon roster by EMAIL ONLY.
 
@@ -100,11 +105,19 @@ def search_employees(
 
             params = []
 
-            # Add search query - EMAIL ONLY
             if query and len(query.strip()) >= 1:
                 sql += " AND ESnappEmail LIKE ?"
                 pattern = f"%{query.strip().lower()}%"
-                params = [pattern]
+                params.append(pattern)
+            if team:
+                sql += " AND Team = ?"
+                params.append(team)
+            if sub_team:
+                sql += " AND SubTeam = ?"
+                params.append(sub_team)
+            if vertical:
+                sql += " AND Vertical = ?"
+                params.append(vertical)
 
             sql += f" ORDER BY ESnappEmail OFFSET 0 ROWS FETCH NEXT {limit} ROWS ONLY"
 
@@ -282,4 +295,21 @@ def get_all_verticals() -> List[str]:
             return [row[0] for row in cursor.fetchall()]
     except Exception as e:
         print(f"Error getting verticals: {e}")
+        return []
+
+
+def get_all_sub_teams() -> List[str]:
+    """Get list of all active sub-teams."""
+    try:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT DISTINCT SubTeam
+                FROM [Chargoon_View].[dbo].[SRE_Chart]
+                WHERE Active = 1 AND SubTeam IS NOT NULL AND SubTeam != ''
+                ORDER BY SubTeam
+            """)
+            return [row[0] for row in cursor.fetchall()]
+    except Exception as e:
+        print(f"Error getting sub-teams: {e}")
         return []
