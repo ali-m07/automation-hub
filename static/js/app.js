@@ -4051,6 +4051,7 @@ async function loadProfile() {
     const firstNameEl = document.getElementById('profile-first-name');
     const lastNameEl = document.getElementById('profile-last-name');
     const emailEl = document.getElementById('profile-email');
+    const departmentEl = document.getElementById('profile-department');
     const msgEl = document.getElementById('profile-message');
     if (!usernameEl) return;
     msgEl.style.display = 'none';
@@ -4063,6 +4064,7 @@ async function loadProfile() {
             firstNameEl.value = u.first_name || '';
             lastNameEl.value = u.last_name || '';
             emailEl.value = u.email || u.username || '';
+            if (departmentEl) departmentEl.value = u.department || '';
         }
     } catch (e) {
         if (msgEl) { msgEl.textContent = 'Failed to load profile'; msgEl.className = 'status-box error'; msgEl.style.display = 'block'; }

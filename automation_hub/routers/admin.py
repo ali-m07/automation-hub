@@ -1053,7 +1053,9 @@ async def admin_get_auth_config(request: Request):
         rows = conn.execute(
             "SELECT key, value FROM app_settings WHERE key IN ("
             "'auth_mode','ldap_enabled','ldap_server','ldap_port','ldap_use_ssl',"
-            "'ldap_base_dn','ldap_bind_dn','ldap_bind_password','ldap_user_filter'"
+            "'ldap_servers','ldap_base_dn','ldap_user_base_dn','ldap_group_base_dn',"
+            "'ldap_bind_dn','ldap_bind_password','ldap_user_principal','ldap_user_filter',"
+            "'ldap_directory_filter'"
             ")"
         ).fetchall()
     finally:
@@ -1063,14 +1065,20 @@ async def admin_get_auth_config(request: Request):
         "auth_mode": raw.get("auth_mode") or "local",  # local | ldap | hybrid
         "ldap_enabled": (raw.get("ldap_enabled") or "0") == "1",
         "ldap_server": raw.get("ldap_server") or "",
+        "ldap_servers": raw.get("ldap_servers") or raw.get("ldap_server") or "",
         "ldap_port": int(raw.get("ldap_port") or "389"),
         "ldap_use_ssl": (raw.get("ldap_use_ssl") or "0") == "1",
         "ldap_base_dn": raw.get("ldap_base_dn") or "",
+        "ldap_user_base_dn": raw.get("ldap_user_base_dn") or raw.get("ldap_base_dn") or "",
+        "ldap_group_base_dn": raw.get("ldap_group_base_dn") or "",
         "ldap_bind_dn": raw.get("ldap_bind_dn") or "",
         # برای امنیت، پسورد را به UI برنمی‌گردانیم؛ فقط وجود/عدم وجودش در UI هندل می‌شود.
         "ldap_bind_password_set": bool(raw.get("ldap_bind_password")),
         "ldap_user_filter": raw.get("ldap_user_filter")
         or "(&(objectClass=user)(sAMAccountName={username}))",
+        "ldap_user_principal": raw.get("ldap_user_principal") or "{username}@snapp.local",
+        "ldap_directory_filter": raw.get("ldap_directory_filter")
+        or "(&(objectClass=user)(|(sAMAccountName={query})(displayName={query})(mail={query})))",
     }
     return JSONResponse({"success": True, "config": config})
 
@@ -1087,9 +1095,12 @@ async def admin_update_auth_config(request: Request):
         )
     ldap_enabled = bool(body.get("ldap_enabled", False))
     ldap_server = (body.get("ldap_server") or "").strip()
+    ldap_servers = (body.get("ldap_servers") or ldap_server).strip()
     ldap_port = int(body.get("ldap_port") or 389)
     ldap_use_ssl = bool(body.get("ldap_use_ssl", False))
     ldap_base_dn = (body.get("ldap_base_dn") or "").strip()
+    ldap_user_base_dn = (body.get("ldap_user_base_dn") or ldap_base_dn).strip()
+    ldap_group_base_dn = (body.get("ldap_group_base_dn") or "").strip()
     ldap_bind_dn = (body.get("ldap_bind_dn") or "").strip()
     ldap_bind_password = body.get(
         "ldap_bind_password"
@@ -1097,6 +1108,13 @@ async def admin_update_auth_config(request: Request):
     ldap_user_filter = (
         body.get("ldap_user_filter") or ""
     ).strip() or "(&(objectClass=user)(sAMAccountName={username}))"
+    ldap_user_principal = (
+        body.get("ldap_user_principal") or "{username}@snapp.local"
+    ).strip()
+    ldap_directory_filter = (
+        body.get("ldap_directory_filter")
+        or "(&(objectClass=user)(|(sAMAccountName={query})(displayName={query})(mail={query})))"
+    ).strip()
 
     # ذخیره در app_settings
     conn = _db()
@@ -1111,14 +1129,19 @@ async def admin_update_auth_config(request: Request):
         _set("auth_mode", auth_mode)
         _set("ldap_enabled", "1" if ldap_enabled else "0")
         _set("ldap_server", ldap_server)
+        _set("ldap_servers", ldap_servers)
         _set("ldap_port", str(ldap_port))
         _set("ldap_use_ssl", "1" if ldap_use_ssl else "0")
         _set("ldap_base_dn", ldap_base_dn)
+        _set("ldap_user_base_dn", ldap_user_base_dn)
+        _set("ldap_group_base_dn", ldap_group_base_dn)
         _set("ldap_bind_dn", ldap_bind_dn)
         if ldap_bind_password is not None:
             # اگر رشتهٔ خالی بدهی، یعنی پسورد را پاک می‌کنیم
             _set("ldap_bind_password", ldap_bind_password)
         _set("ldap_user_filter", ldap_user_filter)
+        _set("ldap_user_principal", ldap_user_principal)
+        _set("ldap_directory_filter", ldap_directory_filter)
         conn.commit()
     finally:
         conn.close()
@@ -1129,6 +1152,75 @@ async def admin_update_auth_config(request: Request):
         details={"auth_mode": auth_mode, "ldap_enabled": ldap_enabled},
     )
     return JSONResponse({"success": True})
+
+
+@admin_router.post("/auth/test")
+async def admin_test_ldap(request: Request):
+    """Test TCP, service-account bind, and a small user search."""
+    auth.require_admin(request, auth.get_current_user)
+    from ldap3 import ALL, Connection, Server, SUBTREE
+
+    body = await request.json()
+    servers_raw = (body.get("ldap_servers") or body.get("ldap_server") or "").strip()
+    servers = [
+        item.strip()
+        for item in servers_raw.replace("\n", ",").split(",")
+        if item.strip()
+    ]
+    port = int(body.get("ldap_port") or 389)
+    use_ssl = bool(body.get("ldap_use_ssl", False))
+    bind_user = (body.get("ldap_bind_dn") or "").strip()
+    bind_password = body.get("ldap_bind_password")
+    if bind_password in (None, ""):
+        conn = _db()
+        try:
+            row = conn.execute(
+                "SELECT value FROM app_settings WHERE key = 'ldap_bind_password'"
+            ).fetchone()
+            bind_password = db.safe_row_get(row, "value") or ""
+        finally:
+            conn.close()
+    base_dn = (
+        body.get("ldap_user_base_dn")
+        or body.get("ldap_base_dn")
+        or ""
+    ).strip()
+    results = []
+    for host in servers:
+        result = {"server": host, "port": port, "success": False}
+        connection = None
+        try:
+            server = Server(
+                host, port=port, use_ssl=use_ssl, get_info=ALL, connect_timeout=6
+            )
+            connection = Connection(
+                server,
+                user=bind_user,
+                password=bind_password or "",
+                auto_bind=True,
+                receive_timeout=8,
+            )
+            connection.search(
+                base_dn,
+                "(&(objectClass=user)(mail=*))",
+                search_scope=SUBTREE,
+                attributes=["displayName", "mail", "department"],
+                size_limit=1,
+            )
+            result.update(
+                success=True,
+                message="Bind and user search succeeded",
+                sample_users=len(connection.entries),
+            )
+        except Exception as exc:
+            result["message"] = str(exc)
+        finally:
+            if connection:
+                connection.unbind()
+        results.append(result)
+    return JSONResponse(
+        {"success": any(item["success"] for item in results), "results": results}
+    )
 
 
 @admin_router.post("/tickets/{ticket_id}/reply")

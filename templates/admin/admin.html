@@ -548,8 +548,8 @@
 
                 <div style="display:flex; flex-wrap:wrap; gap:16px; margin-bottom:16px;">
                     <div class="form-group" style="min-width:260px;">
-                        <label class="form-label">LDAP server</label>
-                        <input type="text" id="ldap-server" class="form-control" placeholder="ldap://dc1.company.local" />
+                        <label class="form-label">Domain controllers</label>
+                        <textarea id="ldap-servers" class="form-control" rows="3" placeholder="DC8.snapp.local&#10;DC9.snapp.local"></textarea>
                     </div>
                     <div class="form-group" style="max-width:120px;">
                         <label class="form-label">Port</label>
@@ -562,8 +562,12 @@
                 </div>
 
                 <div style="margin-bottom:16px;">
-                    <label class="form-label">Base DN (OU/CN)</label>
-                    <input type="text" id="ldap-base-dn" class="form-control" placeholder="OU=Users,OU=Tehran,DC=company,DC=local" />
+                    <label class="form-label">User Base DN</label>
+                    <input type="text" id="ldap-user-base-dn" class="form-control" placeholder="OU=snapp,DC=snapp,DC=local" />
+                </div>
+                <div style="margin-bottom:16px;">
+                    <label class="form-label">Group Base DN</label>
+                    <input type="text" id="ldap-group-base-dn" class="form-control" placeholder="OU=SnappGroup,DC=snapp,DC=local" />
                 </div>
 
                 <div style="display:flex; flex-wrap:wrap; gap:16px; margin-bottom:16px;">
@@ -579,6 +583,10 @@
                 </div>
 
                 <div style="margin-bottom:16px;">
+                    <label class="form-label">User principal format</label>
+                    <input type="text" id="ldap-user-principal" class="form-control" placeholder="{username}@snapp.local" />
+                </div>
+                <div style="margin-bottom:16px;">
                     <label class="form-label">User search filter</label>
                     <p style="font-size:0.85rem; color:#6b7280; margin-bottom:4px;">
                         Use <code>{username}</code> placeholder. Example:
@@ -587,7 +595,10 @@
                     <input type="text" id="ldap-user-filter" class="form-control" placeholder="(&(objectClass=user)(sAMAccountName={username}))" />
                 </div>
 
-                <button class="btn btn-primary" onclick="saveAuthSettings()">Save LDAP Settings</button>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <button class="btn btn-primary" onclick="saveAuthSettings()">Save LDAP Settings</button>
+                    <button class="btn" onclick="testLdapSettings()">Test Connection</button>
+                </div>
             </div>
         </div>
 
@@ -1697,14 +1708,16 @@
                 const cfg = data.config || {};
                 document.getElementById('auth-mode').value = cfg.auth_mode || 'local';
                 document.getElementById('ldap-enabled').checked = !!cfg.ldap_enabled;
-                document.getElementById('ldap-server').value = cfg.ldap_server || '';
+                document.getElementById('ldap-servers').value = (cfg.ldap_servers || '').replaceAll(',', '\n');
                 document.getElementById('ldap-port').value = cfg.ldap_port != null ? cfg.ldap_port : 389;
                 document.getElementById('ldap-use-ssl').checked = !!cfg.ldap_use_ssl;
-                document.getElementById('ldap-base-dn').value = cfg.ldap_base_dn || '';
+                document.getElementById('ldap-user-base-dn').value = cfg.ldap_user_base_dn || '';
+                document.getElementById('ldap-group-base-dn').value = cfg.ldap_group_base_dn || '';
                 document.getElementById('ldap-bind-dn').value = cfg.ldap_bind_dn || '';
                 // bind password را برای امنیت پر نمی‌کنیم؛ فقط اگر خالی گذاشت، یعنی تغییر نده
                 document.getElementById('ldap-bind-password').value = '';
                 document.getElementById('ldap-user-filter').value = cfg.ldap_user_filter || '(&(objectClass=user)(sAMAccountName={username}))';
+                document.getElementById('ldap-user-principal').value = cfg.ldap_user_principal || '{username}@snapp.local';
             } catch (e) {
                 if (statusEl) {
                     statusEl.textContent = 'Failed to load auth settings: ' + (e.message || e);
@@ -1724,12 +1737,14 @@
                 const payload = {
                     auth_mode: document.getElementById('auth-mode').value || 'local',
                     ldap_enabled: document.getElementById('ldap-enabled').checked,
-                    ldap_server: document.getElementById('ldap-server').value.trim(),
+                    ldap_servers: document.getElementById('ldap-servers').value.trim(),
                     ldap_port: parseInt(document.getElementById('ldap-port').value || '389', 10),
                     ldap_use_ssl: document.getElementById('ldap-use-ssl').checked,
-                    ldap_base_dn: document.getElementById('ldap-base-dn').value.trim(),
+                    ldap_user_base_dn: document.getElementById('ldap-user-base-dn').value.trim(),
+                    ldap_group_base_dn: document.getElementById('ldap-group-base-dn').value.trim(),
                     ldap_bind_dn: document.getElementById('ldap-bind-dn').value.trim(),
                     ldap_user_filter: document.getElementById('ldap-user-filter').value.trim(),
+                    ldap_user_principal: document.getElementById('ldap-user-principal').value.trim(),
                 };
                 const pwd = document.getElementById('ldap-bind-password').value;
                 // اگر کاربر چیزی تایپ کرده، آن را هم بفرست؛ اگر خالی است، پسورد را تغییر نده
@@ -1753,6 +1768,37 @@
                 statusEl.className = 'status-box error';
                 statusEl.style.display = 'block';
                 console.error('Failed to save auth settings:', e);
+            }
+        }
+
+        async function testLdapSettings() {
+            const statusEl = document.getElementById('auth-settings-status');
+            statusEl.textContent = 'Testing LDAP connectivity and bind...';
+            statusEl.className = 'status-box info';
+            statusEl.style.display = 'block';
+            const payload = {
+                ldap_servers: document.getElementById('ldap-servers').value.trim(),
+                ldap_port: parseInt(document.getElementById('ldap-port').value || '389', 10),
+                ldap_use_ssl: document.getElementById('ldap-use-ssl').checked,
+                ldap_user_base_dn: document.getElementById('ldap-user-base-dn').value.trim(),
+                ldap_bind_dn: document.getElementById('ldap-bind-dn').value.trim(),
+                ldap_bind_password: document.getElementById('ldap-bind-password').value || undefined,
+            };
+            try {
+                const res = await fetch('/api/admin/auth/test', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload),
+                });
+                const data = await res.json();
+                statusEl.textContent = (data.results || []).map(
+                    item => `${item.server}:${item.port} - ${item.success ? 'OK' : item.message}`
+                ).join(' | ');
+                statusEl.className = `status-box ${data.success ? 'success' : 'error'}`;
+            } catch (e) {
+                statusEl.textContent = 'LDAP test failed: ' + (e.message || e);
+                statusEl.className = 'status-box error';
             }
         }
 

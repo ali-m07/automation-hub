@@ -131,6 +131,8 @@ def init_database() -> None:
             )
         if "external_subject" not in cols:
             conn.execute("ALTER TABLE users ADD COLUMN external_subject TEXT")
+        if "department" not in cols:
+            conn.execute("ALTER TABLE users ADD COLUMN department TEXT")
 
         # Backfill created_at for existing rows (used for request timestamps)
         now = utc_now_iso()
