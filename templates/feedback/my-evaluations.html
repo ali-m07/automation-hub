@@ -34,69 +34,38 @@
     <p class="subtitle">Review every evaluator nomination, reason, status, and submission date.</p>
 </header>
 
-<div id="evaluationHistory" class="evaluation-list">
-    <div class="history-empty">Loading your evaluation history...</div>
+<div class="evaluation-list">
+    {% for nomination in nominations %}
+    <article class="evaluation-card">
+        <div class="evaluation-head">
+            <div>
+                <strong>{{ nomination.id }}</strong>
+                <div class="evaluation-meta">
+                    Submitted {{ nomination.submitted_at or nomination.created_at or 'Not submitted' }}
+                    &middot; Manager: {{ nomination.manager_info.full_name or nomination.manager_username or '-' }}
+                </div>
+            </div>
+            <span class="evaluation-status">{{ nomination.status or 'pending' }}</span>
+        </div>
+        <table class="evaluation-table">
+            <thead><tr><th>Evaluator</th><th>Email</th><th>Team</th><th>Reason</th><th>Status</th></tr></thead>
+            <tbody>
+                {% for evaluator in nomination.evaluators %}
+                <tr>
+                    <td data-label="Evaluator">{{ evaluator.full_name or evaluator.username or '-' }}</td>
+                    <td data-label="Email">{{ evaluator.email or '-' }}</td>
+                    <td data-label="Team">{{ evaluator.team or '-' }}</td>
+                    <td data-label="Reason" class="reason-text">{{ evaluator.reason or '-' }}</td>
+                    <td data-label="Status">{{ evaluator.status or 'pending' }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" class="history-empty">No evaluators were stored for this nomination.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </article>
+    {% else %}
+    <div class="evaluation-card history-empty">No evaluation nominations submitted yet.</div>
+    {% endfor %}
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-    const historyRoot = document.getElementById('evaluationHistory');
-
-    function escapeHistory(value) {
-        const node = document.createElement('div');
-        node.textContent = value == null ? '' : String(value);
-        return node.innerHTML;
-    }
-
-    function formatHistoryDate(value) {
-        if (!value) return 'Not submitted';
-        const date = new Date(value);
-        return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
-    }
-
-    async function loadEvaluationHistory() {
-        try {
-            const response = await fetch('/api/feedback/evaluator-nomination/history');
-            const data = await response.json();
-            const nominations = data.nominations || [];
-            if (!nominations.length) {
-                historyRoot.innerHTML = '<div class="evaluation-card history-empty">No evaluation nominations submitted yet.</div>';
-                return;
-            }
-            historyRoot.innerHTML = nominations.map(nomination => `
-                <article class="evaluation-card">
-                    <div class="evaluation-head">
-                        <div>
-                            <strong>${escapeHistory(nomination.id)}</strong>
-                            <div class="evaluation-meta">
-                                Submitted ${escapeHistory(formatHistoryDate(nomination.submitted_at))}
-                                · Manager: ${escapeHistory(nomination.manager_info?.full_name || nomination.manager_username || '-')}
-                            </div>
-                        </div>
-                        <span class="evaluation-status">${escapeHistory(nomination.status || 'pending')}</span>
-                    </div>
-                    <table class="evaluation-table">
-                        <thead><tr><th>Evaluator</th><th>Email</th><th>Team</th><th>Reason</th><th>Status</th></tr></thead>
-                        <tbody>
-                            ${(nomination.evaluators || []).map(evaluator => `
-                                <tr>
-                                    <td data-label="Evaluator">${escapeHistory(evaluator.full_name || evaluator.username || '-')}</td>
-                                    <td data-label="Email">${escapeHistory(evaluator.email || '-')}</td>
-                                    <td data-label="Team">${escapeHistory(evaluator.team || '-')}</td>
-                                    <td data-label="Reason" class="reason-text">${escapeHistory(evaluator.reason || '-')}</td>
-                                    <td data-label="Status">${escapeHistory(evaluator.status || 'pending')}</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </article>
-            `).join('');
-        } catch (error) {
-            historyRoot.innerHTML = '<div class="evaluation-card history-empty">Could not load evaluation history.</div>';
-        }
-    }
-
-    loadEvaluationHistory();
-</script>
 {% endblock %}

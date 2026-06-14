@@ -287,7 +287,40 @@ async def my_evaluations_page(request: Request):
         and "feedback" not in modules
     ):
         return RedirectResponse(url="/summary", status_code=302)
-    return _render_page(request, "feedback/my-evaluations.html", user=user)
+    from automation_hub.projects.ticketing.router import (
+        _get_user_info,
+        _load_evaluator_store,
+    )
+
+    nominations = [
+        nomination
+        for nomination in _load_evaluator_store().get("nominations", [])
+        if nomination.get("nominator_username") == user.get("username", "")
+    ]
+    nominations.sort(
+        key=lambda item: item.get("submitted_at") or item.get("created_at") or "",
+        reverse=True,
+    )
+    for nomination in nominations:
+        nomination["manager_info"] = _get_user_info(
+            nomination.get("manager_username", "")
+        )
+        for evaluator in nomination.get("evaluators", []):
+            info = _get_user_info(
+                evaluator.get("username") or evaluator.get("email", "")
+            )
+            for key, value in info.items():
+                if value not in (None, "", []):
+                    evaluator[key] = value
+
+    templates = _get_templates(request)
+    if not templates:
+        return JSONResponse({"error": "Templates not available"}, status_code=500)
+    return templates.TemplateResponse(
+        request=request,
+        name="feedback/my-evaluations.html",
+        context={"request": request, "user": user, "nominations": nominations},
+    )
 
 
 @pages_router.get(
