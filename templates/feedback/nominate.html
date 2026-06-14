@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nominate Evaluators - Automation Hub</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --success: #10b981;
+            --success-light: #d1fae5;
+            --danger: #ef4444;
+            --danger-light: #fee2e2;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+            --border: #e5e7eb;
+            --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --radius: 8px;
+            --radius-lg: 12px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #f8fafc;
+            color: var(--gray-800);
+            line-height: 1.5;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 24px;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+
+        .page-title {
+            font-size: 28px;
+            font-weight: 600;
+            color: var(--gray-900);
+        }
+
+        .page-subtitle {
+            font-size: 14px;
+            color: var(--gray-500);
+            margin-top: 4px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 500;
+            border-radius: var(--radius);
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+            width: 100%;
+            justify-content: center;
+            padding: 16px 32px;
+            font-size: 15px;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn-success:disabled {
+            background: var(--gray-300);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .card {
+            background: white;
+            border-radius: var(--radius-lg);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--gray-100);
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--gray-800);
+        }
+
+        .evaluators-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .evaluator-card {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            padding: 20px;
+            background: var(--gray-50);
+            border-radius: var(--radius);
+            border: 1px solid var(--gray-200);
+            transition: all 0.2s ease;
+        }
+
+        .evaluator-card:hover {
+            border-color: var(--gray-300);
+            box-shadow: var(--shadow);
+        }
+
+        .evaluator-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .evaluator-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .evaluator-email {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: 2px;
+        }
+
+        .evaluator-name {
+            font-size: 13px;
+            color: var(--gray-600);
+            margin-bottom: 8px;
+        }
+
+        .evaluator-details {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .detail-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            color: var(--gray-500);
+            background: white;
+            padding: 4px 10px;
+            border-radius: 4px;
+            border: 1px solid var(--gray-200);
+        }
+
+        .detail-item i {
+            font-size: 10px;
+            color: var(--gray-400);
+        }
+
+        .evaluator-reason {
+            width: 100%;
+        }
+
+        .evaluator-reason label {
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--gray-600);
+            margin-bottom: 6px;
+        }
+
+        .evaluator-reason textarea {
+            width: 100%;
+            min-height: 80px;
+            padding: 12px;
+            font-size: 14px;
+            font-family: inherit;
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius);
+            resize: vertical;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .evaluator-reason textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .evaluator-reason textarea::placeholder {
+            color: var(--gray-400);
+        }
+
+        .delete-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            border: none;
+            background: transparent;
+            color: var(--gray-400);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .delete-btn:hover {
+            background: var(--danger-light);
+            color: var(--danger);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 48px 24px;
+            color: var(--gray-500);
+        }
+
+        .empty-state i {
+            font-size: 40px;
+            margin-bottom: 12px;
+            color: var(--gray-300);
+        }
+
+        .empty-state h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--gray-700);
+            margin-bottom: 6px;
+        }
+
+        .empty-state p {
+            font-size: 13px;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            padding-top: 80px;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: white;
+            border-radius: var(--radius-lg);
+            width: 100%;
+            max-width: 480px;
+            max-height: 70vh;
+            display: flex;
+            flex-direction: column;
+            transform: scale(0.95) translateY(-20px);
+            transition: transform 0.3s ease;
+            margin: 24px;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .modal-overlay.active .modal {
+            transform: scale(1) translateY(0);
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--gray-100);
+        }
+
+        .modal-header h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--gray-900);
+        }
+
+        .modal-body {
+            padding: 16px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .search-wrapper {
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 14px 16px 14px 44px;
+            font-size: 15px;
+            border: 2px solid var(--gray-200);
+            border-radius: var(--radius);
+            transition: all 0.2s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--gray-400);
+            font-size: 16px;
+        }
+
+        .search-hint {
+            font-size: 12px;
+            color: var(--gray-400);
+            margin-top: 8px;
+            text-align: center;
+        }
+
+        .email-results {
+            margin-top: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .email-result-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            padding: 12px 16px;
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .email-result-item:hover {
+            background: var(--gray-50);
+        }
+
+        .email-result-item .email {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--gray-900);
+        }
+
+        .email-result-item .meta {
+            font-size: 12px;
+            color: var(--gray-500);
+            display: flex;
+            gap: 8px;
+        }
+
+        .loading, .no-results {
+            text-align: center;
+            padding: 24px;
+            color: var(--gray-500);
+            font-size: 13px;
+        }
+
+        .loading i {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Toast */
+        .toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 1100;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .toast {
+            padding: 14px 20px;
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: var(--shadow-lg);
+            animation: slideIn 0.3s ease;
+        }
+
+        .toast-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .toast-error {
+            background: var(--danger);
+            color: white;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* Manager Section */
+        .manager-section {
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid var(--gray-100);
+        }
+
+        .manager-section h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--gray-700);
+            margin-bottom: 12px;
+        }
+
+        .manager-display {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: var(--gray-50);
+            border-radius: var(--radius);
+            border: 1px solid var(--gray-200);
+        }
+
+        .manager-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .manager-info {
+            flex: 1;
+        }
+
+        .manager-info .name {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--gray-900);
+        }
+
+        .manager-info .email {
+            font-size: 12px;
+            color: var(--gray-500);
+        }
+
+        .submit-section {
+            margin-top: 24px;
+        }
+
+        /* Current status */
+        .current-status {
+            margin-bottom: 20px;
+            padding: 12px 16px;
+            background: #eff6ff;
+            border-radius: var(--radius);
+            border: 1px solid #dbeafe;
+            font-size: 13px;
+            color: #1e40af;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">Nominate Evaluators</h1>
+                <p class="page-subtitle">Select people who will evaluate your performance</p>
+            </div>
+            <button class="btn btn-primary" onclick="openUserPicker()">
+                <i class="fas fa-plus"></i>
+                Add Evaluator
+            </button>
+        </div>
+
+        <!-- Current nomination status -->
+        <div id="currentStatus" class="current-status" style="display: none;">
+            <i class="fas fa-info-circle"></i>
+            You have a pending nomination submitted on <span id="submittedDate"></span>. You can modify and resubmit.
+        </div>
+
+        <!-- Evaluators List -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Selected Evaluators</span>
+            </div>
+            <div id="evaluatorsList" class="evaluators-list">
+                <div class="empty-state" id="emptyState">
+                    <i class="fas fa-user-plus"></i>
+                    <h3>No Evaluators Added</h3>
+                    <p>Click "Add Evaluator" to search by email and select people who will evaluate your performance.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Manager Section -->
+        <div class="card">
+            <div class="manager-section" style="margin-top: 0; padding-top: 0; border-top: none;">
+                <h3><i class="fas fa-user-tie"></i> Send to Manager</h3>
+                <div class="manager-display" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #f3f4f6; border-radius: 8px; border: 1px solid #e5e7eb;">
+                    <div class="manager-avatar" id="managerAvatar" style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #10b981 0%, #059669 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 14px;">AB</div>
+                    <div class="manager-info" style="flex: 1;">
+                        <div class="name" id="managerName" style="font-size: 14px; font-weight: 500; color: #111827;">Ali Borhani</div>
+                        <div class="email" id="managerEmail" style="font-size: 12px; color: #6b7280;">ali.borhani@snapp.cab</div>
+                    </div>
+                    <input type="hidden" id="managerEmailValue" value="ali.borhani@snapp.cab">
+                </div>
+            </div>
+
+            <div class="submit-section">
+                <button class="btn btn-success" onclick="submitNomination()" id="submitBtn" disabled>
+                    <i class="fas fa-paper-plane"></i>
+                    Submit for Manager Approval
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Picker Modal -->
+    <div class="modal-overlay" id="userPickerModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Add Evaluator</h3>
+            </div>
+            <div class="modal-body">
+                <div class="search-wrapper">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" class="search-input" id="userSearch"
+                           placeholder="Search by email (e.g. ali.mansouri)"
+                           oninput="searchUsers()" autocomplete="off">
+                </div>
+                <p class="search-hint">Type an email address to search</p>
+                <div id="userResults" class="email-results"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manager Picker Modal -->
+    <div class="modal-overlay" id="managerPickerModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Select Manager</h3>
+                <button class="modal-close" onclick="closeManagerPicker()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="search-wrapper">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" class="search-input" id="managerSearch"
+                           placeholder="Search by email (e.g. ali.mansouri)"
+                           oninput="searchManagerUsers()" autocomplete="off">
+                </div>
+                <p class="search-hint">Type an email to search for manager</p>
+                <div id="managerResults" class="email-results"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        // State
+        let evaluators = [];
+        let currentUser = null;
+        let currentUserManager = null;
+        let searchTimeout = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadCurrentUser();
+            await loadExistingNomination();
+        });
+
+        async function loadCurrentUser() {
+            try {
+                const response = await fetch('/api/feedback/evaluator-nomination/meta');
+                const data = await response.json();
+                currentUser = data.current_user;
+
+                console.log('=== loadCurrentUser ===');
+                console.log('currentUser:', currentUser);
+
+                // Hardcode manager for admin user - always show Edris Hosseini
+                // No need to check API response
+                document.getElementById('managerEmail').textContent = 'edris.hosseini@snapp.cab';
+                document.getElementById('managerAvatar').textContent = 'EH';
+                document.getElementById('managerName').textContent = 'Edris Hosseini';
+                console.log('Manager hardcoded to: Edris Hosseini (edris.hosseini@snapp.cab)');
+
+            } catch (error) {
+                console.error('Error loading user:', error);
+                // Still show hardcoded manager even on error
+                document.getElementById('managerEmail').textContent = 'edris.hosseini@snapp.cab';
+                document.getElementById('managerAvatar').textContent = 'EH';
+                document.getElementById('managerName').textContent = 'Edris Hosseini';
+            }
+        }
+
+        async function loadExistingNomination() {
+            try {
+                const response = await fetch('/api/feedback/evaluator-nomination/my-nomination');
+                const data = await response.json();
+
+                if (data.nomination) {
+                    const nom = data.nomination;
+                    document.getElementById('currentStatus').style.display = 'block';
+                    const date = new Date(nom.submitted_at);
+                    document.getElementById('submittedDate').textContent = date.toLocaleDateString('en-US', {
+                        year: 'numeric', month: 'long', day: 'numeric'
+                    });
+
+                    evaluators = nom.evaluators || [];
+                    renderEvaluators();
+                }
+            } catch (error) {
+                console.error('Error loading nomination:', error);
+            }
+        }
+
+        function renderEvaluators() {
+            const container = document.getElementById('evaluatorsList');
+            const emptyState = document.getElementById('emptyState');
+            const submitBtn = document.getElementById('submitBtn');
+
+            console.log('=== renderEvaluators ===');
+            console.log('Evaluators count:', evaluators.length);
+
+            if (evaluators.length === 0) {
+                container.innerHTML = '';
+                if (emptyState) {
+                    container.appendChild(emptyState);
+                    emptyState.style.display = 'block';
+                }
+                if (submitBtn) submitBtn.disabled = true;
+                return;
+            }
+
+            if (emptyState) emptyState.style.display = 'none';
+            if (submitBtn) submitBtn.disabled = false;
+
+            container.innerHTML = evaluators.map((eval, index) => `
+                <div class="evaluator-card">
+                    <div class="evaluator-avatar">
+                        ${getInitials(eval.email || eval.username)}
+                    </div>
+                    <div class="evaluator-info">
+                        <div class="evaluator-email">${eval.email}</div>
+                        <div class="evaluator-name">${eval.full_name || ''} ${eval.job_title ? '• ' + eval.job_title : ''}</div>
+                        <div class="evaluator-details">
+                            ${eval.team ? `<span class="detail-item"><i class="fas fa-users"></i> ${eval.team}</span>` : ''}
+                            ${eval.sub_team ? `<span class="detail-item"><i class="fas fa-layer-group"></i> ${eval.sub_team}</span>` : ''}
+                            ${eval.vertical ? `<span class="detail-item"><i class="fas fa-sitemap"></i> ${eval.vertical}</span>` : ''}
+                        </div>
+                        <div class="evaluator-reason">
+                            <label>Reason for Nomination</label>
+                            <textarea
+                                placeholder="Why did you choose this person as your evaluator?"
+                                onchange="updateReason('${eval.email}', this.value)"
+                            >${eval.reason || ''}</textarea>
+                        </div>
+                    </div>
+                    <button class="delete-btn" onclick="removeEvaluator('${eval.email}')" title="Remove">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function getInitials(name) {
+            if (!name) return '?';
+            return name.split(/[.@]/)[0].slice(0,2).toUpperCase();
+        }
+
+        function updateReason(email, reason) {
+            const eval = evaluators.find(e => e.email === email);
+            if (eval) {
+                eval.reason = reason;
+            }
+        }
+
+        function removeEvaluator(email) {
+            evaluators = evaluators.filter(e => e.email !== email);
+            renderEvaluators();
+        }
+
+        // User Picker Modal
+        function openUserPicker() {
+            document.getElementById('userPickerModal').classList.add('active');
+            document.getElementById('userSearch').value = '';
+            document.getElementById('userResults').innerHTML = '';
+            document.getElementById('userSearch').focus();
+        }
+
+        function closeUserPicker() {
+            document.getElementById('userPickerModal').classList.remove('active');
+        }
+
+        // Manager Picker Functions
+        function openManagerPicker() {
+            document.getElementById('managerPickerModal').classList.add('active');
+            document.getElementById('managerSearch').value = '';
+            document.getElementById('managerResults').innerHTML = '';
+            document.getElementById('managerSearch').focus();
+        }
+
+        function closeManagerPicker() {
+            document.getElementById('managerPickerModal').classList.remove('active');
+        }
+
+        async function searchManagerUsers() {
+            const query = document.getElementById('managerSearch').value.trim().toLowerCase();
+
+            if (searchTimeout) clearTimeout(searchTimeout);
+
+            if (query.length < 1) {
+                document.getElementById('managerResults').innerHTML = '';
+                return;
+            }
+
+            document.getElementById('managerResults').innerHTML = '<div class="loading"><i class="fas fa-spinner"></i> Searching...</div>';
+
+            searchTimeout = setTimeout(async () => {
+                try {
+                    const response = await fetch(`/api/feedback/evaluator-nomination/users/search?q=${encodeURIComponent(query)}`);
+                    const data = await response.json();
+                    const users = data.users || [];
+
+                    if (users.length === 0) {
+                        document.getElementById('managerResults').innerHTML = '<div class="no-results">No emails found</div>';
+                        return;
+                    }
+
+                    document.getElementById('managerResults').innerHTML = users.map(user => `
+                        <div class="email-result-item" onclick="selectManager('${user.email}', '${user.full_name || ''}', '${user.job_title || ''}', '${user.team || ''}', '${user.sub_team || ''}', '${user.vertical || ''}')">
+                            <span class="email">${user.email}</span>
+                            <span class="meta">
+                                ${user.full_name || ''}
+                                ${user.team ? ' • ' + user.team : ''}
+                            </span>
+                        </div>
+                    `).join('');
+                } catch (error) {
+                    console.error('Error searching:', error);
+                    document.getElementById('managerResults').innerHTML = '<div class="no-results">Error searching</div>';
+                }
+            }, 300);
+        }
+
+        function selectManager(email, fullName, jobTitle, team, subTeam, vertical) {
+            // Update the manager display
+            document.getElementById('managerAvatar').textContent = getInitials(email.split('@')[0]);
+            document.getElementById('managerName').textContent = fullName || email.split('@')[0];
+            document.getElementById('managerEmail').textContent = email;
+            // Set the hidden field value for submission
+            document.getElementById('managerEmailValue').value = email;
+
+            closeManagerPicker();
+            showToast('Manager selected: ' + email, 'success');
+        }
+
+        async function searchUsers() {
+            const query = document.getElementById('userSearch').value.trim().toLowerCase();
+
+            if (searchTimeout) clearTimeout(searchTimeout);
+
+            if (query.length < 1) {
+                document.getElementById('userResults').innerHTML = '';
+                return;
+            }
+
+            document.getElementById('userResults').innerHTML = '<div class="loading"><i class="fas fa-spinner"></i> Searching...</div>';
+
+            searchTimeout = setTimeout(async () => {
+                try {
+                    const response = await fetch(`/api/feedback/evaluator-nomination/users/search?q=${encodeURIComponent(query)}`);
+                    const data = await response.json();
+                    const users = data.users || [];
+
+                    if (users.length === 0) {
+                        document.getElementById('userResults').innerHTML = '<div class="no-results">No emails found</div>';
+                        return;
+                    }
+
+                    // Filter out already selected evaluators using .some() with logging
+                    console.log('=== Filtering search results ===');
+                    console.log('Users from API:', users.map(u => u.email));
+                    console.log('Already added evaluators:', evaluators.map(e => e.email));
+
+                    const availableUsers = users.filter(u => {
+                        const userEmail = (u.email || '').toLowerCase().trim();
+
+                        // Use .some() to check if email already exists
+                        const isAlreadyAdded = evaluators.some(e =>
+                            e && e.email && e.email.toLowerCase().trim() === userEmail
+                        );
+
+                        console.log('Checking userEmail:', userEmail, '-> isAlreadyAdded:', isAlreadyAdded);
+
+                        return !isAlreadyAdded;
+                    });
+
+                    console.log('Available users after filter:', availableUsers.map(u => u.email));
+
+                    if (availableUsers.length === 0) {
+                        document.getElementById('userResults').innerHTML = '<div class="no-results">All matching emails already added</div>';
+                        return;
+                    }
+
+                    document.getElementById('userResults').innerHTML = availableUsers.map(user => `
+                        <div class="email-result-item" onclick="selectUser('${user.email}', '${user.full_name || ''}', '${user.job_title || ''}', '${user.team || ''}', '${user.sub_team || ''}', '${user.vertical || ''}', '${user.line_manager_email || ''}', '${user.line_manager_name || ''}')">
+                            <span class="email">${user.email}</span>
+                            <span class="meta">
+                                ${user.full_name || ''}
+                                ${user.team ? ' • ' + user.team : ''}
+                                ${user.sub_team ? ' / ' + user.sub_team : ''}
+                                ${user.vertical ? ' • ' + user.vertical : ''}
+                            </span>
+                        </div>
+                    `).join('');
+                } catch (error) {
+                    console.error('Error searching:', error);
+                    document.getElementById('userResults').innerHTML = '<div class="no-results">Error searching</div>';
+                }
+            }, 300);
+        }
+
+        function selectUser(email, fullName, jobTitle, team, subTeam, vertical, managerEmail, managerName) {
+            console.log('=== selectUser called ===');
+            console.log('Email received:', email);
+            console.log('Current evaluators list:', evaluators.map(e => e.email));
+            console.log('Evaluators count:', evaluators.length);
+
+            const normalizedEmail = (email || '').toLowerCase().trim();
+            console.log('Normalized email:', normalizedEmail);
+
+            // Check if already added using .some()
+            const alreadyAdded = evaluators.some(e =>
+                e && e.email && e.email.toLowerCase().trim() === normalizedEmail
+            );
+
+            console.log('Is already in list?', alreadyAdded);
+
+            if (alreadyAdded) {
+                console.log('DUPLICATE DETECTED - showing error');
+                showToast('This evaluator is already added', 'error');
+                return;
+            }
+
+            // Add new evaluator
+            const newEvaluator = {
+                email: email,
+                full_name: fullName,
+                job_title: jobTitle,
+                team: team,
+                sub_team: subTeam,
+                vertical: vertical,
+                reason: ''
+            };
+
+            console.log('Adding new evaluator:', newEvaluator);
+            evaluators.push(newEvaluator);
+
+            console.log('Successfully added. New count:', evaluators.length);
+
+            renderEvaluators();
+            closeUserPicker();
+            showToast('Evaluator added successfully', 'success');
+        }
+
+        async function submitNomination() {
+            // Get manager email from the input field (editable by user)
+            const managerEmailValue = document.getElementById('managerEmailValue');
+            const managerEmail = managerEmailValue ? managerEmailValue.value.trim() : '';
+
+            if (!managerEmail) {
+                showToast('Please enter a manager email', 'error');
+                return;
+            }
+
+            // Validate all evaluators have reasons
+            for (const eval of evaluators) {
+                if (!eval.reason || !eval.reason.trim()) {
+                    showToast(`Please provide a reason for ${eval.email}`, 'error');
+                    return;
+                }
+            }
+
+            try {
+                const response = await fetch('/api/feedback/evaluator-nomination/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        evaluators: evaluators,
+                        manager_username: managerEmail.split('@')[0]
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast('Nomination submitted for approval!', 'success');
+                    document.getElementById('currentStatus').style.display = 'block';
+                    const date = new Date();
+                    document.getElementById('submittedDate').textContent = date.toLocaleDateString('en-US', {
+                        year: 'numeric', month: 'long', day: 'numeric'
+                    });
+                } else {
+                    showToast(data.error || 'Error submitting', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Error submitting nomination', 'error');
+            }
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i> ${message}`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+        }
+
+        // Close modal on overlay click
+        document.getElementById('userPickerModal').addEventListener('click', e => {
+            if (e.target.classList.contains('modal-overlay')) {
+                closeUserPicker();
+            }
+        });
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') closeUserPicker();
+        });
+    </script>
+</body>
+</html>

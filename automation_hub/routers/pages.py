@@ -124,6 +124,7 @@ async def projects_dashboard(request: Request):
     if (
         user.get("role") != "admin"
         and "feedback_180" not in modules
+        and "feedback" not in modules
         and "feedback_180_admin" not in modules
     ):
         return RedirectResponse(url="/summary", status_code=302)
@@ -154,6 +155,7 @@ async def project_board(project_key: str, request: Request):
     if (
         user.get("role") != "admin"
         and "feedback_180" not in modules
+        and "feedback" not in modules
         and "feedback_180_admin" not in modules
     ):
         return RedirectResponse(url="/summary", status_code=302)
@@ -195,6 +197,7 @@ async def ticket_detail(ticket_id: str, request: Request):
     if (
         user.get("role") != "admin"
         and "feedback_180" not in modules
+        and "feedback" not in modules
         and "feedback_180_admin" not in modules
     ):
         return RedirectResponse(url="/summary", status_code=302)
@@ -217,6 +220,58 @@ async def ticket_detail(ticket_id: str, request: Request):
         request=request,
         name="feedback/issue.html",
         context={"request": request, "user": user, "ticket_id": ticket_id},
+    )
+
+
+@pages_router.get("/feedback/nominate", response_class=HTMLResponse, response_model=None)
+async def evaluator_nomination_page(request: Request):
+    """Evaluator Nomination page - for employees to nominate their evaluators."""
+    user = auth.get_current_user(request)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+
+    modules = user.get("modules") or []
+    if (
+        user.get("role") != "admin"
+        and "feedback_180" not in modules
+        and "feedback" not in modules
+        and "feedback_180_admin" not in modules
+    ):
+        return RedirectResponse(url="/summary", status_code=302)
+
+    templates = _get_templates(request)
+    if not templates:
+        return JSONResponse({"error": "Templates not available"}, status_code=500)
+    return templates.TemplateResponse(
+        request=request,
+        name="feedback/nominate.html",
+        context={"request": request, "user": user},
+    )
+
+
+@pages_router.get("/feedback/nomination-approvals", response_class=HTMLResponse, response_model=None)
+async def nomination_approvals_page(request: Request):
+    """Manager Approval page - for managers to approve/reject evaluator nominations."""
+    user = auth.get_current_user(request)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+
+    modules = user.get("modules") or []
+    if (
+        user.get("role") != "admin"
+        and "feedback_180" not in modules
+        and "feedback" not in modules
+        and "feedback_180_admin" not in modules
+    ):
+        return RedirectResponse(url="/summary", status_code=302)
+
+    templates = _get_templates(request)
+    if not templates:
+        return JSONResponse({"error": "Templates not available"}, status_code=500)
+    return templates.TemplateResponse(
+        request=request,
+        name="feedback/nomination-approvals.html",
+        context={"request": request, "user": user},
     )
 
 

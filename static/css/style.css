@@ -110,7 +110,9 @@ body::after {
     z-index: 1600;
     transform: translateX(-110%);
     transition: transform 0.22s ease, background 0.3s ease, border-color 0.3s ease;
-    overflow: auto;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-color) transparent;
 }
 
 .app-sidebar.open {
@@ -138,17 +140,24 @@ body::after {
 }
 
 .sidebar-section {
-    padding: 14px;
+    padding: 14px 16px;
     border-bottom: 1px solid var(--border-color);
 }
 
+.sidebar-section:last-child {
+    border-bottom: none;
+}
+
 .sidebar-title {
-    font-size: 0.75rem;
-    letter-spacing: 0.08em;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--text-secondary);
-    margin-bottom: 10px;
+    margin-bottom: 12px;
     font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .sidebar-user {
@@ -159,19 +168,97 @@ body::after {
 }
 
 .sidebar-link {
-    display: block;
-    padding: 10px 12px;
-    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    min-height: 42px;
+    padding: 9px 12px;
+    border-radius: 10px;
     text-decoration: none;
     color: var(--text-primary);
     font-weight: 650;
     margin-bottom: 6px;
     border: 1px solid transparent;
+    transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
 }
 
 .sidebar-link:hover {
     background: var(--bg-tertiary);
     border-color: var(--border-color);
+    transform: translateX(2px);
+}
+
+.sidebar-link.active {
+    background: var(--accent-soft);
+    color: var(--on-accent-soft);
+    border-color: var(--accent);
+    font-weight: 700;
+}
+
+.sidebar-link:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--accent) 35%, transparent);
+    outline-offset: 2px;
+}
+
+.sidebar-link.active svg {
+    stroke: var(--on-accent-soft);
+}
+
+.sidebar-feedback-section {
+    background: color-mix(in srgb, var(--accent-soft) 20%, transparent);
+}
+
+.sidebar-feedback-section.active {
+    background: color-mix(in srgb, var(--accent-soft) 42%, var(--bg-primary));
+}
+
+.sidebar-feature-title {
+    margin-bottom: 10px;
+    color: var(--text-primary);
+    font-size: 0.76rem;
+    letter-spacing: 0.08em;
+}
+
+.sidebar-feature-icon {
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+    background: var(--accent-soft);
+    color: var(--on-accent-soft);
+}
+
+.sidebar-feature-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+.sidebar-submenu {
+    display: grid;
+    gap: 3px;
+    padding-left: 10px;
+    border-left: 2px solid color-mix(in srgb, var(--accent) 30%, var(--border-color));
+}
+
+.sidebar-sublink {
+    gap: 9px;
+    min-height: 38px;
+    margin-bottom: 0;
+    padding: 8px 10px;
+    font-size: 0.88rem;
+    font-weight: 600;
+}
+
+.sidebar-sublink svg {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0.78;
 }
 
 .sidebar-link-danger {
@@ -278,53 +365,55 @@ body::after {
 
 header {
     text-align: left;
-    margin-bottom: 26px;
+    margin-bottom: 28px;
 }
 
 header h1 {
-    font-size: 2.1em;
+    font-size: 2em;
     margin-bottom: 8px;
     color: #0f172a;
+    font-weight: 700;
 }
 
 .subtitle {
-    font-size: 1.1em;
+    font-size: 1.05em;
     opacity: 0.85;
     color: #4b5563;
 }
 
 .tabs {
     display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
+    gap: 8px;
+    margin-bottom: 24px;
     background: white;
-    padding: 10px;
-    border-radius: 10px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    padding: 8px;
+    border-radius: 14px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    border: 1px solid #e5e7eb;
 }
 
 .tab-button {
     flex: 1;
-    padding: 12px 24px;
+    padding: 14px 24px;
     border: none;
     background: transparent;
     cursor: pointer;
-    font-size: 1em;
+    font-size: 0.95rem;
     font-weight: 600;
-    color: #666;
-    border-radius: 8px;
-    transition: all 0.3s;
+    color: #6b7280;
+    border-radius: 10px;
+    transition: all 0.2s ease;
 }
 
 .tab-button:hover {
-    background: #f0f0f0;
+    background: #f3f4f6;
+    color: #111827;
 }
 
 .tab-button.active {
-    background: #0f172a;
+    background: #111827;
     color: white;
-    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.35);
-    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.25);
 }
 
 .tab-content {
@@ -349,12 +438,28 @@ header h1 {
     color: #0f172a;
     margin-bottom: 20px;
     font-size: 1.5em;
+    font-weight: 700;
 }
 
 .card:hover {
-    transform: translateY(-6px) scale(1.01);
-    box-shadow: 0 40px 90px rgba(15, 23, 42, 0.16);
+    transform: translateY(-4px) scale(1.005);
+    box-shadow: 0 40px 90px rgba(15, 23, 42, 0.12);
     border-color: #d1d5db;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.card-header h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #111827;
 }
 
 .form-group {
@@ -365,22 +470,24 @@ header h1 {
     display: block;
     margin-bottom: 8px;
     font-weight: 600;
-    color: #555;
+    color: #374151;
+    font-size: 0.9rem;
 }
 
 .form-control {
     width: 100%;
-    padding: 12px;
-    border: 2px solid #e0e0e0;
-    border-radius: 8px;
-    font-size: 1em;
-    transition: border-color 0.3s;
+    padding: 12px 16px;
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+    background: #fff;
 }
 
 .form-control:focus {
     outline: none;
     border-color: #0f766e;
-    box-shadow: 0 0 0 1px rgba(15, 118, 110, 0.6);
+    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.15);
 }
 
 .upload-section {
@@ -441,11 +548,15 @@ header h1 {
 .btn {
     padding: 12px 24px;
     border: none;
-    border-radius: 8px;
-    font-size: 1em;
+    border-radius: 10px;
+    font-size: 0.95rem;
     font-weight: 600;
     cursor: pointer;
-    transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 
 .btn-primary {
@@ -454,9 +565,9 @@ header h1 {
 }
 
 .btn-primary:hover {
-    transform: translateY(-2px) scale(1.02);
-    box-shadow: 0 10px 26px rgba(15, 23, 42, 0.45);
-    filter: brightness(1.03);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.35);
+    filter: brightness(1.05);
 }
 
 .btn-success {
