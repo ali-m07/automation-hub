@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Servexa{% endblock %}</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/style.css?v=20260614-sidebar-fix">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -44,7 +44,7 @@
         <div class="sidebar-section sidebar-feedback-section{% if feedback_is_active %} active{% endif %}">
             <div class="sidebar-title sidebar-feature-title">
                 <span class="sidebar-feature-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                         <path d="M8 9h8M8 13h5"></path>
                     </svg>
@@ -53,19 +53,19 @@
             </div>
             <div class="sidebar-submenu">
             <a href="/feedback/nominate" class="sidebar-link sidebar-sublink{% if request.url.path == '/feedback/nominate' %} active{% endif %}">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path><circle cx="12" cy="12" r="9"></circle></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path><circle cx="12" cy="12" r="9"></circle></svg>
                 Nominate Evaluators
             </a>
             <a href="/feedback" class="sidebar-link sidebar-sublink{% if request.url.path == '/feedback' %} active{% endif %}">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
                 My Evaluations
             </a>
             <a href="/feedback/nomination-approvals" class="sidebar-link sidebar-sublink{% if request.url.path == '/feedback/nomination-approvals' %} active{% endif %}">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M19 8v6M22 11h-6"></path></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M19 8v6M22 11h-6"></path></svg>
                 Team Feedback
             </a>
             <a href="/feedback" class="sidebar-link sidebar-sublink">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"></path></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"></path></svg>
                 Reports
             </a>
             </div>
