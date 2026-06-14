@@ -112,18 +112,21 @@ def search_employees(
                 filters.append("LOWER(ESnappEmail) LIKE ?")
                 params.append(f"%{query.strip().lower()}%")
             if team:
-                filters.append("Team = ?")
-                params.append(team)
+                filters.append("LOWER(Team) LIKE ?")
+                params.append(f"%{team.strip().lower()}%")
             if sub_team:
-                filters.append("SubTeam = ?")
-                params.append(sub_team)
+                filters.append("LOWER(SubTeam) LIKE ?")
+                params.append(f"%{sub_team.strip().lower()}%")
             if vertical:
-                filters.append("Vertical = ?")
-                params.append(vertical)
+                filters.append("LOWER(Vertical) LIKE ?")
+                params.append(f"%{vertical.strip().lower()}%")
 
             if filters:
                 operator = " OR " if match_any else " AND "
                 sql += f" AND ({operator.join(filters)})"
+
+            if active_only:
+                sql += " AND Active = 'Active'"
 
             sql += f" ORDER BY ESnappEmail OFFSET 0 ROWS FETCH NEXT {limit} ROWS ONLY"
 
@@ -134,15 +137,6 @@ def search_employees(
             employees = []
             for row in rows:
                 emp = dict(zip(columns, row))
-                # Filter active in Python to avoid type conversion issues
-                if active_only and emp.get("Active") not in (
-                    1,
-                    "1",
-                    "Active",
-                    "active",
-                    True,
-                ):
-                    continue
                 employees.append(
                     {
                         "username": (
@@ -168,7 +162,7 @@ def search_employees(
                         "line_line_manager_email": emp.get(
                             "Line_Line_Manager_Email", ""
                         ),
-                        "active": bool(emp.get("Active", False)),
+                        "active": str(emp.get("Active", "")).lower() == "active",
                     }
                 )
 
@@ -239,7 +233,7 @@ def get_employee_by_email(email: str) -> Optional[Dict[str, Any]]:
                 "top_manager_email": emp.get("Top_Manager_Email", ""),
                 "line_line_manager": emp.get("Line_Line_Manager", ""),
                 "line_line_manager_email": emp.get("Line_Line_Manager_Email", ""),
-                "active": bool(emp.get("Active", False)),
+                "active": str(emp.get("Active", "")).lower() == "active",
             }
 
     except Exception as e:
@@ -278,7 +272,7 @@ def get_all_teams() -> List[str]:
             cursor.execute("""
                 SELECT DISTINCT Team
                 FROM [Chargoon_View].[dbo].[SRE_Chart]
-                WHERE Active = 1 AND Team IS NOT NULL AND Team != ''
+                WHERE Active = 'Active' AND Team IS NOT NULL AND Team != ''
                 ORDER BY Team
             """)
             return [row[0] for row in cursor.fetchall()]
@@ -295,7 +289,7 @@ def get_all_verticals() -> List[str]:
             cursor.execute("""
                 SELECT DISTINCT Vertical
                 FROM [Chargoon_View].[dbo].[SRE_Chart]
-                WHERE Active = 1 AND Vertical IS NOT NULL AND Vertical != ''
+                WHERE Active = 'Active' AND Vertical IS NOT NULL AND Vertical != ''
                 ORDER BY Vertical
             """)
             return [row[0] for row in cursor.fetchall()]
@@ -312,7 +306,7 @@ def get_all_sub_teams() -> List[str]:
             cursor.execute("""
                 SELECT DISTINCT SubTeam
                 FROM [Chargoon_View].[dbo].[SRE_Chart]
-                WHERE Active = 1 AND SubTeam IS NOT NULL AND SubTeam != ''
+                WHERE Active = 'Active' AND SubTeam IS NOT NULL AND SubTeam != ''
                 ORDER BY SubTeam
             """)
             return [row[0] for row in cursor.fetchall()]

@@ -1168,14 +1168,7 @@ def _get_user_info(username: str) -> Dict[str, Any]:
     """
     # First try to get from Employee Roster using email
     try:
-        emails = (
-            [username]
-            if "@" in username
-            else [
-                f"{username}@snapp.cab",
-                f"{username}@snapp.ir",
-            ]
-        )
+        emails = [username] if "@" in username else [f"{username}@snapp.cab"]
         for email in emails:
             emp = employee_roster.get_employee_by_email(email)
             if not emp:

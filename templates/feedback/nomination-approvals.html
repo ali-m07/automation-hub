@@ -722,9 +722,12 @@
             </div>
             <div class="modal-body" style="padding: 24px;">
                 <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-bottom:16px;">
-                    <select class="filter-select" id="addTeamFilter" onchange="searchUsersToAdd()"><option value="">1. All Teams</option></select>
-                    <select class="filter-select" id="addSubTeamFilter" onchange="searchUsersToAdd()"><option value="">2. All Sub-teams</option></select>
-                    <select class="filter-select" id="addVerticalFilter" onchange="searchUsersToAdd()"><option value="">3. All Verticals</option></select>
+                    <input class="filter-select" id="addTeamFilter" list="addTeamOptions" placeholder="1. Search team" oninput="searchUsersToAdd()" autocomplete="off">
+                    <datalist id="addTeamOptions"></datalist>
+                    <input class="filter-select" id="addSubTeamFilter" list="addSubTeamOptions" placeholder="2. Search sub-team" oninput="searchUsersToAdd()" autocomplete="off">
+                    <datalist id="addSubTeamOptions"></datalist>
+                    <input class="filter-select" id="addVerticalFilter" list="addVerticalOptions" placeholder="3. Search vertical" oninput="searchUsersToAdd()" autocomplete="off">
+                    <datalist id="addVerticalOptions"></datalist>
                     <input type="email" id="addEvaluatorSearch" placeholder="4. Email"
                            style="width:100%; padding:10px 14px; font-size:14px; border:1px solid var(--border); border-radius:8px;"
                            oninput="searchUsersToAdd()">
@@ -752,22 +755,21 @@
             try {
                 const response = await fetch('/api/feedback/evaluator-nomination/users/filters');
                 const data = await response.json();
-                fillSelect('addTeamFilter', data.teams || []);
-                fillSelect('addSubTeamFilter', data.sub_teams || []);
-                fillSelect('addVerticalFilter', data.verticals || []);
+                fillDataList('addTeamOptions', data.teams || []);
+                fillDataList('addSubTeamOptions', data.sub_teams || []);
+                fillDataList('addVerticalOptions', data.verticals || []);
             } catch (error) {
                 console.error('Error loading roster filters:', error);
             }
         }
 
-        function fillSelect(id, values) {
-            const select = document.getElementById(id);
-            values.forEach(value => {
+        function fillDataList(id, values) {
+            const list = document.getElementById(id);
+            list.replaceChildren(...values.map(value => {
                 const option = document.createElement('option');
                 option.value = value;
-                option.textContent = value;
-                select.appendChild(option);
-            });
+                return option;
+            }));
         }
 
         async function loadRequests() {
