@@ -646,9 +646,10 @@
 
         .evaluator-actions {
             display: flex;
-            flex-direction: column;
+            flex-direction: row;
             gap: 8px;
             flex-shrink: 0;
+            align-items: center;
         }
 
         .action-btn {
@@ -718,6 +719,52 @@
         .status-indicator.pending {
             background: var(--warning-light);
             color: #92400e;
+        }
+
+        .review-tabs {
+            display: flex;
+            gap: 6px;
+            padding: 12px 20px;
+            overflow-x: auto;
+            border-bottom: 1px solid var(--border);
+            background: white;
+        }
+
+        .review-tab {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            min-height: 36px;
+            padding: 7px 13px;
+            color: var(--gray-600);
+            font: inherit;
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+            cursor: pointer;
+            background: var(--gray-50);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+        }
+
+        .review-tab.active {
+            color: white;
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .review-tab-count {
+            min-width: 20px;
+            padding: 1px 6px;
+            text-align: center;
+            background: rgb(255 255 255 / 0.22);
+            border-radius: 999px;
+        }
+
+        .review-empty {
+            padding: 36px 20px;
+            color: var(--gray-500);
+            text-align: center;
         }
 
         /* Rejection Reason Input */
@@ -921,6 +968,7 @@
         let allNominations = [];
         let currentNominationId = null;
         let selectedEvaluatorUsername = null;
+        let activeReviewTab = 'pending';
         let searchTimeout = null;
         const focusedNominationId = new URLSearchParams(window.location.search).get('nomination');
 
@@ -1011,7 +1059,10 @@
 
             // Update pending count
             const pendingCount = focusedNominationId
-                ? filtered.reduce((count, nomination) => count + (nomination.evaluators?.length || 0), 0)
+                ? filtered.reduce(
+                    (count, nomination) => count + (nomination.evaluators?.filter(e => (e.status || 'pending') === 'pending').length || 0),
+                    0
+                )
                 : allNominations.filter(n => n.status !== 'closed').length;
             document.getElementById('pendingCount').textContent = `(${pendingCount})`;
 
@@ -1071,8 +1122,17 @@
                     year: 'numeric', month: 'long', day: 'numeric'
                 });
                 const person = nom.nominator_info || {};
+                const evaluators = nom.evaluators || [];
+                const statusCounts = {
+                    pending: evaluators.filter(e => (e.status || 'pending') === 'pending').length,
+                    approved: evaluators.filter(e => e.status === 'approved').length,
+                    rejected: evaluators.filter(e => e.status === 'rejected').length
+                };
+                const visibleEvaluators = evaluators.filter(
+                    evaluator => (evaluator.status || 'pending') === activeReviewTab
+                );
 
-                const allProcessed = nom.evaluators?.every(e => e.status === 'approved' || e.status === 'rejected');
+                const allProcessed = evaluators.length > 0 && evaluators.every(e => e.status === 'approved' || e.status === 'rejected');
 
                 return `
                     <div class="detail-toolbar">
@@ -1094,8 +1154,15 @@
                                 ${nom.status.charAt(0).toUpperCase() + nom.status.slice(1)}
                             </span>
                         </div>
+                        <div class="review-tabs" role="tablist" aria-label="Evaluator review status">
+                            ${renderReviewTab('pending', 'Pending', statusCounts.pending)}
+                            ${renderReviewTab('approved', 'Approved', statusCounts.approved)}
+                            ${renderReviewTab('rejected', 'Rejected', statusCounts.rejected)}
+                        </div>
                         <div class="request-body">
-                            ${nom.evaluators?.map(eval => renderEvaluatorRow(nom.id, eval)).join('') || ''}
+                            ${visibleEvaluators.length
+                                ? visibleEvaluators.map(eval => renderEvaluatorRow(nom.id, eval)).join('')
+                                : `<div class="review-empty">No ${activeReviewTab} evaluators.</div>`}
                         </div>
                         <div class="request-footer">
                             <span></span>
@@ -1107,6 +1174,21 @@
                     </div>
                 `;
             }).join('');
+        }
+
+        function renderReviewTab(status, label, count) {
+            return `
+                <button class="review-tab ${activeReviewTab === status ? 'active' : ''}"
+                        type="button" role="tab" aria-selected="${activeReviewTab === status}"
+                        onclick="setReviewTab('${status}')">
+                    ${label} <span class="review-tab-count">${count}</span>
+                </button>
+            `;
+        }
+
+        function setReviewTab(status) {
+            activeReviewTab = status;
+            renderRequests();
         }
 
         function renderEvaluatorRow(nominationId, eval) {
@@ -1144,18 +1226,27 @@
                                     onclick="removeManagerAddedEvaluator('${nominationId}', '${eval.username}')">
                                 <i class="fas fa-times"></i> Remove
                             </button>
-                        ` : statusClass === 'pending' ? `
+                        ` : statusClass === 'approved' ? `
+                            <span class="status-indicator approved">
+                                <i class="fas fa-check-circle"></i> Approved
+                            </span>
+                            <button class="action-btn reject-btn" onclick="showRejectInput('${nominationId}', '${eval.username}')">
+                                <i class="fas fa-rotate"></i> Change to Reject
+                            </button>
+                        ` : statusClass === 'rejected' ? `
+                            <span class="status-indicator rejected">
+                                <i class="fas fa-times-circle"></i> Rejected
+                            </span>
+                            <button class="action-btn approve-btn" onclick="approveEvaluator('${nominationId}', '${eval.username}')">
+                                <i class="fas fa-rotate"></i> Change to Approve
+                            </button>
+                        ` : `
                             <button class="action-btn approve-btn" onclick="approveEvaluator('${nominationId}', '${eval.username}')">
                                 <i class="fas fa-check"></i> Approve
                             </button>
                             <button class="action-btn reject-btn" onclick="showRejectInput('${nominationId}', '${eval.username}')">
                                 <i class="fas fa-times"></i> Reject
                             </button>
-                        ` : `
-                            <span class="status-indicator ${statusClass}">
-                                <i class="fas fa-${statusClass === 'approved' ? 'check-circle' : 'times-circle'}"></i>
-                                ${statusClass.charAt(0).toUpperCase() + statusClass.slice(1)}
-                            </span>
                         `}
                     </div>
                 </div>

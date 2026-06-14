@@ -1582,6 +1582,9 @@ async def approve_evaluator(nomination_id: str, request: Request):
             eval_item["status"] = "approved"
             eval_item["approved_by"] = username
             eval_item["approved_at"] = _now()
+            eval_item.pop("rejected_by", None)
+            eval_item.pop("rejected_at", None)
+            eval_item.pop("rejection_reason", None)
             break
 
     # Check if all evaluators are processed
@@ -1675,19 +1678,7 @@ async def approve_evaluator(nomination_id: str, request: Request):
                 f"[FEEDBACK] Created ticket {ticket_id} for evaluator {eval_username} - visible to nominator {nomination.get('nominator_username', '')}"
             )
 
-    if all_processed:
-        nomination["status"] = "closed"
-    else:
-        any_approved = any(
-            e.get("status") == "approved" for e in nomination.get("evaluators", [])
-        )
-        any_rejected = any(
-            e.get("status") == "rejected" for e in nomination.get("evaluators", [])
-        )
-        if any_approved and any_rejected:
-            nomination["status"] = "partial"
-        elif any_approved:
-            nomination["status"] = "partial"
+    nomination["status"] = "partial" if all_processed else "pending"
 
     nomination["updated_at"] = _now()
     _save_evaluator_store(store)
@@ -1724,6 +1715,8 @@ async def reject_evaluator(nomination_id: str, request: Request):
             eval_item["rejected_by"] = username
             eval_item["rejected_at"] = _now()
             eval_item["rejection_reason"] = rejection_reason
+            eval_item.pop("approved_by", None)
+            eval_item.pop("approved_at", None)
             break
 
     # Check if all evaluators are processed
@@ -1732,19 +1725,7 @@ async def reject_evaluator(nomination_id: str, request: Request):
         for e in nomination.get("evaluators", [])
     )
 
-    if all_processed:
-        nomination["status"] = "closed"
-    else:
-        any_approved = any(
-            e.get("status") == "approved" for e in nomination.get("evaluators", [])
-        )
-        any_rejected = any(
-            e.get("status") == "rejected" for e in nomination.get("evaluators", [])
-        )
-        if any_approved and any_rejected:
-            nomination["status"] = "partial"
-        elif any_rejected and not any_approved:
-            nomination["status"] = "pending"
+    nomination["status"] = "partial" if all_processed else "pending"
 
     nomination["updated_at"] = _now()
     _save_evaluator_store(store)
