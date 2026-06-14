@@ -209,6 +209,136 @@
             min-width: 160px;
         }
 
+        .manager-inbox {
+            display: grid;
+            gap: 10px;
+        }
+
+        .manager-inbox-row {
+            display: grid;
+            grid-template-columns: minmax(220px, 1.4fr) minmax(260px, 1fr) auto auto;
+            gap: 20px;
+            align-items: center;
+            padding: 16px 18px;
+            color: inherit;
+            text-decoration: none;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+        }
+
+        .manager-inbox-row:hover {
+            border-color: #93c5fd;
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-1px);
+        }
+
+        .manager-person {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .manager-person-copy {
+            min-width: 0;
+        }
+
+        .manager-person-name {
+            color: var(--gray-900);
+            font-size: 15px;
+            font-weight: 700;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .manager-person-email {
+            color: var(--gray-500);
+            font-size: 13px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .manager-org {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .manager-org span {
+            padding: 4px 8px;
+            color: var(--gray-600);
+            font-size: 12px;
+            background: var(--gray-100);
+            border-radius: 999px;
+        }
+
+        .manager-evaluator-count {
+            color: var(--gray-600);
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        .manager-row-action {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .manager-row-action > i {
+            color: var(--gray-400);
+        }
+
+        .detail-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+            color: var(--primary);
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        @media (max-width: 820px) {
+            .manager-inbox-row {
+                grid-template-columns: minmax(0, 1fr) auto;
+                gap: 12px;
+            }
+
+            .manager-org {
+                grid-column: 1 / -1;
+                grid-row: 2;
+            }
+
+            .manager-evaluator-count {
+                grid-column: 1;
+                grid-row: 3;
+            }
+
+            .manager-row-action {
+                grid-column: 2;
+                grid-row: 1 / 4;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .filters {
+                display: grid;
+                grid-template-columns: 1fr;
+            }
+
+            .filter-select,
+            .search-box {
+                width: 100%;
+                min-width: 0;
+            }
+        }
+
         /* Request Card */
         .request-card {
             border: 1px solid var(--border);
@@ -558,7 +688,7 @@
         <div class="filters">
             <div class="search-box">
                 <i class="fas fa-search"></i>
-                <input type="text" id="searchInput" placeholder="Search by name..." oninput="applyFilters()">
+                <input type="text" id="searchInput" placeholder="Search employee name or email..." oninput="applyFilters()">
             </div>
             <select class="filter-select" id="teamFilter" onchange="applyFilters()">
                 <option value="">All Teams</option>
@@ -658,11 +788,10 @@
             const verticals = new Set();
 
             allNominations.forEach(nom => {
-                nom.evaluators?.forEach(eval => {
-                    if (eval.team) teams.add(eval.team);
-                    if (eval.sub_team) subTeams.add(eval.sub_team);
-                    if (eval.vertical) verticals.add(eval.vertical);
-                });
+                const person = nom.nominator_info || {};
+                if (person.team) teams.add(person.team);
+                if (person.sub_team) subTeams.add(person.sub_team);
+                if (person.vertical) verticals.add(person.vertical);
             });
 
             const teamSelect = document.getElementById('teamFilter');
@@ -689,23 +818,15 @@
 
             let filtered = allNominations.filter(nom => {
                 if (focusedNominationId && nom.id !== focusedNominationId) return false;
+                const person = nom.nominator_info || {};
                 const matchesSearch = !search ||
-                    nom.nominator_info?.full_name?.toLowerCase().includes(search) ||
-                    nom.evaluators?.some(e =>
-                        e.full_name?.toLowerCase().includes(search) ||
-                        e.email?.toLowerCase().includes(search) ||
-                        e.team?.toLowerCase().includes(search) ||
-                        e.sub_team?.toLowerCase().includes(search) ||
-                        e.vertical?.toLowerCase().includes(search)
-                    );
+                    person.full_name?.toLowerCase().includes(search) ||
+                    person.email?.toLowerCase().includes(search) ||
+                    nom.nominator_username?.toLowerCase().includes(search);
 
-                const matchesTeam = !teamFilter ||
-                    nom.evaluators?.some(e => e.team === teamFilter);
-
-                const matchesVertical = !verticalFilter ||
-                    nom.evaluators?.some(e => e.vertical === verticalFilter);
-                const matchesSubTeam = !subTeamFilter ||
-                    nom.evaluators?.some(e => e.sub_team === subTeamFilter);
+                const matchesTeam = !teamFilter || person.team === teamFilter;
+                const matchesSubTeam = !subTeamFilter || person.sub_team === subTeamFilter;
+                const matchesVertical = !verticalFilter || person.vertical === verticalFilter;
 
                 return matchesSearch && matchesTeam && matchesSubTeam && matchesVertical;
             });
@@ -725,20 +846,63 @@
                 return;
             }
 
+            if (!focusedNominationId) {
+                container.innerHTML = `
+                    <div class="manager-inbox">
+                        ${filtered.map(nom => {
+                            const person = nom.nominator_info || {};
+                            const name = person.full_name || nom.nominator_username;
+                            const email = person.email || nom.nominator_username;
+                            const evaluatorCount = nom.evaluators?.length || 0;
+                            const orgTags = [person.team, person.sub_team, person.vertical]
+                                .filter(Boolean)
+                                .map(value => `<span>${value}</span>`)
+                                .join('');
+
+                            return `
+                                <a class="manager-inbox-row" href="/feedback/nomination-approvals?nomination=${encodeURIComponent(nom.id)}">
+                                    <div class="manager-person">
+                                        <div class="evaluator-avatar">${getInitials(name)}</div>
+                                        <div class="manager-person-copy">
+                                            <div class="manager-person-name">${name}</div>
+                                            <div class="manager-person-email">${email}</div>
+                                        </div>
+                                    </div>
+                                    <div class="manager-org">${orgTags || '<span>Organization not set</span>'}</div>
+                                    <div class="manager-evaluator-count">
+                                        ${evaluatorCount} evaluator${evaluatorCount === 1 ? '' : 's'}
+                                    </div>
+                                    <div class="manager-row-action">
+                                        <span class="request-status status-${nom.status}">
+                                            ${nom.status.charAt(0).toUpperCase() + nom.status.slice(1)}
+                                        </span>
+                                        <i class="fas fa-chevron-right" aria-hidden="true"></i>
+                                    </div>
+                                </a>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+                return;
+            }
+
             container.innerHTML = filtered.map(nom => {
                 const submittedDate = new Date(nom.submitted_at).toLocaleDateString('en-US', {
                     year: 'numeric', month: 'long', day: 'numeric'
                 });
+                const person = nom.nominator_info || {};
 
                 const allProcessed = nom.evaluators?.every(e => e.status === 'approved' || e.status === 'rejected');
-                const hasApproved = nom.evaluators?.some(e => e.status === 'approved');
 
                 return `
+                    <a class="detail-back" href="/feedback/nomination-approvals">
+                        <i class="fas fa-arrow-left"></i> Back to team requests
+                    </a>
                     <div class="request-card">
                         <div class="request-header">
                             <div class="request-info">
-                                <h3>Evaluator Nomination Request</h3>
-                                <p>Submitted by <a href="/feedback/nomination-approvals?nomination=${encodeURIComponent(nom.id)}" style="font-weight:700; color:var(--primary); text-decoration:none;">${nom.nominator_info?.full_name || nom.nominator_username}</a> on ${submittedDate}</p>
+                                <h3>${person.full_name || nom.nominator_username}</h3>
+                                <p>${person.email || nom.nominator_username} · Submitted on ${submittedDate}</p>
                             </div>
                             <span class="request-status status-${nom.status}">
                                 <i class="fas fa-${nom.status === 'closed' ? 'check' : nom.status === 'pending' ? 'clock' : 'exclamation-circle'}"></i>
