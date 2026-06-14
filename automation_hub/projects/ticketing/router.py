@@ -1349,6 +1349,7 @@ async def search_evaluator_users(
         team=team.strip(),
         sub_team=sub_team.strip(),
         vertical=vertical.strip(),
+        match_any=True,
     )
     return JSONResponse({"success": True, "users": users})
 

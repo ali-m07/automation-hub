@@ -64,13 +64,15 @@ def search_employees(
     team: str = "",
     sub_team: str = "",
     vertical: str = "",
+    match_any: bool = False,
 ) -> List[Dict[str, Any]]:
-    """Search employees from the Chargoon roster by EMAIL ONLY.
+    """Search employees from the Chargoon roster.
 
     Args:
         query: Search query (searches only email)
         limit: Maximum number of results
         active_only: Only return active employees
+        match_any: Combine supplied filters with OR instead of AND
 
     Returns:
         List of employee dictionaries
@@ -105,19 +107,23 @@ def search_employees(
 
             params = []
 
+            filters = []
             if query and len(query.strip()) >= 1:
-                sql += " AND ESnappEmail LIKE ?"
-                pattern = f"%{query.strip().lower()}%"
-                params.append(pattern)
+                filters.append("LOWER(ESnappEmail) LIKE ?")
+                params.append(f"%{query.strip().lower()}%")
             if team:
-                sql += " AND Team = ?"
+                filters.append("Team = ?")
                 params.append(team)
             if sub_team:
-                sql += " AND SubTeam = ?"
+                filters.append("SubTeam = ?")
                 params.append(sub_team)
             if vertical:
-                sql += " AND Vertical = ?"
+                filters.append("Vertical = ?")
                 params.append(vertical)
+
+            if filters:
+                operator = " OR " if match_any else " AND "
+                sql += f" AND ({operator.join(filters)})"
 
             sql += f" ORDER BY ESnappEmail OFFSET 0 ROWS FETCH NEXT {limit} ROWS ONLY"
 
