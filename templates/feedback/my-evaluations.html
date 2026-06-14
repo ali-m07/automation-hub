@@ -1,0 +1,102 @@
+{% extends "base/layout.html" %}
+
+{% block title %}My Evaluations - Servexa{% endblock %}
+{% block subtitle %}Your evaluator nomination history{% endblock %}
+
+{% block extra_css %}
+<style>
+    .evaluation-list { display: grid; gap: 16px; }
+    .evaluation-card { background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 16px; overflow: hidden; }
+    .evaluation-head { display: flex; justify-content: space-between; gap: 16px; padding: 18px 20px; background: var(--bg-secondary); border-bottom: 1px solid var(--border-color); }
+    .evaluation-meta { color: var(--text-secondary); font-size: 0.85rem; margin-top: 4px; }
+    .evaluation-status { align-self: flex-start; padding: 5px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--on-accent-soft); font-size: 0.75rem; font-weight: 800; text-transform: capitalize; }
+    .evaluation-table { width: 100%; border-collapse: collapse; }
+    .evaluation-table th, .evaluation-table td { padding: 12px 20px; text-align: left; border-bottom: 1px solid var(--border-color); vertical-align: top; }
+    .evaluation-table th { color: var(--text-secondary); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; }
+    .evaluation-table tr:last-child td { border-bottom: 0; }
+    .reason-text { white-space: pre-wrap; line-height: 1.5; }
+    .history-empty { padding: 48px 24px; text-align: center; color: var(--text-secondary); }
+    @media (max-width: 700px) {
+        .evaluation-head { flex-direction: column; }
+        .evaluation-table thead { display: none; }
+        .evaluation-table, .evaluation-table tbody, .evaluation-table tr, .evaluation-table td { display: block; width: 100%; }
+        .evaluation-table tr { padding: 12px 16px; border-bottom: 1px solid var(--border-color); }
+        .evaluation-table td { border: 0; padding: 4px 0; }
+        .evaluation-table td::before { content: attr(data-label); display: block; color: var(--text-secondary); font-size: 0.68rem; font-weight: 700; text-transform: uppercase; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<header>
+    <div class="eyebrow">Feedback</div>
+    <h1>My Evaluations</h1>
+    <p class="subtitle">Review every evaluator nomination, reason, status, and submission date.</p>
+</header>
+
+<div id="evaluationHistory" class="evaluation-list">
+    <div class="history-empty">Loading your evaluation history...</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const historyRoot = document.getElementById('evaluationHistory');
+
+    function escapeHistory(value) {
+        const node = document.createElement('div');
+        node.textContent = value == null ? '' : String(value);
+        return node.innerHTML;
+    }
+
+    function formatHistoryDate(value) {
+        if (!value) return 'Not submitted';
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+    }
+
+    async function loadEvaluationHistory() {
+        try {
+            const response = await fetch('/api/feedback/evaluator-nomination/history');
+            const data = await response.json();
+            const nominations = data.nominations || [];
+            if (!nominations.length) {
+                historyRoot.innerHTML = '<div class="evaluation-card history-empty">No evaluation nominations submitted yet.</div>';
+                return;
+            }
+            historyRoot.innerHTML = nominations.map(nomination => `
+                <article class="evaluation-card">
+                    <div class="evaluation-head">
+                        <div>
+                            <strong>${escapeHistory(nomination.id)}</strong>
+                            <div class="evaluation-meta">
+                                Submitted ${escapeHistory(formatHistoryDate(nomination.submitted_at))}
+                                · Manager: ${escapeHistory(nomination.manager_info?.full_name || nomination.manager_username || '-')}
+                            </div>
+                        </div>
+                        <span class="evaluation-status">${escapeHistory(nomination.status || 'pending')}</span>
+                    </div>
+                    <table class="evaluation-table">
+                        <thead><tr><th>Evaluator</th><th>Email</th><th>Team</th><th>Reason</th><th>Status</th></tr></thead>
+                        <tbody>
+                            ${(nomination.evaluators || []).map(evaluator => `
+                                <tr>
+                                    <td data-label="Evaluator">${escapeHistory(evaluator.full_name || evaluator.username || '-')}</td>
+                                    <td data-label="Email">${escapeHistory(evaluator.email || '-')}</td>
+                                    <td data-label="Team">${escapeHistory(evaluator.team || '-')}</td>
+                                    <td data-label="Reason" class="reason-text">${escapeHistory(evaluator.reason || '-')}</td>
+                                    <td data-label="Status">${escapeHistory(evaluator.status || 'pending')}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </article>
+            `).join('');
+        } catch (error) {
+            historyRoot.innerHTML = '<div class="evaluation-card history-empty">Could not load evaluation history.</div>';
+        }
+    }
+
+    loadEvaluationHistory();
+</script>
+{% endblock %}

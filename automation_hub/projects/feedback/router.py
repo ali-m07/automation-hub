@@ -26,6 +26,11 @@ router.add_api_route(
     methods=["GET"],
 )
 router.add_api_route(
+    "/evaluator-nomination/history",
+    legacy.get_my_nomination_history,
+    methods=["GET"],
+)
+router.add_api_route(
     "/evaluator-nomination/manager/requests",
     legacy.get_manager_requests,
     methods=["GET"],

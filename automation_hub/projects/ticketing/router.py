@@ -1364,6 +1364,33 @@ async def get_my_nomination(request: Request):
     return JSONResponse({"success": True, "nomination": nomination})
 
 
+@feedback_handlers.get("/evaluator-nomination/history")
+async def get_my_nomination_history(request: Request):
+    """Return every evaluator nomination submitted by the current user."""
+    user = _require_feedback_access(request)
+    username = user.get("username", "")
+    store = _load_evaluator_store()
+    nominations = [
+        nomination
+        for nomination in store.get("nominations", [])
+        if nomination.get("nominator_username") == username
+    ]
+    nominations.sort(
+        key=lambda item: item.get("submitted_at") or item.get("created_at") or "",
+        reverse=True,
+    )
+    for nomination in nominations:
+        nomination["manager_info"] = _get_user_info(
+            nomination.get("manager_username", "")
+        )
+        for evaluator in nomination.get("evaluators", []):
+            evaluator_info = _get_user_info(
+                evaluator.get("username") or evaluator.get("email", "")
+            )
+            evaluator.update(evaluator_info)
+    return JSONResponse({"success": True, "nominations": nominations})
+
+
 @feedback_handlers.get("/evaluator-nomination/manager/requests")
 async def get_manager_requests(request: Request):
     """Get nomination requests for manager approval."""
@@ -1490,6 +1517,91 @@ async def approve_evaluator(nomination_id: str, request: Request):
         e.get("status") in ["approved", "rejected"]
         for e in nomination.get("evaluators", [])
     )
+
+    # Create a ticket for the approved evaluator
+    evaluator_info = next(
+        (
+            e
+            for e in nomination.get("evaluators", [])
+            if e.get("email") == evaluator_username
+            or e.get("username") == evaluator_username
+        ),
+        None,
+    )
+    created_ticket = None
+    if evaluator_info and evaluator_info.get("status") == "approved":
+        # Find a feedback project to create the ticket in
+        store = _load_store()
+        feedback_projects = [
+            p
+            for p in store.get("projects", [])
+            if p.get("key") and p.get("key").upper().startswith("FB")
+        ]
+        if feedback_projects:
+            project = feedback_projects[0]
+            project_id = project.get("id") or project.get("key")
+
+            # Get evaluator username from email
+            eval_email = evaluator_info.get("email", "")
+            eval_username = (
+                eval_email.split("@")[0] if "@" in eval_email else evaluator_username
+            )
+
+            # Create ticket for this evaluator
+            # created_by = evaluator (so they can see it)
+            # assigned_to = evaluator (so they can see it in their tickets)
+            # manager_username = nominator (so the person who nominated can see it)
+            tickets = project.setdefault("tickets", [])
+            max_num = 100
+            for t in tickets:
+                tid = t.get("id", "")
+                if "-" in tid:
+                    try:
+                        num = int(tid.split("-")[-1])
+                        if num > max_num:
+                            max_num = num
+                    except ValueError:
+                        pass
+            next_num = max_num + 1
+            project_key = _slug(
+                project.get("key") or project.get("title") or "PROJ", "PROJ"
+            ).upper()[:10]
+            ticket_id = f"{project_key}-{next_num}"
+
+            # Get evaluator's full name for the title
+            eval_full_name = evaluator_info.get("full_name", "")
+            eval_reason = evaluator_info.get("reason", "")
+
+            ticket = {
+                "id": ticket_id,
+                "title": f"180 Feedback Evaluation: {eval_full_name or eval_username}",
+                "description": f"Evaluation request for: {eval_full_name or eval_username}\nEmail: {eval_email}\n\nReason for nomination: {eval_reason or 'Not specified'}",
+                "description_html": f"<p><strong>Evaluation request for:</strong> {eval_full_name or eval_username}</p><p><strong>Email:</strong> {eval_email}</p><p><strong>Reason for nomination:</strong> {eval_reason or 'Not specified'}</p>",
+                "created_by": eval_username,
+                "assigned_to": eval_username,
+                "manager_username": nomination.get("nominator_username", ""),
+                "status": "open",
+                "field_values": {},
+                "comments": [],
+                "history": [
+                    {
+                        "at": _now(),
+                        "by": username,
+                        "action": f"Created from evaluator nomination approved by manager",
+                    }
+                ],
+                "created_at": _now(),
+                "updated_at": _now(),
+                "evaluator_email": eval_email,
+                "evaluator_reason": eval_reason,
+            }
+            project.setdefault("tickets", []).append(ticket)
+            project["updated_at"] = _now()
+            _save_store(store)
+            created_ticket = ticket
+            print(
+                f"[FEEDBACK] Created ticket {ticket_id} for evaluator {eval_username} - visible to nominator {nomination.get('nominator_username', '')}"
+            )
 
     if all_processed:
         nomination["status"] = "closed"

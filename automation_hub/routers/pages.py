@@ -273,6 +273,24 @@ async def evaluator_nomination_page(request: Request):
 
 
 @pages_router.get(
+    "/feedback/my-evaluations", response_class=HTMLResponse, response_model=None
+)
+async def my_evaluations_page(request: Request):
+    """History and details of evaluator nominations submitted by the user."""
+    user = auth.get_current_user(request)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    modules = user.get("modules") or []
+    if (
+        user.get("role") != "admin"
+        and "feedback_180" not in modules
+        and "feedback" not in modules
+    ):
+        return RedirectResponse(url="/summary", status_code=302)
+    return _render_page(request, "feedback/my-evaluations.html", user=user)
+
+
+@pages_router.get(
     "/feedback/nomination-approvals", response_class=HTMLResponse, response_model=None
 )
 async def nomination_approvals_page(request: Request):
