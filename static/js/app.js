@@ -4008,6 +4008,8 @@ function openSidebar() {
     if (!sidebar || !overlay) return;
     sidebar.classList.add('open');
     overlay.style.display = 'block';
+    const trigger = document.getElementById('nav-hamburger');
+    if (trigger) trigger.setAttribute('aria-expanded', 'true');
 }
 
 function closeSidebar() {
@@ -4016,6 +4018,8 @@ function closeSidebar() {
     if (!sidebar || !overlay) return;
     sidebar.classList.remove('open');
     overlay.style.display = 'none';
+    const trigger = document.getElementById('nav-hamburger');
+    if (trigger) trigger.setAttribute('aria-expanded', 'false');
 }
 
 function toggleSidebar() {

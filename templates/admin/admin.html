@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Console | Automation Hub</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/style.css?v=20260614-navigation">
     <script src="/static/js/app.js"></script>
     <style>
         /* Kanban board styles */
@@ -288,7 +288,7 @@
         }
     </style>
 </head>
-<body>
+<body class="sidebar-shell admin-shell">
     <!-- Left sidebar + overlay -->
     <div id="sidebar-overlay" class="sidebar-overlay" onclick="closeSidebar()" style="display:none;"></div>
     <aside id="app-sidebar" class="app-sidebar" aria-label="Admin menu">
@@ -303,12 +303,25 @@
             <button class="sidebar-close-btn" type="button" onclick="closeSidebar()" aria-label="Close menu">×</button>
         </div>
 
-        <div class="sidebar-section">
-            <div class="sidebar-title">Admin</div>
-            {% for key, label in [('overview','Overview'),('users','Users'),('ldap','LDAP Integration'),('notifications','Notifications'),('upload-limits','Upload Limits'),('data-tables','Data Tables Review'),('db-connectors','DB Connectors'),('tickets','Tickets'),('audit','Audit log'),('webhooks','Webhooks'),('smtp','SMTP / Email'),('diagnostics','Diagnostics')] %}
-            <a href="/admin{% if key != 'overview' %}/{{ key }}{% endif %}" class="sidebar-link{% if active_tab == key %} active{% endif %}">{{ label }}</a>
+        <nav class="sidebar-navigation" aria-label="Admin sections">
+            {% for title, items in [
+                ('Workspace', [('overview','Overview'),('users','Users'),('ldap','LDAP Integration')]),
+                ('Operations', [('tickets','Tickets'),('notifications','Notifications'),('data-tables','Data Tables'),('db-connectors','DB Connectors')]),
+                ('System', [('upload-limits','Upload Limits'),('webhooks','Webhooks'),('smtp','SMTP / Email'),('audit','Audit Log'),('diagnostics','Diagnostics')])
+            ] %}
+            <div class="sidebar-section">
+                <div class="sidebar-title">{{ title }}</div>
+                {% for key, label in items %}
+                <a href="/admin{% if key != 'overview' %}/{{ key }}{% endif %}"
+                   class="sidebar-link{% if active_tab == key %} active{% endif %}"
+                   {% if active_tab == key %}aria-current="page"{% endif %}>
+                    <span class="sidebar-link-indicator" aria-hidden="true"></span>
+                    <span>{{ label }}</span>
+                </a>
+                {% endfor %}
+            </div>
             {% endfor %}
-        </div>
+        </nav>
 
         <div class="sidebar-section">
             <div class="sidebar-title">Navigation</div>
@@ -320,7 +333,7 @@
     <div class="app-main" id="app-main">
     <nav class="top-nav">
         <div class="top-nav-left">
-            <button type="button" class="nav-hamburger" id="nav-hamburger" aria-label="Menu" onclick="toggleSidebar()">
+            <button type="button" class="nav-hamburger" id="nav-hamburger" aria-label="Open navigation" aria-controls="app-sidebar" aria-expanded="false" onclick="toggleSidebar()">
                 <span></span><span></span><span></span>
             </button>
             <div class="top-nav-logo"></div>
