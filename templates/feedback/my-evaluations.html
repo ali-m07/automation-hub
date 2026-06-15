@@ -36,6 +36,9 @@
     <h1>My Evaluations</h1>
     <p class="subtitle">Review every evaluator nomination, reason, status, and submission date.</p>
 </header>
+{% if nomination_window.is_closed %}
+<div class="status-box info" style="margin-bottom:18px;">The nomination deadline has passed. Your evaluator lists are now read-only.</div>
+{% endif %}
 
 <div class="evaluation-list">
     {% for nomination in nominations %}

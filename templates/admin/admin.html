@@ -695,9 +695,14 @@
                 <p class="subtitle" style="margin-bottom:18px;">Set the final date and time users may create or edit evaluator nominations. Leave it empty to keep nominations open.</p>
                 <div id="feedback-deadline-status" class="status-box" style="display:none; margin-bottom:14px;"></div>
                 <div class="form-group" style="max-width:420px;">
-                    <label class="form-label" for="feedback-deadline-input">Deadline</label>
+                    <label class="form-label" for="feedback-deadline-input">Employee nomination deadline</label>
                     <input id="feedback-deadline-input" type="datetime-local" class="form-control">
-                    <small style="display:block; margin-top:7px; color:var(--text-secondary);">Saved in UTC. After this time the server rejects new submissions and edits.</small>
+                    <small style="display:block; margin-top:7px; color:var(--text-secondary);">After this time Nominate Evaluators is hidden and users can only view their history.</small>
+                </div>
+                <div class="form-group" style="max-width:420px;">
+                    <label class="form-label" for="feedback-manager-deadline-input">Manager review deadline</label>
+                    <input id="feedback-manager-deadline-input" type="datetime-local" class="form-control">
+                    <small style="display:block; margin-top:7px; color:var(--text-secondary);">After this time managers cannot approve, reject, add, remove, or close nominations.</small>
                 </div>
                 <div style="display:flex; gap:10px; flex-wrap:wrap;">
                     <button class="btn btn-primary" type="button" onclick="saveFeedbackDeadline()">Save deadline</button>
@@ -1688,12 +1693,18 @@
                 const data = await res.json();
                 if (!res.ok || !data.success) throw new Error(data.detail || 'Failed to load deadline');
                 const input = document.getElementById('feedback-deadline-input');
-                input.value = data.deadline ? new Date(data.deadline).toISOString().slice(0, 16) : '';
+                input.value = data.user?.deadline ? new Date(data.user.deadline).toISOString().slice(0, 16) : '';
+                document.getElementById('feedback-manager-deadline-input').value =
+                    data.manager?.deadline ? new Date(data.manager.deadline).toISOString().slice(0, 16) : '';
                 status.style.display = 'block';
-                status.className = `status-box ${data.is_closed ? 'error' : 'success'}`;
-                status.textContent = data.deadline
-                    ? `${data.is_closed ? 'Closed' : 'Open'} until ${new Date(data.deadline).toLocaleString()}`
-                    : 'Nominations are open with no deadline.';
+                status.className = 'status-box success';
+                const userText = data.user?.deadline
+                    ? `Employees: ${data.user.is_closed ? 'closed' : 'open'} until ${new Date(data.user.deadline).toLocaleString()}`
+                    : 'Employees: no deadline';
+                const managerText = data.manager?.deadline
+                    ? `Managers: ${data.manager.is_closed ? 'closed' : 'open'} until ${new Date(data.manager.deadline).toLocaleString()}`
+                    : 'Managers: no deadline';
+                status.textContent = `${userText} | ${managerText}`;
             } catch (error) {
                 status.style.display = 'block';
                 status.className = 'status-box error';
@@ -1703,13 +1714,17 @@
 
         async function saveFeedbackDeadline(deadline = null) {
             const input = document.getElementById('feedback-deadline-input');
+            const managerInput = document.getElementById('feedback-manager-deadline-input');
             const value = deadline === null ? input.value : deadline;
-            const isoValue = value ? new Date(value).toISOString() : '';
+            const managerValue = deadline === '' ? '' : managerInput.value;
             const res = await fetch('/api/feedback/evaluator-nomination/settings', {
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ deadline: isoValue }),
+                body: JSON.stringify({
+                    user_deadline: value ? new Date(value).toISOString() : '',
+                    manager_deadline: managerValue ? new Date(managerValue).toISOString() : '',
+                }),
             });
             const data = await res.json();
             if (!res.ok || !data.success) {
@@ -1722,6 +1737,7 @@
 
         function clearFeedbackDeadline() {
             document.getElementById('feedback-deadline-input').value = '';
+            document.getElementById('feedback-manager-deadline-input').value = '';
             saveFeedbackDeadline('');
         }
 

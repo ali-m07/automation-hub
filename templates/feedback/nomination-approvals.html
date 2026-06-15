@@ -970,6 +970,7 @@
         let selectedEvaluatorUsername = null;
         let activeReviewTab = 'pending';
         let searchTimeout = null;
+        let managerReviewClosed = false;
         const focusedNominationId = new URLSearchParams(window.location.search).get('nomination');
 
         document.addEventListener('DOMContentLoaded', loadRequests);
@@ -996,11 +997,21 @@
             }));
         }
 
+        function managerReviewIsLocked() {
+            if (!managerReviewClosed) return false;
+            showToast('The manager review deadline has passed. This list is read-only.', 'error');
+            return true;
+        }
+
         async function loadRequests() {
             try {
                 const response = await fetch('/api/feedback/evaluator-nomination/manager/requests');
                 const data = await response.json();
                 allNominations = data.nominations || [];
+                managerReviewClosed = Boolean(data.manager_review_window?.is_closed);
+                if (managerReviewClosed) {
+                    showToast(`Manager review deadline passed on ${new Date(data.manager_review_window.deadline).toLocaleString()}. Lists are read-only.`, 'error');
+                }
                 renderRequests();
                 loadFilterOptions();
             } catch (error) {
@@ -1271,6 +1282,7 @@
         }
 
         async function approveEvaluator(nominationId, evaluatorUsername) {
+            if (managerReviewIsLocked()) return;
             try {
                 const response = await fetch(`/api/feedback/evaluator-nomination/${nominationId}/approve-evaluator`, {
                     method: 'POST',
@@ -1291,6 +1303,7 @@
         }
 
         async function removeManagerAddedEvaluator(nominationId, evaluatorUsername) {
+            if (managerReviewIsLocked()) return;
             try {
                 const response = await fetch(
                     `/api/feedback/evaluator-nomination/${nominationId}/remove-manager-added-evaluator`,
@@ -1321,6 +1334,7 @@
         }
 
         async function confirmReject(nominationId, evaluatorUsername, evaluatorDomId) {
+            if (managerReviewIsLocked()) return;
             const reason = document.getElementById(`rejection-input-${nominationId}-${evaluatorDomId}`).querySelector('textarea').value;
 
             try {
@@ -1347,6 +1361,7 @@
 
         // Add Evaluator Modal
         function openAddEvaluatorModal(nominationId) {
+            if (managerReviewIsLocked()) return;
             currentNominationId = nominationId;
             document.getElementById('userPickerModal').style.display = 'flex';
             requestAnimationFrame(() => document.getElementById('userPickerModal').classList.add('active'));
@@ -1483,6 +1498,7 @@
         }
 
         async function closeNomination(nominationId) {
+            if (managerReviewIsLocked()) return;
             try {
                 const response = await fetch(`/api/feedback/evaluator-nomination/${nominationId}/close`, {
                     method: 'POST',

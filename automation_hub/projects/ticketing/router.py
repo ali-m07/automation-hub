@@ -85,20 +85,22 @@ def _identity_key(value: Any) -> str:
     return normalized.split("@", 1)[0]
 
 
-def _get_feedback_nomination_deadline() -> Optional[str]:
+def _get_feedback_deadline(setting_key: str) -> Optional[str]:
     conn = db.db_connect(db.get_db_file())
     try:
         row = conn.execute(
             "SELECT value FROM app_settings WHERE key = ?",
-            ("feedback_nomination_deadline",),
+            (setting_key,),
         ).fetchone()
         return str(row["value"]).strip() if row and row["value"] else None
     finally:
         conn.close()
 
 
-def _deadline_state() -> Dict[str, Any]:
-    value = _get_feedback_nomination_deadline()
+def _deadline_state(
+    setting_key: str = "feedback_nomination_deadline",
+) -> Dict[str, Any]:
+    value = _get_feedback_deadline(setting_key)
     if not value:
         return {"deadline": None, "is_closed": False}
     try:
@@ -137,6 +139,19 @@ def _require_nomination_window_open() -> None:
         raise HTTPException(
             status_code=403,
             detail=f"Evaluator nominations closed on {state['deadline']}. Contact an administrator.",
+        )
+
+
+def _manager_deadline_state() -> Dict[str, Any]:
+    return _deadline_state("feedback_manager_deadline")
+
+
+def _require_manager_window_open() -> None:
+    state = _manager_deadline_state()
+    if state["is_closed"]:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Manager review closed on {state['deadline']}. Contact an administrator.",
         )
 
 
@@ -1397,6 +1412,7 @@ async def evaluator_nomination_meta(request: Request):
                 "can_approve": True,
             },
             "nomination_window": _deadline_state(),
+            "manager_review_window": _manager_deadline_state(),
             "previous_evaluator_keys": sorted(
                 _previous_evaluator_keys(user.get("username", ""))
             ),
@@ -1504,7 +1520,13 @@ async def get_my_nomination_history(request: Request):
             for key, value in evaluator_info.items():
                 if value not in (None, "", []):
                     evaluator[key] = value
-    return JSONResponse({"success": True, "nominations": nominations})
+    return JSONResponse(
+        {
+            "success": True,
+            "nominations": nominations,
+            "manager_review_window": _manager_deadline_state(),
+        }
+    )
 
 
 @feedback_handlers.get("/evaluator-nomination/manager/requests")
@@ -1537,7 +1559,13 @@ async def get_manager_requests(request: Request):
                 if value not in (None, "", []):
                     eval_item[key] = value
 
-    return JSONResponse({"success": True, "nominations": nominations})
+    return JSONResponse(
+        {
+            "success": True,
+            "nominations": nominations,
+            "manager_review_window": _manager_deadline_state(),
+        }
+    )
 
 
 @feedback_handlers.post("/evaluator-nomination/submit")
@@ -1657,6 +1685,7 @@ async def submit_evaluator_nomination(request: Request):
 async def approve_evaluator(nomination_id: str, request: Request):
     """Approve a specific evaluator in a nomination."""
     user = _require_feedback_access(request)
+    _require_manager_window_open()
     username = user.get("username", "")
     payload = await request.json()
     evaluator_username = payload.get("evaluator_username", "")
@@ -1796,6 +1825,7 @@ async def approve_evaluator(nomination_id: str, request: Request):
 async def reject_evaluator(nomination_id: str, request: Request):
     """Reject a specific evaluator in a nomination."""
     user = _require_feedback_access(request)
+    _require_manager_window_open()
     username = user.get("username", "")
     payload = await request.json()
     evaluator_username = payload.get("evaluator_username", "")
@@ -1851,6 +1881,7 @@ async def reject_evaluator(nomination_id: str, request: Request):
 async def add_evaluator_as_manager(nomination_id: str, request: Request):
     """Manager adds a new evaluator to the nomination."""
     user = _require_feedback_access(request)
+    _require_manager_window_open()
     username = user.get("username", "")
     payload = await request.json()
 
@@ -1922,6 +1953,7 @@ async def add_evaluator_as_manager(nomination_id: str, request: Request):
 async def remove_manager_added_evaluator(nomination_id: str, request: Request):
     """Remove an evaluator that was added directly by the assigned manager."""
     user = _require_feedback_access(request)
+    _require_manager_window_open()
     username = user.get("username", "")
     payload = await request.json()
     evaluator_username = payload.get("evaluator_username", "")
@@ -1973,6 +2005,7 @@ async def remove_manager_added_evaluator(nomination_id: str, request: Request):
 async def close_nomination(nomination_id: str, request: Request):
     """Close the nomination (manager action)."""
     user = _require_feedback_access(request)
+    _require_manager_window_open()
     username = user.get("username", "")
 
     store = _load_evaluator_store()

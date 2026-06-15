@@ -18,33 +18,52 @@ router = APIRouter(prefix="/api/feedback", tags=["feedback"])
 @router.get("/evaluator-nomination/settings")
 async def evaluator_nomination_settings(request: Request):
     auth.require_admin(request, auth.get_current_user)
-    return JSONResponse({"success": True, **legacy._deadline_state()})
+    return JSONResponse(
+        {
+            "success": True,
+            "user": legacy._deadline_state(),
+            "manager": legacy._manager_deadline_state(),
+        }
+    )
 
 
 @router.post("/evaluator-nomination/settings")
 async def save_evaluator_nomination_settings(request: Request):
     auth.require_admin(request, auth.get_current_user)
     payload = await request.json()
-    raw_deadline = str(payload.get("deadline") or "").strip()
-    normalized = ""
-    if raw_deadline:
-        try:
-            parsed = datetime.fromisoformat(raw_deadline.replace("Z", "+00:00"))
-            if parsed.tzinfo is None:
-                parsed = parsed.replace(tzinfo=timezone.utc)
-            normalized = parsed.astimezone(timezone.utc).isoformat()
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail="Invalid deadline") from exc
+    deadlines = {}
+    for field, setting_key in (
+        ("user_deadline", "feedback_nomination_deadline"),
+        ("manager_deadline", "feedback_manager_deadline"),
+    ):
+        raw_deadline = str(payload.get(field) or "").strip()
+        normalized = ""
+        if raw_deadline:
+            try:
+                parsed = datetime.fromisoformat(raw_deadline.replace("Z", "+00:00"))
+                if parsed.tzinfo is None:
+                    parsed = parsed.replace(tzinfo=timezone.utc)
+                normalized = parsed.astimezone(timezone.utc).isoformat()
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail="Invalid deadline") from exc
+        deadlines[setting_key] = normalized
     conn = db.db_connect(db.get_db_file())
     try:
-        conn.execute(
-            "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
-            ("feedback_nomination_deadline", normalized),
-        )
+        for setting_key, value in deadlines.items():
+            conn.execute(
+                "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+                (setting_key, value),
+            )
         conn.commit()
     finally:
         conn.close()
-    return JSONResponse({"success": True, **legacy._deadline_state()})
+    return JSONResponse(
+        {
+            "success": True,
+            "user": legacy._deadline_state(),
+            "manager": legacy._manager_deadline_state(),
+        }
+    )
 
 router.add_api_route(
     "/evaluator-nomination/meta",

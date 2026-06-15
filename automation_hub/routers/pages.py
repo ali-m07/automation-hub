@@ -44,10 +44,16 @@ def _render_page(
             return redirect
         user = auth.get_current_user(request)
 
+    from automation_hub.projects.ticketing.router import _deadline_state
+
     return templates.TemplateResponse(
         request=request,
         name=template_path,
-        context={"request": request, "user": user},
+        context={
+            "request": request,
+            "user": user,
+            "feedback_nomination_closed": _deadline_state()["is_closed"],
+        },
     )
 
 
@@ -265,6 +271,10 @@ async def evaluator_nomination_page(request: Request):
         and "feedback_180_admin" not in modules
     ):
         return RedirectResponse(url="/summary", status_code=302)
+    from automation_hub.projects.ticketing.router import _deadline_state
+
+    if _deadline_state()["is_closed"]:
+        return RedirectResponse(url="/feedback/my-evaluations", status_code=302)
 
     templates = _get_templates(request)
     if not templates:
@@ -272,7 +282,11 @@ async def evaluator_nomination_page(request: Request):
     return templates.TemplateResponse(
         request=request,
         name="feedback/nominate.html",
-        context={"request": request, "user": user},
+        context={
+            "request": request,
+            "user": user,
+            "feedback_nomination_closed": _deadline_state()["is_closed"],
+        },
     )
 
 
@@ -292,23 +306,31 @@ async def my_evaluations_page(request: Request):
     ):
         return RedirectResponse(url="/summary", status_code=302)
     from automation_hub.projects.ticketing.router import (
+        _deadline_state,
         _get_user_info,
+        _identity_key,
         _load_evaluator_store,
     )
+    nomination_window = _deadline_state()
 
     nominations = [
         nomination
         for nomination in _load_evaluator_store().get("nominations", [])
-        if nomination.get("nominator_username") == user.get("username", "")
+        if _identity_key(nomination.get("nominator_username"))
+        == _identity_key(user.get("username", ""))
     ]
     nominations.sort(
         key=lambda item: item.get("submitted_at") or item.get("created_at") or "",
         reverse=True,
     )
     for nomination in nominations:
-        nomination["can_edit"] = nomination.get("status") == "pending" and not any(
-            evaluator.get("status") in {"approved", "rejected"}
-            for evaluator in nomination.get("evaluators", [])
+        nomination["can_edit"] = (
+            not nomination_window["is_closed"]
+            and nomination.get("status") == "pending"
+            and not any(
+                evaluator.get("status") in {"approved", "rejected"}
+                for evaluator in nomination.get("evaluators", [])
+            )
         )
         submitted_at = nomination.get("submitted_at") or nomination.get("created_at")
         if submitted_at:
@@ -339,7 +361,13 @@ async def my_evaluations_page(request: Request):
     return templates.TemplateResponse(
         request=request,
         name="feedback/my-evaluations.html",
-        context={"request": request, "user": user, "nominations": nominations},
+        context={
+            "request": request,
+            "user": user,
+            "nominations": nominations,
+            "nomination_window": nomination_window,
+            "feedback_nomination_closed": nomination_window["is_closed"],
+        },
     )
 
 
@@ -364,10 +392,16 @@ async def nomination_approvals_page(request: Request):
     templates = _get_templates(request)
     if not templates:
         return JSONResponse({"error": "Templates not available"}, status_code=500)
+    from automation_hub.projects.ticketing.router import _deadline_state
+
     return templates.TemplateResponse(
         request=request,
         name="feedback/nomination-approvals.html",
-        context={"request": request, "user": user},
+        context={
+            "request": request,
+            "user": user,
+            "feedback_nomination_closed": _deadline_state()["is_closed"],
+        },
     )
 
 
