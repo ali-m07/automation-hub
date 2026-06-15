@@ -1181,7 +1181,7 @@
                         </div>
                         <div class="form-group" style="margin:0;">
                             <label>Role</label>
-                            <select id="edit-role" class="form-control">
+                            <select id="edit-role" class="form-control" onchange="renderUserModuleAccess('${user.username}', this.value)">
                                 <option value="user" ${user.role === 'user' ? 'selected' : ''}>user</option>
                                 <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>super admin</option>
                                 <option value="project_admin" ${user.role === 'project_admin' ? 'selected' : ''}>project admin</option>
@@ -1206,23 +1206,8 @@
                 
                 <div>
                     <h3 style="margin: 0 0 16px 0; font-size: 1.1rem;">Module Access</h3>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin-bottom: 20px;">
+                    <div id="edit-module-access" style="margin-bottom:20px;">
             `;
-            
-            modules.forEach(m => {
-                const checked = mods.has(m.key) ? 'checked' : '';
-                const disabled = user.role === 'admin' ? 'disabled' : '';
-                html += `
-                    <label style="display: flex; align-items: flex-start; gap: 10px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; background: ${checked ? '#f0f9ff' : '#fff'}; cursor: ${disabled ? 'not-allowed' : 'pointer'};">
-                        <input type="checkbox" data-user="${user.username}" data-module="${m.key}" ${checked} ${disabled} style="margin-top: 2px;" />
-                        <div style="flex: 1;">
-                            <div style="font-weight: 600; color: #111827;">${m.label}</div>
-                            <div style="font-size: 0.85rem; color: #6b7280; margin-top: 2px;">${m.key}</div>
-                        </div>
-                    </label>
-                `;
-            });
-            
             html += `
                     </div>
                     <button class="btn btn-success" onclick="adminSaveModules('${user.username}')" ${user.role === 'admin' ? 'disabled style="opacity: 0.5;"' : ''}>Save Access Changes</button>
@@ -1235,7 +1220,65 @@
             `;
             
             panel.innerHTML = html;
+            renderUserModuleAccess(user.username, user.role, mods);
             loadUserLoginLog(user.username);
+        }
+
+        function moduleGroupsForRole(role) {
+            if (role === 'admin') return [];
+            const allowedTypes = role === 'project_admin' ? ['user', 'admin'] : ['user'];
+            const groups = new Map();
+            (AdminState.modules || [])
+                .filter(module => allowedTypes.includes(module.access_type || (module.key.endsWith('_admin') ? 'admin' : 'user')))
+                .forEach(module => {
+                    const project = module.project || 'Other';
+                    const type = module.access_type || (module.key.endsWith('_admin') ? 'admin' : 'user');
+                    const groupKey = `${project}:${type}`;
+                    if (!groups.has(groupKey)) groups.set(groupKey, {project, type, modules: []});
+                    groups.get(groupKey).modules.push(module);
+                });
+            return Array.from(groups.values());
+        }
+
+        function renderGroupedModules({role, selectedModules, inputAttributes}) {
+            if (role === 'admin') {
+                return '<div class="status-box success">Super Admin automatically has access to every project and setting.</div>';
+            }
+            const selected = selectedModules instanceof Set ? selectedModules : new Set(selectedModules || []);
+            const groups = moduleGroupsForRole(role);
+            return groups.map(group => `
+                <section style="margin-bottom:18px;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:9px;">
+                        <h4 style="margin:0;">${group.project}</h4>
+                        <span style="font-size:.78rem; font-weight:800; color:var(--text-secondary); text-transform:uppercase;">
+                            ${group.type === 'admin' ? 'Management' : 'User access'}
+                        </span>
+                    </div>
+                    <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px;">
+                        ${group.modules.map(module => `
+                            <label style="display:flex; align-items:flex-start; gap:10px; padding:12px; border:1px solid var(--border-color); border-radius:12px; background:${selected.has(module.key) ? 'var(--accent-soft)' : 'var(--surface-raised)'}; cursor:pointer;">
+                                <input type="checkbox" ${inputAttributes(module)} ${selected.has(module.key) ? 'checked' : ''}>
+                                <div>
+                                    <div style="font-weight:700;">${module.label}</div>
+                                    <div style="font-size:.82rem; color:var(--text-secondary);">${module.key}</div>
+                                </div>
+                            </label>
+                        `).join('')}
+                    </div>
+                </section>
+            `).join('');
+        }
+
+        function renderUserModuleAccess(username, role, selectedModules = null) {
+            const root = document.getElementById('edit-module-access');
+            if (!root) return;
+            const currentUser = AdminState.users.find(user => user.username === username);
+            const selected = selectedModules || new Set(currentUser?.modules || []);
+            root.innerHTML = renderGroupedModules({
+                role,
+                selectedModules: selected,
+                inputAttributes: module => `data-user="${username}" data-module="${module.key}"`,
+            });
         }
 
         function getPendingSelected() {
@@ -1340,17 +1383,6 @@
             AdminState.selectedUser = null;
             renderUserList();
             
-            const modules = AdminState.modules || [];
-            let modulesHtml = modules.map(m => `
-                <label style="display: flex; align-items: flex-start; gap: 10px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; cursor: pointer;">
-                    <input type="checkbox" data-new-user-module="${m.key}" />
-                    <div style="flex: 1;">
-                        <div style="font-weight: 600; color: #111827;">${m.label}</div>
-                        <div style="font-size: 0.85rem; color: #6b7280; margin-top: 2px;">${m.key}</div>
-                    </div>
-                </label>
-            `).join('');
-            
             panel.innerHTML = `
                 <div style="border-bottom: 1px solid #e5e7eb; padding-bottom: 20px; margin-bottom: 24px;">
                     <h2 style="margin: 0; font-size: 1.5rem;">Create New User</h2>
@@ -1375,7 +1407,7 @@
                     </div>
                     <div class="form-group">
                         <label>Role</label>
-                        <select id="new-role" class="form-control">
+                        <select id="new-role" class="form-control" onchange="renderCreateUserModuleAccess(this.value)">
                             <option value="user">user</option>
                             <option value="project_admin">project admin</option>
                             <option value="admin">super admin</option>
@@ -1384,9 +1416,7 @@
                     
                     <div style="margin-top: 24px; margin-bottom: 16px;">
                         <h3 style="margin: 0 0 12px 0; font-size: 1.1rem;">Module Access</h3>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px;">
-                            ${modulesHtml}
-                        </div>
+                        <div id="new-user-module-access"></div>
                     </div>
                     
                     <div id="admin-users-status" class="status-box" style="margin-bottom: 16px;"></div>
@@ -1397,6 +1427,17 @@
                     </div>
                 </form>
             `;
+            renderCreateUserModuleAccess('user');
+        }
+
+        function renderCreateUserModuleAccess(role) {
+            const root = document.getElementById('new-user-module-access');
+            if (!root) return;
+            root.innerHTML = renderGroupedModules({
+                role,
+                selectedModules: new Set(),
+                inputAttributes: module => `data-new-user-module="${module.key}"`,
+            });
         }
 
         async function approveUser(username) {
