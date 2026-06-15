@@ -172,6 +172,21 @@
             gap: 12px;
             margin-bottom: 20px;
         }
+        .export-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 44px;
+            padding: 0 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 13px;
+            color: var(--text-primary);
+            background: var(--surface-raised);
+            text-decoration: none;
+            font-weight: 650;
+            white-space: nowrap;
+        }
+        .export-link:hover { border-color: var(--accent); background: var(--accent-soft); transform: translateY(-1px); }
 
         .search-box {
             min-width: 0;
@@ -880,6 +895,10 @@
                 <h1 class="page-title">Evaluator Nomination Requests</h1>
                 <p class="page-subtitle">Review and approve evaluator nominations from your team</p>
             </div>
+            <a class="export-link" href="/api/feedback/evaluator-nomination/export.xlsx">
+                <i class="fas fa-file-excel"></i>
+                {% if user.role == "admin" %}Export all nominations{% else %}Export my team{% endif %}
+            </a>
         </div>
 
         <!-- Tabs -->

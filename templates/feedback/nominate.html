@@ -659,6 +659,23 @@
             background-size: 180% 180%;
             box-shadow: 0 12px 30px color-mix(in srgb, var(--accent) 28%, transparent);
         }
+        .page-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+        .excel-action {
+            min-height: 42px;
+            padding: 0 14px;
+            border: 1px solid var(--border-color);
+            border-radius: 13px;
+            color: var(--text-primary);
+            background: color-mix(in srgb, var(--surface-raised) 82%, transparent);
+            text-decoration: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 650;
+        }
+        .excel-action:hover { transform: translateY(-1px); border-color: var(--accent); background: var(--accent-soft); }
         .card-header { gap: 14px; }
         .selected-tools { display: flex; align-items: center; gap: 10px; margin-left: auto; }
         .selected-search {
@@ -728,6 +745,7 @@
             .selected-tools { width: 100%; margin-left: 0; }
             .selected-search { width: 100%; }
             .empty-state { min-height: 260px; padding: 32px 18px; }
+            .page-actions { width: 100%; justify-content: flex-start; }
         }
     </style>
 {% endblock %}
@@ -739,10 +757,19 @@
                 <h1 class="page-title">Nominate Evaluators</h1>
                 <p class="page-subtitle">Select people who will evaluate your performance</p>
             </div>
-            <button class="btn btn-primary" onclick="openUserPicker()">
-                <i class="fas fa-plus"></i>
-                Add Evaluator
-            </button>
+            <div class="page-actions">
+                <a class="excel-action" href="/api/feedback/evaluator-nomination/template.xlsx">
+                    <i class="fas fa-file-arrow-down"></i> Excel template
+                </a>
+                <button class="excel-action" type="button" onclick="openExcelImport()">
+                    <i class="fas fa-file-arrow-up"></i> Import Excel
+                </button>
+                <input id="excelImportInput" type="file" accept=".xlsx" hidden onchange="importExcelEvaluators(this)">
+                <button class="btn btn-primary" onclick="openUserPicker()">
+                    <i class="fas fa-plus"></i>
+                    Add Evaluator
+                </button>
+            </div>
         </div>
 
         <!-- Current nomination status -->
@@ -889,6 +916,40 @@
 
         function clearDraft() {
             localStorage.removeItem(draftStorageKey());
+        }
+
+        function openExcelImport() {
+            if (nominationWindowClosed) {
+                showToast('The evaluator nomination deadline has passed.', 'error');
+                return;
+            }
+            document.getElementById('excelImportInput').click();
+        }
+
+        async function importExcelEvaluators(input) {
+            const file = input.files?.[0];
+            if (!file) return;
+            const formData = new FormData();
+            formData.append('file', file);
+            try {
+                const response = await fetch('/api/feedback/evaluator-nomination/import', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.detail || 'Excel import failed');
+                const existing = new Set(evaluators.map(item => String(item.email || '').toLowerCase()));
+                const additions = data.evaluators.filter(item => !existing.has(String(item.email || '').toLowerCase()));
+                evaluators.push(...additions);
+                renderEvaluators();
+                saveDraft();
+                const warning = data.errors?.length ? ` ${data.errors.length} row(s) skipped.` : '';
+                showToast(`${additions.length} evaluator(s) imported.${warning}`, data.errors?.length ? 'warning' : 'success');
+            } catch (error) {
+                showToast(error.message || 'Excel import failed', 'error');
+            } finally {
+                input.value = '';
+            }
         }
 
         // Initialize
