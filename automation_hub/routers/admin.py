@@ -148,12 +148,20 @@ ADMIN_SECTIONS = {
 @page_router.get("/admin/{section}", response_class=HTMLResponse)
 async def admin_page(request: Request, section: str = "overview"):
     user = auth.get_current_user(request)
-    if not user or user.get("role") != "admin":
+    is_super_admin = user and user.get("role") == "admin"
+    is_feedback_admin = (
+        user
+        and user.get("role") == "project_admin"
+        and "feedback_180_admin" in (user.get("modules") or [])
+    )
+    if not is_super_admin and not is_feedback_admin:
         return RedirectResponse(url="/login", status_code=302)
     templates = getattr(request.app.state, "templates", None)
     if not templates:
         return JSONResponse({"error": "Templates not available"}, status_code=500)
     active_tab = section if section in ADMIN_SECTIONS else "overview"
+    if is_feedback_admin:
+        active_tab = "feedback-deadline"
     return templates.TemplateResponse(
         request=request,
         name="admin/admin.html",
@@ -486,7 +494,7 @@ async def admin_create_user(request: Request):
     pw_err = auth.validate_password_strength(password)
     if pw_err:
         return JSONResponse({"success": False, "error": pw_err}, status_code=400)
-    if role not in ("admin", "user"):
+    if role not in ("admin", "project_admin", "user"):
         return JSONResponse(
             {"success": False, "error": "Invalid role"}, status_code=400
         )
@@ -602,7 +610,7 @@ async def admin_update_user(username: str, request: Request):
     role = (body.get("role") or "").strip()
     status = auth.normalize_user_status(body.get("status") or "")
 
-    if role and role not in ("admin", "user"):
+    if role and role not in ("admin", "project_admin", "user"):
         return JSONResponse(
             {"success": False, "error": "Invalid role"}, status_code=400
         )

@@ -9,7 +9,7 @@
 </head>
 <body class="sidebar-shell">
     {% set user_modules = user.modules or [] if user else [] %}
-    {% set can_view_feedback = user and (user.role == 'admin' or 'feedback_180' in user_modules or 'feedback' in user_modules) %}
+    {% set can_view_feedback = user and (user.role == 'admin' or 'feedback_180' in user_modules or 'feedback_180_admin' in user_modules or 'feedback' in user_modules) %}
     {% set can_view_ticketing = user and (user.role == 'admin' or 'ticketing' in user_modules or 'ticketing_admin' in user_modules) %}
     {% set feedback_is_active = request.url.path.startswith('/feedback') %}
     {% set nomination_closed = feedback_nomination_closed|default(false) %}
@@ -110,6 +110,8 @@
             {% endif %}
             {% if user and user.role == 'admin' %}
             <a href="/admin" class="sidebar-link">Platform Admin</a>
+            {% elif user and user.role == 'project_admin' and 'feedback_180_admin' in user_modules %}
+            <a href="/admin/feedback-deadline" class="sidebar-link">Feedback Settings</a>
             {% endif %}
         </div>
 
@@ -130,6 +132,8 @@
         <div class="top-nav-right" id="top-nav-menu">
             {% if user and user.role == 'admin' %}
             <a href="/admin" class="top-nav-link" style="font-weight:700;">Admin panel</a>
+            {% elif user and user.role == 'project_admin' and 'feedback_180_admin' in user_modules %}
+            <a href="/admin/feedback-deadline" class="top-nav-link" style="font-weight:700;">Feedback settings</a>
             {% endif %}
             <div style="position:relative;">
                 <input type="text" id="platform-search" class="form-control" placeholder="Search tables, templates, gallery, tickets…" style="width:220px; padding:8px 12px; margin-right:8px;" oninput="onPlatformSearchInput(this.value)" onfocus="onPlatformSearchFocus()">

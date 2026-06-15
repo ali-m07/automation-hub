@@ -6,11 +6,13 @@ workflow routes live under /api/ticketing.
 
 from datetime import datetime, timezone
 from io import BytesIO
+import json
 
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.table import Table, TableStyleInfo
 
 from automation_hub.core import auth, db
@@ -18,9 +20,74 @@ from automation_hub.projects.ticketing import router as legacy
 
 router = APIRouter(prefix="/api/feedback", tags=["feedback"])
 
-MAX_IMPORT_BYTES = 5 * 1024 * 1024
-MAX_IMPORT_ROWS = 500
-IMPORT_HEADERS = ("email", "reason")
+DEFAULT_IMPORT_MB = 5
+DEFAULT_IMPORT_ROWS = 500
+DEFAULT_TEMPLATE_COLUMNS = ["email", "reason"]
+ALLOWED_TEMPLATE_COLUMNS = [
+    "email",
+    "reason",
+    "full_name",
+    "team",
+    "sub_team",
+    "vertical",
+]
+
+
+def _require_feedback_config_admin(request: Request):
+    user = auth.get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    if user.get("role") == "admin":
+        return user
+    if user.get("role") == "project_admin" and "feedback_180_admin" in (
+        user.get("modules") or []
+    ):
+        return user
+    raise HTTPException(status_code=403, detail="Feedback admin access required")
+
+
+def _excel_settings():
+    defaults = {
+        "feedback_excel_max_rows": str(DEFAULT_IMPORT_ROWS),
+        "feedback_excel_max_mb": str(DEFAULT_IMPORT_MB),
+        "feedback_excel_template_columns": json.dumps(DEFAULT_TEMPLATE_COLUMNS),
+    }
+    conn = db.db_connect(db.get_db_file())
+    try:
+        rows = conn.execute(
+            "SELECT key, value FROM app_settings WHERE key IN (?, ?, ?)",
+            tuple(defaults),
+        ).fetchall()
+    finally:
+        conn.close()
+    values = {row["key"]: row["value"] for row in rows}
+    try:
+        columns = json.loads(
+            values.get(
+                "feedback_excel_template_columns",
+                defaults["feedback_excel_template_columns"],
+            )
+        )
+    except (TypeError, ValueError):
+        columns = list(DEFAULT_TEMPLATE_COLUMNS)
+    columns = [
+        column
+        for column in ALLOWED_TEMPLATE_COLUMNS
+        if column in columns or column in DEFAULT_TEMPLATE_COLUMNS
+    ]
+    try:
+        max_rows = int(values.get("feedback_excel_max_rows", DEFAULT_IMPORT_ROWS))
+    except (TypeError, ValueError):
+        max_rows = DEFAULT_IMPORT_ROWS
+    try:
+        max_mb = int(values.get("feedback_excel_max_mb", DEFAULT_IMPORT_MB))
+    except (TypeError, ValueError):
+        max_mb = DEFAULT_IMPORT_MB
+    return {
+        "max_rows": max(1, min(5000, max_rows)),
+        "max_mb": max(1, min(50, max_mb)),
+        "template_columns": columns,
+    }
 
 
 def _xlsx_response(workbook: Workbook, filename: str) -> StreamingResponse:
@@ -104,16 +171,27 @@ def _build_nomination_export(nominations) -> Workbook:
 @router.get("/evaluator-nomination/template.xlsx")
 async def evaluator_nomination_template(request: Request):
     legacy._require_feedback_access(request)
+    settings = _excel_settings()
+    columns = settings["template_columns"]
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = "Evaluators"
-    sheet.append(list(IMPORT_HEADERS))
-    sheet.append(["person@snapp.cab", "Worked closely on the same project"])
+    sheet.append(columns)
+    examples = {
+        "email": "person@snapp.cab",
+        "reason": "Worked closely on the same project",
+        "full_name": "Example Person",
+        "team": "Platform",
+        "sub_team": "DevOps",
+        "vertical": "Technology",
+    }
+    sheet.append([examples[column] for column in columns])
     sheet.freeze_panes = "A2"
     sheet.column_dimensions["A"].width = 34
     sheet.column_dimensions["B"].width = 64
-    _style_header(sheet, "A1:B1")
-    table = Table(displayName="EvaluatorImport", ref="A1:B2")
+    last_column = get_column_letter(len(columns))
+    _style_header(sheet, f"A1:{last_column}1")
+    table = Table(displayName="EvaluatorImport", ref=f"A1:{last_column}2")
     table.tableStyleInfo = TableStyleInfo(
         name="TableStyleMedium2",
         showRowStripes=True,
@@ -127,7 +205,8 @@ async def evaluator_nomination_template(request: Request):
     guide.append(["2", "Use one evaluator per row."])
     guide.append(["3", "Email must exist in the Employee Roster."])
     guide.append(["4", "Reason is required."])
-    guide.append(["5", f"Maximum {MAX_IMPORT_ROWS} evaluators per file."])
+    guide.append(["5", f"Maximum {settings['max_rows']} evaluators per file."])
+    guide.append(["6", f"Maximum file size is {settings['max_mb']} MB."])
     guide.column_dimensions["A"].width = 8
     guide.column_dimensions["B"].width = 72
     guide["A1"].font = Font(bold=True, size=15, color="21413A")
@@ -139,13 +218,16 @@ async def evaluator_nomination_template(request: Request):
 async def import_evaluator_nomination(request: Request, file: UploadFile = File(...)):
     user = legacy._require_feedback_access(request)
     legacy._require_nomination_window_open()
+    settings = _excel_settings()
+    max_import_bytes = settings["max_mb"] * 1024 * 1024
     filename = str(file.filename or "").lower()
     if not filename.endswith(".xlsx"):
         raise HTTPException(status_code=400, detail="Please upload an .xlsx file")
-    content = await file.read(MAX_IMPORT_BYTES + 1)
-    if len(content) > MAX_IMPORT_BYTES:
+    content = await file.read(max_import_bytes + 1)
+    if len(content) > max_import_bytes:
         raise HTTPException(
-            status_code=413, detail="Excel file must be 5 MB or smaller"
+            status_code=413,
+            detail=f"Excel file must be {settings['max_mb']} MB or smaller",
         )
     try:
         workbook = load_workbook(BytesIO(content), read_only=True, data_only=True)
@@ -161,23 +243,35 @@ async def import_evaluator_nomination(request: Request, file: UploadFile = File(
     if not raw_headers:
         raise HTTPException(status_code=400, detail="The workbook is empty")
     headers = [str(value or "").strip().lower() for value in raw_headers]
-    if headers[:2] != list(IMPORT_HEADERS):
+    if "email" not in headers or "reason" not in headers:
         raise HTTPException(
             status_code=400,
-            detail="Use the Servexa template with email and reason columns",
+            detail="Use the Servexa template and keep email and reason columns",
         )
+    email_index = headers.index("email")
+    reason_index = headers.index("reason")
 
     imported = []
     errors = []
     seen = set()
     historical = legacy._previous_evaluator_keys(user.get("username", ""))
     for excel_row, values in enumerate(rows, start=2):
-        email = str(values[0] or "").strip().lower() if values else ""
-        reason = str(values[1] or "").strip() if len(values or ()) > 1 else ""
+        email = (
+            str(values[email_index] or "").strip().lower()
+            if values and len(values) > email_index
+            else ""
+        )
+        reason = (
+            str(values[reason_index] or "").strip()
+            if values and len(values) > reason_index
+            else ""
+        )
         if not email and not reason:
             continue
-        if len(imported) >= MAX_IMPORT_ROWS:
-            errors.append(f"Row {excel_row}: maximum {MAX_IMPORT_ROWS} rows exceeded")
+        if len(imported) >= settings["max_rows"]:
+            errors.append(
+                f"Row {excel_row}: maximum {settings['max_rows']} rows exceeded"
+            )
             break
         identity = legacy._identity_key(email)
         if not email or not reason:
@@ -273,19 +367,20 @@ async def export_single_evaluator_nomination(nomination_id: str, request: Reques
 
 @router.get("/evaluator-nomination/settings")
 async def evaluator_nomination_settings(request: Request):
-    auth.require_admin(request, auth.get_current_user)
+    _require_feedback_config_admin(request)
     return JSONResponse(
         {
             "success": True,
             "user": legacy._deadline_state(),
             "manager": legacy._manager_deadline_state(),
+            "excel": _excel_settings(),
         }
     )
 
 
 @router.post("/evaluator-nomination/settings")
 async def save_evaluator_nomination_settings(request: Request):
-    auth.require_admin(request, auth.get_current_user)
+    _require_feedback_config_admin(request)
     payload = await request.json()
     deadlines = {}
     for field, setting_key in (
@@ -303,6 +398,31 @@ async def save_evaluator_nomination_settings(request: Request):
             except ValueError as exc:
                 raise HTTPException(status_code=400, detail="Invalid deadline") from exc
         deadlines[setting_key] = normalized
+    try:
+        max_rows = max(
+            1,
+            min(5000, int(payload.get("excel_max_rows") or DEFAULT_IMPORT_ROWS)),
+        )
+        max_mb = max(1, min(50, int(payload.get("excel_max_mb") or DEFAULT_IMPORT_MB)))
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(
+            status_code=400, detail="Excel limits must be valid numbers"
+        ) from exc
+    requested_columns = (
+        payload.get("excel_template_columns") or DEFAULT_TEMPLATE_COLUMNS
+    )
+    template_columns = [
+        column
+        for column in ALLOWED_TEMPLATE_COLUMNS
+        if column in requested_columns or column in DEFAULT_TEMPLATE_COLUMNS
+    ]
+    deadlines.update(
+        {
+            "feedback_excel_max_rows": str(max_rows),
+            "feedback_excel_max_mb": str(max_mb),
+            "feedback_excel_template_columns": json.dumps(template_columns),
+        }
+    )
     conn = db.db_connect(db.get_db_file())
     try:
         for setting_key, value in deadlines.items():
@@ -318,6 +438,7 @@ async def save_evaluator_nomination_settings(request: Request):
             "success": True,
             "user": legacy._deadline_state(),
             "manager": legacy._manager_deadline_state(),
+            "excel": _excel_settings(),
         }
     )
 
