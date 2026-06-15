@@ -30,9 +30,10 @@ let state = {
 
 // Dark mode
 function initDarkMode() {
-    const saved = localStorage.getItem('theme') || 'light';
-    document.documentElement.setAttribute('data-theme', saved);
-    updateDarkModeIcon(saved);
+    const saved = localStorage.getItem('theme');
+    const theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+    updateDarkModeIcon(theme);
 }
 
 function toggleDarkMode() {

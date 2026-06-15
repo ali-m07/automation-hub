@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Servexa{% endblock %}</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=20260615-pastel-themes">
+    <link rel="stylesheet" href="/static/css/style.css?v=20260615-pastel-glass">
     {% block extra_css %}{% endblock %}
 </head>
 <body class="sidebar-shell">
@@ -19,8 +19,8 @@
             <div style="display:flex; align-items:center; gap:10px;">
                 <div class="top-nav-logo"></div>
                 <div>
-                    <div style="font-weight:800; color:#111827;">Servexa</div>
-                    <div style="font-size:0.8rem; color:#6b7280;">Menu</div>
+                    <div class="brand-title">Servexa</div>
+                    <div class="brand-caption">Menu</div>
                 </div>
             </div>
             <button class="sidebar-close-btn" type="button" onclick="closeSidebar()" aria-label="Close menu">×</button>
@@ -28,8 +28,8 @@
 
         <div class="sidebar-section">
             <div class="sidebar-user">
-                <div style="font-weight:700; color:#111827;">{{ user.username }}</div>
-                <div style="font-size:0.85rem; color:#6b7280;">Role: {{ user.role }}</div>
+                <div class="sidebar-user-name">{{ user.username }}</div>
+                <div class="sidebar-user-role">Role: {{ user.role }}</div>
             </div>
         </div>
 
@@ -280,7 +280,7 @@
     </div>
 
     <!-- Cache-buster to ensure latest UI loads -->
-    <script src="/static/js/app.js?v=20260615-header-access"></script>
+    <script src="/static/js/app.js?v=20260615-pastel-glass"></script>
     <script>
         async function loadSidebarProjects() {
             const listEl = document.getElementById('sidebar-projects-list');

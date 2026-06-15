@@ -638,6 +638,97 @@
             font-size: 13px;
             color: #1e40af;
         }
+
+        /* Premium nomination workspace */
+        .feedback-nomination-page { max-width: 1080px; padding: 18px 0 56px; }
+        .page-header { margin-bottom: 26px; }
+        .page-title { font-size: clamp(2rem, 4vw, 3rem); font-weight: 800; letter-spacing: -.045em; }
+        .page-subtitle { font-size: 15px; }
+        .feedback-nomination-page > .card {
+            padding: 26px;
+            margin-bottom: 24px;
+            border-radius: 24px;
+            animation: nominationEnter .5s var(--motion-spring) both;
+        }
+        .feedback-nomination-page > .card:nth-of-type(2) { animation-delay: .08s; }
+        .page-header .btn-primary {
+            min-height: 50px;
+            padding: 0 22px;
+            border-radius: 16px;
+            background: linear-gradient(115deg, var(--mint), var(--accent), var(--blue));
+            background-size: 180% 180%;
+            box-shadow: 0 12px 30px color-mix(in srgb, var(--accent) 28%, transparent);
+        }
+        .card-header { gap: 14px; }
+        .selected-tools { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+        .selected-search {
+            width: 220px;
+            min-height: 38px;
+            padding: 7px 12px;
+            border-radius: 12px;
+            font-size: 13px;
+        }
+        .evaluators-list {
+            border-radius: 18px;
+            border-color: var(--border-color);
+            background: color-mix(in srgb, var(--surface-muted) 68%, transparent);
+        }
+        .evaluator-table-header { background: color-mix(in srgb, var(--accent-soft) 52%, var(--surface-muted)); }
+        .evaluator-card { background: color-mix(in srgb, var(--surface-raised) 90%, transparent); animation: rowEnter .32s var(--motion-spring) both; }
+        .evaluator-card:hover { background: color-mix(in srgb, var(--mint-soft) 35%, var(--surface-raised)); }
+        .empty-state {
+            min-height: 320px;
+            display: grid;
+            place-content: center;
+            justify-items: center;
+            border: 1px dashed color-mix(in srgb, var(--accent) 35%, var(--border-color));
+            background:
+                radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--lavender) 18%, transparent), transparent 34%),
+                color-mix(in srgb, var(--surface-muted) 76%, transparent);
+        }
+        .empty-state i { font-size: 54px; color: var(--accent); animation: emptyFloat 3.2s ease-in-out infinite; }
+        .empty-state-hint { padding: 9px 14px; border-radius: 999px; background: var(--accent-soft); }
+        .manager-display {
+            border-radius: 17px !important;
+            background: linear-gradient(110deg, var(--mint-soft), color-mix(in srgb, var(--blue-soft) 65%, var(--surface-muted))) !important;
+        }
+        .manager-avatar { background: linear-gradient(135deg, var(--mint), var(--accent)) !important; box-shadow: 0 8px 22px color-mix(in srgb, var(--accent) 24%, transparent); }
+        .btn-success {
+            min-height: 54px;
+            border-radius: 16px;
+            color: #244139;
+            background: linear-gradient(110deg, var(--mint), #bce9d8, var(--blue));
+            box-shadow: 0 12px 30px color-mix(in srgb, var(--success) 24%, transparent);
+        }
+        .btn-success.is-loading i { animation: spin .8s linear infinite; }
+        .btn-success.is-success { background: linear-gradient(110deg, var(--mint), var(--success)); }
+        .modal-overlay { align-items: center; padding-top: 0; background: rgba(25, 25, 40, .46); backdrop-filter: blur(12px) saturate(120%); }
+        .modal {
+            max-width: 560px;
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            background: color-mix(in srgb, var(--surface-raised) 92%, transparent);
+            box-shadow: var(--shadow-lg);
+            backdrop-filter: var(--glass-blur);
+        }
+        .modal-header { padding: 22px 24px 16px; }
+        .modal-body { padding: 20px 24px 24px; }
+        .search-input { border-radius: 15px; background: var(--surface-muted); }
+        .email-result-item { border: 1px solid transparent; border-radius: 14px; }
+        .email-result-item:hover, .email-result-item.keyboard-active { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
+        .current-status { background: var(--blue-soft); border-color: color-mix(in srgb, var(--blue) 45%, var(--border-color)); color: var(--text-primary); border-radius: 15px; }
+        @keyframes nominationEnter { from { opacity: 0; transform: translateY(18px) scale(.985); } to { opacity: 1; transform: none; } }
+        @keyframes rowEnter { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
+        @keyframes emptyFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+        @media (max-width: 700px) {
+            .page-header { align-items: flex-start; gap: 18px; }
+            .page-header .btn-primary { padding: 0 16px; }
+            .feedback-nomination-page > .card { padding: 17px; border-radius: 19px; }
+            .card-header { align-items: flex-start; flex-wrap: wrap; }
+            .selected-tools { width: 100%; margin-left: 0; }
+            .selected-search { width: 100%; }
+            .empty-state { min-height: 260px; padding: 32px 18px; }
+        }
     </style>
 {% endblock %}
 
@@ -664,7 +755,10 @@
         <div class="card">
             <div class="card-header">
                 <span class="card-title">Selected Evaluators</span>
-                <span class="selected-count" id="selectedCount">0</span>
+                <div class="selected-tools">
+                    <input id="selectedEvaluatorSearch" class="selected-search" type="search" placeholder="Search selected..." aria-label="Search selected evaluators" oninput="renderEvaluators()">
+                    <span class="selected-count" id="selectedCount">0</span>
+                </div>
             </div>
             <div id="evaluatorsList" class="evaluators-list">
                 <div class="empty-state" id="emptyState" role="button" tabindex="0"
@@ -913,6 +1007,11 @@
             const emptyState = document.getElementById('emptyState');
             const submitBtn = document.getElementById('submitBtn');
             const selectedCount = document.getElementById('selectedCount');
+            const searchQuery = (document.getElementById('selectedEvaluatorSearch')?.value || '').trim().toLowerCase();
+            const visibleEvaluators = evaluators.filter(evaluator =>
+                [evaluator.email, evaluator.full_name, evaluator.team, evaluator.reason]
+                    .some(value => String(value || '').toLowerCase().includes(searchQuery))
+            );
             if (selectedCount) selectedCount.textContent = evaluators.length;
 
             if (!evaluators.length) {
@@ -927,12 +1026,16 @@
 
             if (emptyState) emptyState.style.display = 'none';
             if (submitBtn) submitBtn.disabled = false;
+            if (!visibleEvaluators.length) {
+                container.innerHTML = '<div class="no-results">No selected evaluators match your search.</div>';
+                return;
+            }
             container.innerHTML = `
                 <div class="evaluator-table">
                     <div class="evaluator-table-header">
                         <span>Email</span><span>Name</span><span>Team</span><span>Reason</span><span></span>
                     </div>
-                    ${evaluators.map(eval => `
+                    ${visibleEvaluators.map(eval => `
                         <div class="evaluator-card">
                             <div class="evaluator-cell evaluator-email-cell" title="${escapeAttribute(eval.email || '')}"><span class="evaluator-mobile-label">Email</span><span>${eval.email || ''}</span></div>
                             <div class="evaluator-cell" title="${escapeAttribute(eval.full_name || '')}">${eval.full_name || '—'}</div>
@@ -1228,6 +1331,7 @@
         }
 
         async function submitNomination() {
+            const submitBtn = document.getElementById('submitBtn');
             // Get manager email from the input field (editable by user)
             const managerEmailValue = document.getElementById('managerEmailValue');
             const managerEmail = managerEmailValue ? managerEmailValue.value.trim() : '';
@@ -1246,6 +1350,9 @@
             }
 
             try {
+                submitBtn.disabled = true;
+                submitBtn.classList.add('is-loading');
+                submitBtn.innerHTML = '<i class="fas fa-circle-notch"></i> Sending for approval...';
                 const response = await fetch('/api/feedback/evaluator-nomination/submit', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1259,6 +1366,9 @@
 
                 if (data.success) {
                     clearDraft();
+                    submitBtn.classList.remove('is-loading');
+                    submitBtn.classList.add('is-success');
+                    submitBtn.innerHTML = '<i class="fas fa-check"></i> Submitted successfully';
                     showToast('Nomination submitted for approval!', 'success');
                     document.getElementById('currentStatus').style.display = 'block';
                     const date = new Date();
@@ -1271,6 +1381,12 @@
             } catch (error) {
                 console.error('Error:', error);
                 showToast('Error submitting nomination', 'error');
+            } finally {
+                if (!submitBtn.classList.contains('is-success')) {
+                    submitBtn.disabled = false;
+                    submitBtn.classList.remove('is-loading');
+                    submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit for Manager Approval';
+                }
             }
         }
 
