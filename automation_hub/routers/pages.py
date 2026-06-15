@@ -133,9 +133,8 @@ async def projects_dashboard(request: Request):
     modules = user.get("modules") or []
     if (
         user.get("role") != "admin"
-        and "feedback_180" not in modules
-        and "feedback" not in modules
-        and "feedback_180_admin" not in modules
+        and "ticketing" not in modules
+        and "ticketing_admin" not in modules
     ):
         return RedirectResponse(url="/summary", status_code=302)
     return _render_page(request, "feedback/projects.html", user=user)
@@ -148,7 +147,7 @@ async def projects_admin(request: Request):
     if not user:
         return RedirectResponse(url="/login", status_code=302)
     modules = user.get("modules") or []
-    if user.get("role") != "admin" and "feedback_180_admin" not in modules:
+    if user.get("role") != "admin" and "ticketing_admin" not in modules:
         return RedirectResponse(url="/projects", status_code=302)
     return _render_page(request, "feedback/admin.html", user=user)
 
@@ -161,6 +160,13 @@ async def my_requests_page(request: Request):
     user = auth.get_current_user(request)
     if not user:
         return RedirectResponse(url="/login", status_code=302)
+    modules = user.get("modules") or []
+    if (
+        user.get("role") != "admin"
+        and "ticketing" not in modules
+        and "ticketing_admin" not in modules
+    ):
+        return RedirectResponse(url="/summary", status_code=302)
     return _render_page(request, "feedback/projects.html", user=user)
 
 
@@ -175,9 +181,8 @@ async def project_board(project_key: str, request: Request):
     modules = user.get("modules") or []
     if (
         user.get("role") != "admin"
-        and "feedback_180" not in modules
-        and "feedback" not in modules
-        and "feedback_180_admin" not in modules
+        and "ticketing" not in modules
+        and "ticketing_admin" not in modules
     ):
         return RedirectResponse(url="/summary", status_code=302)
 
@@ -217,9 +222,8 @@ async def ticket_detail(ticket_id: str, request: Request):
     modules = user.get("modules") or []
     if (
         user.get("role") != "admin"
-        and "feedback_180" not in modules
-        and "feedback" not in modules
-        and "feedback_180_admin" not in modules
+        and "ticketing" not in modules
+        and "ticketing_admin" not in modules
     ):
         return RedirectResponse(url="/summary", status_code=302)
 

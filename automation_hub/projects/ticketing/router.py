@@ -107,8 +107,11 @@ def _current_user(request: Request) -> Dict[str, Any]:
 
 
 def _is_feedback_admin(user: Dict[str, Any]) -> bool:
-    return user.get("role") == "admin" or ADMIN_MODULE_KEY in (
-        user.get("modules") or []
+    modules = user.get("modules") or []
+    return (
+        user.get("role") == "admin"
+        or ADMIN_MODULE_KEY in modules
+        or "ticketing_admin" in modules
     )
 
 
@@ -118,6 +121,8 @@ def _has_feedback_access(user: Dict[str, Any]) -> bool:
         user.get("role") == "admin"
         or MODULE_KEY in modules
         or ADMIN_MODULE_KEY in modules
+        or "ticketing" in modules
+        or "ticketing_admin" in modules
     )
 
 

@@ -3906,7 +3906,7 @@ async function loadNotifications() {
             return;
         }
         listEl.innerHTML = items.map(n => `
-            <div class="notification-item" data-id="${n.id}" style="padding:10px 12px; border-bottom:1px solid #e5e7eb; ${n.read_at ? '' : 'background:#f0f9ff;'} cursor:pointer;" onclick="markNotificationRead(${n.id})">
+            <div class="notification-item" data-id="${n.id}" data-read="${n.read_at ? 'true' : 'false'}" style="padding:10px 12px; border-bottom:1px solid var(--border-color); cursor:pointer;" onclick="markNotificationRead(${n.id})">
                 <div style="font-weight:600; font-size:0.9rem;">${escapeHtml(n.title)}</div>
                 ${n.body ? `<div style="font-size:0.85rem; color:#6b7280; margin-top:4px;">${escapeHtml(n.body)}</div>` : ''}
                 <div style="font-size:0.75rem; color:#9ca3af; margin-top:4px;">${escapeHtml(n.created_at || '')}</div>
@@ -4074,6 +4074,19 @@ async function loadProfile() {
             lastNameEl.value = u.last_name || '';
             emailEl.value = u.email || u.username || '';
             if (departmentEl) departmentEl.value = u.department || '';
+            const isManaged = (u.auth_provider || 'local') !== 'local';
+            [firstNameEl, lastNameEl, emailEl].forEach(el => {
+                if (el) {
+                    el.readOnly = isManaged;
+                    el.classList.toggle('managed-field', isManaged);
+                }
+            });
+            const saveActions = document.getElementById('profile-save-actions');
+            const managedNote = document.getElementById('profile-managed-note');
+            const passwordSection = document.getElementById('profile-password-section');
+            if (saveActions) saveActions.style.display = isManaged ? 'none' : 'block';
+            if (managedNote) managedNote.style.display = isManaged ? 'block' : 'none';
+            if (passwordSection) passwordSection.style.display = isManaged ? 'none' : 'block';
         }
     } catch (e) {
         if (msgEl) { msgEl.textContent = 'Failed to load profile'; msgEl.className = 'status-box error'; msgEl.style.display = 'block'; }

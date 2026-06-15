@@ -4,12 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Servexa{% endblock %}</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=20260614-navigation">
+    <link rel="stylesheet" href="/static/css/style.css?v=20260615-header-access">
     {% block extra_css %}{% endblock %}
 </head>
 <body class="sidebar-shell">
     {% set user_modules = user.modules or [] if user else [] %}
     {% set can_view_feedback = user and (user.role == 'admin' or 'feedback_180' in user_modules or 'feedback' in user_modules) %}
+    {% set can_view_ticketing = user and (user.role == 'admin' or 'ticketing' in user_modules or 'ticketing_admin' in user_modules) %}
     {% set feedback_is_active = request.url.path.startswith('/feedback') %}
     <!-- Left sidebar + overlay -->
     <div id="sidebar-overlay" class="sidebar-overlay" onclick="closeSidebar()" style="display:none;"></div>
@@ -35,7 +36,7 @@
         <div class="sidebar-section">
             <div class="sidebar-title">Workspace</div>
             <a href="/summary" class="sidebar-link">Summary</a>
-            {% if user %}
+            {% if can_view_ticketing %}
             <a href="/projects/my-requests" class="sidebar-link">My Tickets</a>
             {% endif %}
         </div>
@@ -68,15 +69,15 @@
         </div>
         {% endif %}
 
+        {% if can_view_ticketing %}
         <div class="sidebar-section">
             <div class="sidebar-title">Projects &amp; Helpdesk</div>
             <div id="sidebar-projects-list" style="display:flex; flex-direction:column; gap:2px;">
                 <!-- Loaded dynamically by JS -->
             </div>
-            {% if user and (user.role == 'admin' or 'feedback_180' in (user.modules or []) or 'feedback_180_admin' in (user.modules or [])) %}
-            <a href="/projects" class="sidebar-link" style="font-size: 0.85rem; opacity: 0.85; display: flex; align-items: center; gap: 6px;">📂 Help Center Portal</a>
-            {% endif %}
+            <a href="/projects" class="sidebar-link">Help Center Portal</a>
         </div>
+        {% endif %}
 
         <div class="sidebar-section">
             <div class="sidebar-title">Creative &amp; Tools</div>
@@ -101,7 +102,7 @@
 
         <div class="sidebar-section">
             <div class="sidebar-title">Management</div>
-            {% if user and (user.role == 'admin' or 'feedback_180_admin' in (user.modules or [])) %}
+            {% if user and (user.role == 'admin' or 'ticketing_admin' in (user.modules or [])) %}
             <a href="/projects/admin" class="sidebar-link">Projects Settings</a>
             {% endif %}
             {% if user and user.role == 'admin' %}
@@ -109,13 +110,6 @@
             {% endif %}
         </div>
 
-        <div class="sidebar-section">
-            <div class="sidebar-title">Account</div>
-            <a href="#" class="sidebar-link" onclick="toggleNotificationsPanel(); closeSidebar(); return false;">Notifications</a>
-            <a href="#" class="sidebar-link" onclick="toggleProfilePanel(); closeSidebar(); return false;">Profile</a>
-            <a href="#" class="sidebar-link" onclick="toggleSecurityPanel(); closeSidebar(); return false;">Security</a>
-            <a href="/logout" class="sidebar-link sidebar-link-danger">Logout</a>
-        </div>
     </aside>
 
     <div class="app-main" id="app-main">
@@ -142,12 +136,14 @@
                 <span id="dark-mode-icon" aria-hidden="true">Dark</span>
             </button>
             <div class="notifications-wrap" style="position:relative;">
-                <a href="#" class="top-nav-link" onclick="toggleNotificationsPanel(); return false;" id="notifications-trigger">Notifications <span id="notifications-badge" style="display:none; background:#ef4444; color:#fff; border-radius:10px; padding:2px 6px; font-size:0.75rem; margin-left:4px;">0</span></a>
-                <div id="notifications-panel" style="display:none; position:absolute; top:100%; right:0; margin-top:6px; width:320px; max-height:400px; overflow:auto; background:#fff; border:1px solid #e5e7eb; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,0.1); z-index:1000;">
+                <button type="button" class="header-action" onclick="toggleNotificationsPanel()" id="notifications-trigger" aria-label="Notifications">Notifications <span id="notifications-badge" class="header-badge" style="display:none;">0</span></button>
+                <div id="notifications-panel" class="header-popover" style="display:none;">
                     <div style="padding:12px; border-bottom:1px solid #e5e7eb; font-weight:700;">Notifications</div>
                     <div id="notifications-list" style="padding:8px;"></div>
                 </div>
             </div>
+            <button type="button" class="header-action" onclick="toggleProfilePanel()">Profile</button>
+            <a href="/logout" class="header-action header-logout">Logout</a>
         </div>
     </nav>
 
@@ -195,14 +191,15 @@
                         <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 6px; display: block;">Department</label>
                         <input type="text" id="profile-department" class="form-control" readonly placeholder="Synced from Active Directory" style="background: var(--bg-tertiary);">
                     </div>
-                    <div style="margin-top: 8px;">
+                    <div id="profile-save-actions" style="margin-top: 8px;">
                         <button type="button" class="btn btn-primary" onclick="saveProfile()" style="padding: 10px 20px; font-weight: 600;">Save Profile Details</button>
                     </div>
+                    <div id="profile-managed-note" class="profile-managed-note" style="display:none;">Profile details are synchronized from LDAP and cannot be edited here.</div>
                 </div>
                 
                 <!-- Right: Password and 2FA -->
                 <div style="display: flex; flex-direction: column; gap: 20px; border-left: 1px solid var(--border-color); padding-left: 32px;">
-                    <div>
+                    <div id="profile-password-section">
                         <h4 style="margin: 0 0 16px 0; font-size: 1.05rem; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
                             <span>🔑</span> Change Password
                         </h4>
@@ -283,7 +280,7 @@
     </div>
 
     <!-- Cache-buster to ensure latest UI loads -->
-    <script src="/static/js/app.js?v=20260615-shortcut-input-fix"></script>
+    <script src="/static/js/app.js?v=20260615-header-access"></script>
     <script>
         async function loadSidebarProjects() {
             const listEl = document.getElementById('sidebar-projects-list');

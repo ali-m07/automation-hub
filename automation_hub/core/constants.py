@@ -17,6 +17,8 @@ MODULES: List[Dict[str, Any]] = [
     {"key": "creative_psd", "label": "Creative Studio (PSD processing)"},
     {"key": "messaging_send", "label": "Messaging (send emails)"},
     {"key": "connectors_db", "label": "Database Connectors (Excel sync to SQL Server)"},
+    {"key": "ticketing", "label": "Helpdesk: portal and personal tickets"},
+    {"key": "ticketing_admin", "label": "Helpdesk: project administration"},
     {"key": "feedback_180", "label": "180 Feedback: participant access"},
     {"key": "feedback_180_admin", "label": "180 Feedback: workflow and cycle admin"},
     {

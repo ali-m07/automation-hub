@@ -1548,7 +1548,7 @@
                 // Collect modules selected for the new user
                 const modules = [];
                 document.querySelectorAll('input[type="checkbox"][data-new-user-module]').forEach(cb => {
-                    if (cb.checked) modules.push(cb.getAttribute('data-module'));
+                    if (cb.checked) modules.push(cb.getAttribute('data-new-user-module'));
                 });
 
                 setAdminStatus('Creating user...', 'info');

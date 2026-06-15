@@ -6,6 +6,7 @@ from automation_hub.projects.auth.router import (
     router as auth_router,
     page_router as auth_page_router,
     profile_router,
+    notifications_router,
 )
 from automation_hub.projects.creative.router import router as creative_router
 from automation_hub.projects.connectors.router import router as connectors_router
@@ -28,6 +29,7 @@ __all__ = [
     "auth_router",
     "auth_page_router",
     "profile_router",
+    "notifications_router",
     "creative_router",
     "connectors_router",
     "messaging_router",

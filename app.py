@@ -22,6 +22,7 @@ from automation_hub.routers import (
     auth_router,
     auth_page_router,
     profile_router,
+    notifications_router,
     creative_router,
     connectors_router,
     messaging_router,
@@ -177,6 +178,7 @@ app.include_router(admin_router)  # /api/admin/*
 app.include_router(auth_page_router)  # GET /login
 app.include_router(auth_router)  # POST /login, POST /login-2fa, GET /logout
 app.include_router(profile_router)  # /api/me/*
+app.include_router(notifications_router)  # /api/notifications/*
 app.include_router(
     creative_router
 )  # /api/upload-psd, /api/creative/*, /api/preview, /api/process

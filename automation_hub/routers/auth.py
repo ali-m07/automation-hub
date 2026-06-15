@@ -442,6 +442,59 @@ async def logout(request: Request):
 
 # User profile API routes
 profile_router = APIRouter(prefix="/api/me", tags=["auth"])
+notifications_router = APIRouter(prefix="/api/notifications", tags=["notifications"])
+
+
+@notifications_router.get("")
+async def list_notifications(request: Request):
+    user = auth.get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Login required")
+    conn = _db()
+    try:
+        rows = conn.execute(
+            """
+            SELECT id, type, title, body, created_at, read_at
+            FROM notifications
+            WHERE username = ?
+            ORDER BY created_at DESC
+            LIMIT 50
+            """,
+            (user["username"],),
+        ).fetchall()
+    finally:
+        conn.close()
+    items = [dict(row) for row in rows]
+    return JSONResponse(
+        {
+            "success": True,
+            "notifications": items,
+            "unread_count": sum(1 for item in items if not item.get("read_at")),
+        }
+    )
+
+
+@notifications_router.post("/{notification_id}/read")
+async def mark_notification_read(notification_id: int, request: Request):
+    user = auth.get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Login required")
+    conn = _db()
+    try:
+        cursor = conn.execute(
+            """
+            UPDATE notifications
+            SET read_at = COALESCE(read_at, ?)
+            WHERE id = ? AND username = ?
+            """,
+            (db.utc_now_iso(), notification_id, user["username"]),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    if cursor.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    return JSONResponse({"success": True})
 
 
 @profile_router.get("")
@@ -453,7 +506,7 @@ async def me(request: Request):
     conn = _db()
     try:
         row = conn.execute(
-            "SELECT first_name, last_name, email, department, manager_username FROM users WHERE username = ?",
+            "SELECT first_name, last_name, email, department, manager_username, auth_provider FROM users WHERE username = ?",
             (user["username"],),
         ).fetchone()
     finally:
@@ -466,6 +519,7 @@ async def me(request: Request):
             "email": db.safe_row_get(row, "email") or user.get("username", ""),
             "department": db.safe_row_get(row, "department") or "",
             "manager_username": db.safe_row_get(row, "manager_username") or "",
+            "auth_provider": db.safe_row_get(row, "auth_provider") or "local",
         }
     return JSONResponse({"authenticated": True, "user": user})
 
@@ -481,6 +535,14 @@ async def me_update(request: Request, payload: Dict[str, Any]):
     email = (payload.get("email") or "").strip()
     conn = _db()
     try:
+        provider_row = conn.execute(
+            "SELECT auth_provider FROM users WHERE username = ?", (user["username"],)
+        ).fetchone()
+        if (db.safe_row_get(provider_row, "auth_provider") or "local") != "local":
+            raise HTTPException(
+                status_code=403,
+                detail="This profile is managed by your identity provider",
+            )
         conn.execute(
             "UPDATE users SET first_name = ?, last_name = ?, email = ? WHERE username = ?",
             (first_name, last_name, email, user["username"]),
@@ -506,10 +568,16 @@ async def me_change_password(request: Request, payload: Dict[str, Any]):
     conn = _db()
     try:
         row = conn.execute(
-            "SELECT password FROM users WHERE username = ?", (user["username"],)
+            "SELECT password, auth_provider FROM users WHERE username = ?",
+            (user["username"],),
         ).fetchone()
     finally:
         conn.close()
+    if row and (db.safe_row_get(row, "auth_provider") or "local") != "local":
+        raise HTTPException(
+            status_code=403,
+            detail="Password changes are managed by your identity provider",
+        )
     if not row or not auth.verify_password(
         current, db.safe_row_get(row, "password") or ""
     ):
