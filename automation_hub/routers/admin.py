@@ -173,17 +173,34 @@ async def admin_list_modules(request: Request):
 @admin_router.get("/users")
 async def admin_list_users(
     request: Request,
-    limit: int = Query(100, ge=1),
+    limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
+    q: str = Query("", max_length=160),
 ):
     auth.require_admin(request, auth.get_current_user)
     conn = _db()
     try:
-        total_row = conn.execute("SELECT COUNT(*) AS c FROM users").fetchone()
+        query = q.strip().lower()
+        where = ""
+        params: List[Any] = []
+        if query:
+            where = """
+                WHERE LOWER(username) LIKE ? OR LOWER(COALESCE(email, '')) LIKE ?
+                   OR LOWER(COALESCE(first_name, '')) LIKE ? OR LOWER(COALESCE(last_name, '')) LIKE ?
+                   OR LOWER(COALESCE(department, '')) LIKE ?
+            """
+            pattern = f"%{query}%"
+            params.extend([pattern] * 5)
+        total_row = conn.execute(
+            f"SELECT COUNT(*) AS c FROM users {where}", params
+        ).fetchone()
         total = total_row["c"] if total_row else 0
         rows = conn.execute(
-            "SELECT username,role,level,modules_json,email,status,first_name,last_name,department,manager_username,created_at,last_login_at FROM users ORDER BY username LIMIT ? OFFSET ?",
-            (limit, offset),
+            f"""SELECT username,role,level,modules_json,email,status,first_name,last_name,
+                       department,manager_username,created_at,last_login_at
+                FROM users {where}
+                ORDER BY username LIMIT ? OFFSET ?""",
+            [*params, limit, offset],
         ).fetchall()
     finally:
         conn.close()

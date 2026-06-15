@@ -377,6 +377,14 @@ async function fbSearchUsers(query, forcedSource = '') {
 
 // Autocomplete user picker rendering
 function fbRenderUserPicker(container, field, selectedValues, isEditable, onUpdate = null) {
+    if (container._blurHandler) {
+        document.removeEventListener('click', container._blurHandler);
+        container._blurHandler = null;
+    }
+    if (container._userSearchController) {
+        container._userSearchController.abort();
+        container._userSearchController = null;
+    }
     container.innerHTML = '';
     container.fbSelectedValues = selectedValues;
     container.dataset.fieldKey = field.key;
@@ -450,7 +458,7 @@ function fbRenderUserPicker(container, field, selectedValues, isEditable, onUpda
         input.oninput = () => {
             clearTimeout(searchTimeout);
             searchTimeout = setTimeout(() => {
-                fbSearchUsersForPicker(input, dropdown, field.user_source || 'database', (selectedUser) => {
+                fbSearchUsersForPicker(container, input, dropdown, field.user_source || 'database', (selectedUser) => {
                     if (isMulti) {
                         if (!Array.isArray(container.fbSelectedValues)) container.fbSelectedValues = [];
                         if (!container.fbSelectedValues.includes(selectedUser)) {
@@ -485,15 +493,28 @@ function fbRenderUserPicker(container, field, selectedValues, isEditable, onUpda
     updatePills();
 }
 
-async function fbSearchUsersForPicker(input, dropdown, source, onSelect) {
+async function fbSearchUsersForPicker(container, input, dropdown, source, onSelect) {
     const query = input.value.trim();
     if (!query) {
         dropdown.innerHTML = '';
         dropdown.classList.add('d-none');
         return;
     }
-    const res = await fetch(`/api/ticketing/users?source=${encodeURIComponent(source)}&query=${encodeURIComponent(query)}`, { credentials: 'include' });
-    const data = await res.json();
+    container._userSearchController?.abort();
+    const controller = new AbortController();
+    container._userSearchController = controller;
+    let data;
+    try {
+        const res = await fetch(`/api/ticketing/users?source=${encodeURIComponent(source)}&query=${encodeURIComponent(query)}`, {
+            credentials: 'include',
+            signal: controller.signal,
+        });
+        data = await res.json();
+    } catch (error) {
+        if (error.name === 'AbortError') return;
+        throw error;
+    }
+    if (!container.isConnected || input.value.trim() !== query) return;
     if (!data.success || !data.users || data.users.length === 0) {
         dropdown.innerHTML = '<div class="user-autocomplete-item text-muted">No users found</div>';
         dropdown.classList.remove('d-none');
