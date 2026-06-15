@@ -505,6 +505,16 @@ async def admin_create_user(request: Request):
 
     allowed_keys = {m["key"] for m in constants.MODULES}
     modules = [m for m in modules if m in allowed_keys]
+    if role == "project_admin" and not any(
+        module.endswith("_admin") for module in modules
+    ):
+        return JSONResponse(
+            {
+                "success": False,
+                "error": "Select at least one project administration module",
+            },
+            status_code=400,
+        )
     if role == "admin":
         modules = list(allowed_keys)
 
@@ -609,6 +619,7 @@ async def admin_update_user(username: str, request: Request):
     last_name = (body.get("last_name") or "").strip()
     role = (body.get("role") or "").strip()
     status = auth.normalize_user_status(body.get("status") or "")
+    modules = body.get("modules")
 
     if role and role not in ("admin", "project_admin", "user"):
         return JSONResponse(
@@ -618,6 +629,25 @@ async def admin_update_user(username: str, request: Request):
         return JSONResponse(
             {"success": False, "error": "Invalid status"}, status_code=400
         )
+    if modules is not None and not isinstance(modules, list):
+        return JSONResponse(
+            {"success": False, "error": "Invalid modules"}, status_code=400
+        )
+    if modules is not None:
+        allowed_keys = {module["key"] for module in constants.MODULES}
+        modules = [module for module in modules if module in allowed_keys]
+        if role == "project_admin" and not any(
+            module.endswith("_admin") for module in modules
+        ):
+            return JSONResponse(
+                {
+                    "success": False,
+                    "error": "Select at least one project administration module",
+                },
+                status_code=400,
+            )
+        if role == "admin":
+            modules = list(allowed_keys)
 
     if admin.get("username") == username and role and role != "admin":
         return JSONResponse(
@@ -645,6 +675,9 @@ async def admin_update_user(username: str, request: Request):
     if status:
         fields.append("status = ?")
         values.append(status)
+    if modules is not None:
+        fields.append("modules_json = ?")
+        values.append(json.dumps(modules))
 
     if not fields:
         return JSONResponse(

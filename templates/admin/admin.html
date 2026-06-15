@@ -1188,7 +1188,7 @@
                             </select>
                         </div>
                         <div style="display:flex; align-items:flex-end; gap: 10px;">
-                            <button class="btn btn-primary" type="button" onclick="adminSaveUserEdits('${user.username}')">Save profile</button>
+                            <button class="btn btn-primary" type="button" onclick="adminSaveUserEdits('${user.username}')">Save profile & access</button>
                             <button class="btn" style="background:#fee2e2; color:#dc2626;" type="button" onclick="adminDeleteUser('${user.username}')">Delete user</button>
                         </div>
                     </div>
@@ -1450,14 +1450,20 @@
                 const manager_username = document.getElementById('edit-manager-username').value.trim().toLowerCase();
                 const role = document.getElementById('edit-role').value;
                 const status = document.getElementById('edit-status').value;
+                const modules = Array.from(
+                    document.querySelectorAll(`input[type="checkbox"][data-user="${oldUsername}"]:checked`)
+                ).map(input => input.getAttribute('data-module'));
+                if (role === 'project_admin' && !modules.some(module => module.endsWith('_admin'))) {
+                    throw new Error('Select at least one project administration module below.');
+                }
 
-                // Update profile (name/role/status)
+                // Update profile and project access together.
                 {
                     const res = await fetch(`/api/admin/users/${encodeURIComponent(oldUsername)}/update`, {
                         method: 'POST',
                         credentials: 'include',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ first_name, last_name, department, manager_username, role, status }),
+                        body: JSON.stringify({ first_name, last_name, department, manager_username, role, status, modules }),
                     });
                     const parsed = await readJsonSafe(res);
                     const data = parsed.data || {};
