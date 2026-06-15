@@ -75,6 +75,18 @@ let shortcutBuffer = '';
 let shortcutTimer = null;
 
 document.addEventListener('keydown', (e) => {
+    const target = e.target;
+    const isTyping =
+        target instanceof HTMLElement &&
+        (target.matches('input, textarea, select') || target.isContentEditable);
+
+    // Navigation shortcuts must never run while a user is typing in a form or picker.
+    if (isTyping) {
+        shortcutBuffer = '';
+        clearTimeout(shortcutTimer);
+        return;
+    }
+
     // Ctrl+K
     if (e.ctrlKey && e.key === 'k') {
         e.preventDefault();
