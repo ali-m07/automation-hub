@@ -17,17 +17,17 @@
     .kanban-board {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 20px;
+        gap: 16px;
         margin-top: 20px;
         align-items: start;
     }
     
     .kanban-column {
-        background: var(--bg-secondary);
+        background: var(--surface-muted);
         border: 1px solid var(--border-color);
-        border-radius: 12px;
-        padding: 16px;
-        min-height: 450px;
+        border-radius: 16px;
+        padding: 18px;
+        min-height: 380px;
         display: flex;
         flex-direction: column;
         gap: 12px;
@@ -46,17 +46,21 @@
     }
     
     .column-count {
-        background: var(--bg-tertiary);
-        color: var(--text-secondary);
+        background: var(--surface-raised);
+        color: var(--accent);
         font-size: 0.8rem;
-        padding: 2px 8px;
-        border-radius: 12px;
+        min-width: 28px;
+        height: 28px;
+        display: inline-grid;
+        place-items: center;
+        padding: 0 8px;
+        border-radius: 999px;
     }
     
     .ticket-card {
-        background: var(--bg-primary);
+        background: var(--surface-raised);
         border: 1px solid var(--border-color);
-        border-radius: 8px;
+        border-radius: 14px;
         padding: 16px;
         box-shadow: 0 4px 6px var(--shadow);
         cursor: pointer;
@@ -106,8 +110,8 @@
     .modal-overlay {
         position: fixed;
         inset: 0;
-        background: rgba(17, 24, 39, 0.4);
-        backdrop-filter: blur(4px);
+        background: rgba(5, 10, 16, 0.66);
+        backdrop-filter: blur(10px);
         z-index: 1000;
         display: flex;
         align-items: center;
@@ -115,8 +119,8 @@
     }
     
     .modal-content {
-        background: var(--bg-primary);
-        border-radius: 12px;
+        background: var(--surface-raised);
+        border-radius: 18px;
         padding: 24px;
         max-width: 650px;
         width: 90%;
@@ -203,6 +207,49 @@
     .detail-value {
         color: var(--text-primary);
     }
+
+    .support-board-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 20px;
+        padding-bottom: 18px;
+        margin-bottom: 18px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .support-filters {
+        display: grid;
+        grid-template-columns: minmax(200px, 1.5fr) repeat(2, minmax(150px, 1fr));
+        gap: 10px;
+        width: min(100%, 620px);
+    }
+
+    .column-cards:empty::after {
+        content: "No tickets in this stage";
+        display: grid;
+        place-items: center;
+        min-height: 150px;
+        padding: 20px;
+        border: 1px dashed var(--border-color);
+        border-radius: 12px;
+        color: var(--text-secondary);
+        font-size: .88rem;
+        text-align: center;
+    }
+
+    @media (max-width: 980px) {
+        .kanban-board { grid-template-columns: 1fr; }
+        .kanban-column { min-height: 220px; }
+        .support-board-head { align-items: stretch; flex-direction: column; }
+        .support-filters { width: 100%; }
+    }
+
+    @media (max-width: 640px) {
+        .support-filters { grid-template-columns: 1fr; }
+        .support-header { align-items: stretch; }
+        .support-header .btn { width: 100%; }
+    }
 </style>
 {% endblock %}
 
@@ -218,18 +265,18 @@
 </div>
 
 <div class="card" style="padding:24px; margin-bottom:24px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e5e7eb; padding-bottom:16px; margin-bottom:20px; flex-wrap:wrap; gap:16px;">
+    <div class="support-board-head">
         <h3 style="margin:0;">My Issues Board</h3>
-        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
-            <input type="text" id="user-ticket-search" class="form-control" placeholder="Search subject..." style="max-width:200px;" oninput="filterUserTickets()" />
-            <select id="user-ticket-priority" class="form-control" style="max-width:140px;" onchange="filterUserTickets()">
+        <div class="support-filters">
+            <input type="text" id="user-ticket-search" class="form-control" placeholder="Search subject..." oninput="filterUserTickets()" />
+            <select id="user-ticket-priority" class="form-control" onchange="filterUserTickets()">
                 <option value="">All Priorities</option>
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
                 <option value="high">High</option>
                 <option value="urgent">Urgent</option>
             </select>
-            <select id="user-ticket-category" class="form-control" style="max-width:140px;" onchange="filterUserTickets()">
+            <select id="user-ticket-category" class="form-control" onchange="filterUserTickets()">
                 <option value="">All Categories</option>
                 <option value="bug">Bug</option>
                 <option value="feature">Feature Request</option>
@@ -310,7 +357,7 @@
                 <textarea id="ticket-body" class="form-control" rows="6" placeholder="Describe the details of your request..."></textarea>
             </div>
             <div style="display:flex; justify-content:flex-end; gap:10px;">
-                <button class="btn" style="background:#f3f4f6;" onclick="closeCreateTicketModal()">Cancel</button>
+                <button class="btn" onclick="closeCreateTicketModal()">Cancel</button>
                 <button class="btn btn-primary" onclick="submitTicket()">Submit Request</button>
             </div>
             <div id="ticket-status" class="status-box" style="margin-top: 16px;"></div>
