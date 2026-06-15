@@ -1,35 +1,47 @@
 :root {
-    --bg-primary: #ffffff;
-    --bg-secondary: #f9fafb;
-    --bg-tertiary: #f3f4f6;
-    --text-primary: #111827;
-    --text-secondary: #6b7280;
-    --border-color: #e5e7eb;
-    --shadow: rgba(15, 23, 42, 0.14);
-    --blob-1: #0f766e;
-    --blob-2: #111827;
-    --surface-raised: #ffffff;
-    --surface-muted: #eef2f7;
-    --accent: #0f766e;
-    --accent-soft: #ccfbf1;
-    --on-accent-soft: #115e59;
+    --bg-primary: #fffdfd;
+    --bg-secondary: #f8f7fc;
+    --bg-tertiary: #f1f5f4;
+    --text-primary: #303442;
+    --text-secondary: #74798a;
+    --border-color: #e4e1eb;
+    --shadow: rgba(76, 72, 100, 0.13);
+    --blob-1: #b8eadf;
+    --blob-2: #d9d1f2;
+    --surface-raised: #fffefe;
+    --surface-muted: #f2f0f8;
+    --accent: #8f84d8;
+    --accent-soft: #ebe7fb;
+    --on-accent-soft: #554b91;
+    --success: #79bca8;
+    --success-soft: #def3eb;
+    --warning: #d5ad68;
+    --warning-soft: #fbefd8;
+    --danger: #d88998;
+    --danger-soft: #f9e3e8;
 }
 
 [data-theme="dark"] {
-    --bg-primary: #151b23;
-    --bg-secondary: #10151c;
-    --bg-tertiary: #0b1016;
-    --text-primary: #f1f5f9;
-    --text-secondary: #a7b0bf;
-    --border-color: #2a3442;
+    --bg-primary: #191a22;
+    --bg-secondary: #14151c;
+    --bg-tertiary: #101117;
+    --text-primary: #f2eff7;
+    --text-secondary: #aaa6b5;
+    --border-color: #33313d;
     --shadow: rgba(0, 0, 0, 0.34);
-    --blob-1: #0f766e;
-    --blob-2: #0b3b46;
-    --surface-raised: #19212c;
-    --surface-muted: #111821;
-    --accent: #5eead4;
-    --accent-soft: #123b3a;
-    --on-accent-soft: #ccfbf1;
+    --blob-1: #776da5;
+    --blob-2: #47796f;
+    --surface-raised: #1e1f28;
+    --surface-muted: #181922;
+    --accent: #b6a9ee;
+    --accent-soft: #343049;
+    --on-accent-soft: #eeeaff;
+    --success: #8bc9b5;
+    --success-soft: #243d37;
+    --warning: #e0bd7d;
+    --warning-soft: #403725;
+    --danger: #e6a0ad;
+    --danger-soft: #442c34;
 }
 
 * {
@@ -714,7 +726,7 @@ header h1 {
 
 .btn-primary {
     background: var(--accent);
-    color: #062d2a;
+    color: #fff;
 }
 
 .btn-primary:hover {
@@ -724,8 +736,8 @@ header h1 {
 }
 
 .btn-success {
-    background: linear-gradient(135deg, #10b981 0%, #22c55e 100%);
-    color: white;
+    background: var(--success);
+    color: #173d34;
 }
 
 .btn-success:hover {
@@ -1222,7 +1234,7 @@ header h1 {
 .workflow-step, .question-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 12px; border: 1px solid var(--border-color); border-radius: 16px; background: var(--bg-secondary); }
 .workflow-step-number, .question-index { width: 38px; height: 38px; border-radius: 14px; display: grid; place-items: center; background: #0f766e; color: #fff; font-weight: 900; }
 .workflow-step-controls { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; max-width: 180px; }
-.danger-soft { background: #fee2e2 !important; color: #991b1b !important; }
+.danger-soft { background: var(--danger-soft) !important; color: var(--danger) !important; }
 .feedback-matrix { display: grid; gap: 8px; margin-top: 8px; }
 .matrix-row { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 12px; padding: 10px; border-radius: 14px; background: var(--bg-secondary); border: 1px solid var(--border-color); }
 .matrix-row span { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -1380,17 +1392,17 @@ header h1 {
 
 /* Compact dark workspace, inspired by professional data-management tools. */
 [data-theme="dark"] {
-    --bg-primary: #111318;
-    --bg-secondary: #0c0e12;
-    --bg-tertiary: #090b0f;
-    --surface-raised: #14171d;
-    --surface-muted: #0f1217;
-    --border-color: #272b34;
-    --text-primary: #f0f1f3;
-    --text-secondary: #8f96a3;
-    --accent: #6d7cff;
-    --accent-soft: #20264a;
-    --on-accent-soft: #e0e4ff;
+    --bg-primary: #191a22;
+    --bg-secondary: #14151c;
+    --bg-tertiary: #101117;
+    --surface-raised: #1e1f28;
+    --surface-muted: #181922;
+    --border-color: #353340;
+    --text-primary: #f2eff7;
+    --text-secondary: #aaa6b5;
+    --accent: #b6a9ee;
+    --accent-soft: #343049;
+    --on-accent-soft: #eeeaff;
     --shadow: rgba(0, 0, 0, .28);
 }
 
@@ -1414,7 +1426,7 @@ header h1 {
     left: 10px;
     width: 238px;
     border-radius: 8px;
-    background: #101218;
+    background: #181922;
     box-shadow: none;
 }
 
@@ -1440,7 +1452,7 @@ header h1 {
     font-size: .85rem;
 }
 [data-theme="dark"] .sidebar-feedback-section.active {
-    background: #151824;
+    background: #292638;
     border-color: transparent;
 }
 [data-theme="dark"] .sidebar-submenu {
@@ -1454,7 +1466,7 @@ header h1 {
     margin-bottom: 14px;
     padding: 8px 12px;
     border-radius: 8px;
-    background: #11141a;
+    background: #1b1c25;
     box-shadow: none;
     backdrop-filter: none;
 }
@@ -1477,7 +1489,7 @@ header h1 {
     min-height: 36px;
     padding: 0 10px;
     border-radius: 6px;
-    background: #12151b;
+    background: #20212b;
     font-size: .8rem;
 }
 
@@ -1489,7 +1501,7 @@ header h1 {
     padding: 16px;
     margin-bottom: 12px;
     border-radius: 8px;
-    background: #12151b !important;
+    background: #1e1f28 !important;
     box-shadow: none;
 }
 [data-theme="dark"] .card:hover {
@@ -1511,7 +1523,7 @@ header h1 {
     min-height: 36px;
     padding: 7px 10px;
     border-radius: 5px;
-    background: #0d1015;
+    background: #171820;
     font-size: .84rem;
 }
 [data-theme="dark"] .btn {
@@ -1521,28 +1533,28 @@ header h1 {
     font-size: .8rem;
 }
 [data-theme="dark"] .btn-primary {
-    background: #6574f7;
-    color: #fff;
+    background: var(--accent);
+    color: #262139;
 }
 
 [data-theme="dark"] table {
     width: 100%;
     border-collapse: collapse;
-    background: #0f1217;
+    background: #181922;
 }
 [data-theme="dark"] th {
     padding: 8px 10px !important;
-    background: #12151b;
-    color: #8f96a3 !important;
+    background: #20212b;
+    color: var(--text-secondary) !important;
     font-size: .7rem !important;
     letter-spacing: .04em;
 }
 [data-theme="dark"] td {
     padding: 8px 10px !important;
-    background: #0f1217;
+    background: #181922;
     font-size: .8rem;
 }
-[data-theme="dark"] tbody tr:hover td { background: #151922; }
+[data-theme="dark"] tbody tr:hover td { background: #262431; }
 
 [data-theme="dark"] .modal-content,
 [data-theme="dark"] #profile-panel > div,
