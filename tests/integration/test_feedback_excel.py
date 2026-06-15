@@ -110,3 +110,42 @@ def test_admin_nomination_export(authenticated_client: TestClient, monkeypatch):
     assert sheet["A1"].value == "Nomination ID"
     assert sheet["A2"].value == "NOM_TEST"
     assert sheet["K2"].value == "evaluator@snapp.cab"
+
+
+def test_single_nomination_export(authenticated_client: TestClient, monkeypatch):
+    router = import_module("automation_hub.projects.feedback.router")
+    nomination = {
+        "id": "NOM_SINGLE",
+        "nominator_username": "employee",
+        "manager_username": "manager",
+        "status": "pending",
+        "evaluators": [
+            {
+                "full_name": "One Evaluator",
+                "email": "one@snapp.cab",
+                "reason": "Same project",
+            }
+        ],
+    }
+    monkeypatch.setattr(
+        router.legacy,
+        "_load_evaluator_store",
+        lambda: {"nominations": [nomination]},
+    )
+    monkeypatch.setattr(
+        router.legacy,
+        "_get_user_info",
+        lambda username: {
+            "full_name": "Employee",
+            "email": "employee@snapp.cab",
+        },
+    )
+
+    response = authenticated_client.get(
+        "/api/feedback/evaluator-nomination/NOM_SINGLE/export.xlsx"
+    )
+    assert response.status_code == 200
+    assert "servexa-feedback-employee.xlsx" in response.headers["content-disposition"]
+    workbook = load_workbook(BytesIO(response.content), read_only=True)
+    assert workbook["Nominations"]["A2"].value == "NOM_SINGLE"
+    assert workbook["Nominations"]["K2"].value == "one@snapp.cab"

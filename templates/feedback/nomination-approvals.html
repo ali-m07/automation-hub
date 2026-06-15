@@ -457,6 +457,7 @@
         .detail-toolbar .detail-back {
             margin-bottom: 0;
         }
+        .detail-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 
         @media (prefers-reduced-motion: reduce) {
             .modal-overlay,
@@ -1169,9 +1170,14 @@
                         <a class="detail-back" href="/feedback/nomination-approvals">
                             <i class="fas fa-arrow-left"></i> Back to team requests
                         </a>
-                        <button class="btn btn-primary btn-sm" onclick="openAddEvaluatorModal('${nom.id}')">
-                            <i class="fas fa-plus"></i> Add Evaluator
-                        </button>
+                        <div class="detail-actions">
+                            <a class="export-link" href="/api/feedback/evaluator-nomination/${encodeURIComponent(nom.id)}/export.xlsx">
+                                <i class="fas fa-file-excel"></i> Export this user
+                            </a>
+                            <button class="btn btn-primary btn-sm" onclick="openAddEvaluatorModal('${nom.id}')">
+                                <i class="fas fa-plus"></i> Add Evaluator
+                            </button>
+                        </div>
                     </div>
                     <div class="request-card">
                         <div class="request-header">

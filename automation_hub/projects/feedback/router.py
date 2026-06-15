@@ -46,6 +46,61 @@ def _style_header(sheet, cell_range: str) -> None:
             cell.alignment = Alignment(vertical="center")
 
 
+def _build_nomination_export(nominations) -> Workbook:
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Nominations"
+    headers = [
+        "Nomination ID",
+        "Nominator",
+        "Nominator Email",
+        "Nominator Team",
+        "Sub-team",
+        "Vertical",
+        "Manager",
+        "Submitted At",
+        "Request Status",
+        "Evaluator",
+        "Evaluator Email",
+        "Evaluator Team",
+        "Evaluator Sub-team",
+        "Evaluator Vertical",
+        "Reason",
+        "Evaluator Status",
+    ]
+    sheet.append(headers)
+    for nomination in nominations:
+        nominator = legacy._get_user_info(nomination.get("nominator_username", ""))
+        for evaluator in nomination.get("evaluators", []):
+            sheet.append(
+                [
+                    nomination.get("id", ""),
+                    nominator.get("full_name", ""),
+                    nominator.get("email") or nomination.get("nominator_username", ""),
+                    nominator.get("team", ""),
+                    nominator.get("sub_team", ""),
+                    nominator.get("vertical", ""),
+                    nomination.get("manager_username", ""),
+                    nomination.get("submitted_at", ""),
+                    nomination.get("status", ""),
+                    evaluator.get("full_name", ""),
+                    evaluator.get("email", ""),
+                    evaluator.get("team", ""),
+                    evaluator.get("sub_team", ""),
+                    evaluator.get("vertical", ""),
+                    evaluator.get("reason", ""),
+                    evaluator.get("status", "pending"),
+                ]
+            )
+    sheet.freeze_panes = "A2"
+    sheet.auto_filter.ref = sheet.dimensions
+    _style_header(sheet, "A1:P1")
+    widths = [20, 26, 32, 24, 22, 22, 28, 25, 18, 26, 32, 24, 22, 22, 48, 18]
+    for index, width in enumerate(widths, start=1):
+        sheet.column_dimensions[chr(64 + index)].width = width
+    return workbook
+
+
 @router.get("/evaluator-nomination/template.xlsx")
 async def evaluator_nomination_template(request: Request):
     legacy._require_feedback_access(request)
@@ -174,63 +229,46 @@ async def export_evaluator_nominations(request: Request):
             if legacy._identity_key(item.get("manager_username")) == current_username
         ]
 
-    workbook = Workbook()
-    sheet = workbook.active
-    sheet.title = "Nominations"
-    headers = [
-        "Nomination ID",
-        "Nominator",
-        "Nominator Email",
-        "Nominator Team",
-        "Sub-team",
-        "Vertical",
-        "Manager",
-        "Submitted At",
-        "Request Status",
-        "Evaluator",
-        "Evaluator Email",
-        "Evaluator Team",
-        "Evaluator Sub-team",
-        "Evaluator Vertical",
-        "Reason",
-        "Evaluator Status",
-    ]
-    sheet.append(headers)
-    for nomination in nominations:
-        nominator = legacy._get_user_info(nomination.get("nominator_username", ""))
-        for evaluator in nomination.get("evaluators", []):
-            sheet.append(
-                [
-                    nomination.get("id", ""),
-                    nominator.get("full_name", ""),
-                    nominator.get("email") or nomination.get("nominator_username", ""),
-                    nominator.get("team", ""),
-                    nominator.get("sub_team", ""),
-                    nominator.get("vertical", ""),
-                    nomination.get("manager_username", ""),
-                    nomination.get("submitted_at", ""),
-                    nomination.get("status", ""),
-                    evaluator.get("full_name", ""),
-                    evaluator.get("email", ""),
-                    evaluator.get("team", ""),
-                    evaluator.get("sub_team", ""),
-                    evaluator.get("vertical", ""),
-                    evaluator.get("reason", ""),
-                    evaluator.get("status", "pending"),
-                ]
-            )
-    sheet.freeze_panes = "A2"
-    sheet.auto_filter.ref = sheet.dimensions
-    _style_header(sheet, f"A1:P1")
-    widths = [20, 26, 32, 24, 22, 22, 28, 25, 18, 26, 32, 24, 22, 22, 48, 18]
-    for index, width in enumerate(widths, start=1):
-        sheet.column_dimensions[chr(64 + index)].width = width
+    workbook = _build_nomination_export(nominations)
     filename = (
         "servexa-all-feedback-nominations.xlsx"
         if is_admin
         else "servexa-my-team-feedback-nominations.xlsx"
     )
     return _xlsx_response(workbook, filename)
+
+
+@router.get("/evaluator-nomination/{nomination_id}/export.xlsx")
+async def export_single_evaluator_nomination(nomination_id: str, request: Request):
+    user = legacy._require_feedback_access(request)
+    nomination = next(
+        (
+            item
+            for item in legacy._load_evaluator_store().get("nominations", [])
+            if item.get("id") == nomination_id
+        ),
+        None,
+    )
+    if not nomination:
+        raise HTTPException(status_code=404, detail="Nomination not found")
+    current_username = legacy._identity_key(user.get("username", ""))
+    if (
+        user.get("role") != "admin"
+        and legacy._identity_key(nomination.get("manager_username")) != current_username
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Only the assigned manager or an admin can export this request",
+        )
+    nominator = legacy._get_user_info(nomination.get("nominator_username", ""))
+    filename_key = legacy._identity_key(
+        nominator.get("email") or nomination.get("nominator_username", "")
+    )
+    workbook = _build_nomination_export([nomination])
+    return _xlsx_response(
+        workbook,
+        f"servexa-feedback-{filename_key or nomination_id.lower()}.xlsx",
+    )
 
 
 @router.get("/evaluator-nomination/settings")
