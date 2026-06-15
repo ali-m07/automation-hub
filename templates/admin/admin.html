@@ -307,7 +307,7 @@
             {% for title, items in [
                 ('Workspace', [('overview','Overview'),('users','Users'),('ldap','LDAP Integration')]),
                 ('Operations', [('tickets','Tickets'),('notifications','Notifications'),('data-tables','Data Tables'),('db-connectors','DB Connectors')]),
-                ('System', [('upload-limits','Upload Limits'),('webhooks','Webhooks'),('smtp','SMTP / Email'),('audit','Audit Log'),('diagnostics','Diagnostics')])
+                ('System', [('feedback-deadline','Feedback Deadline'),('upload-limits','Upload Limits'),('webhooks','Webhooks'),('smtp','SMTP / Email'),('audit','Audit Log'),('diagnostics','Diagnostics')])
             ] %}
             <div class="sidebar-section">
                 <div class="sidebar-title">{{ title }}</div>
@@ -685,6 +685,23 @@
                         <input type="number" id="settings-max-files" class="form-control" min="1" max="1000" placeholder="20" style="max-width: 120px;" />
                     </div>
                     <button class="btn btn-primary" onclick="saveUploadLimits()">Save Upload Limits</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="admin-feedback-deadline" class="tab-content">
+            <div class="card">
+                <h2>Evaluator Nomination Deadline</h2>
+                <p class="subtitle" style="margin-bottom:18px;">Set the final date and time users may create or edit evaluator nominations. Leave it empty to keep nominations open.</p>
+                <div id="feedback-deadline-status" class="status-box" style="display:none; margin-bottom:14px;"></div>
+                <div class="form-group" style="max-width:420px;">
+                    <label class="form-label" for="feedback-deadline-input">Deadline</label>
+                    <input id="feedback-deadline-input" type="datetime-local" class="form-control">
+                    <small style="display:block; margin-top:7px; color:var(--text-secondary);">Saved in UTC. After this time the server rejects new submissions and edits.</small>
+                </div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <button class="btn btn-primary" type="button" onclick="saveFeedbackDeadline()">Save deadline</button>
+                    <button class="btn" type="button" onclick="clearFeedbackDeadline()">Keep nominations open</button>
                 </div>
             </div>
         </div>
@@ -1628,7 +1645,7 @@
         function applyInitialTabFromHash() {
             const legacyHash = (window.location.hash || '').replace('#', '').trim();
             const routeTab = {{ active_tab|tojson }};
-            const allowed = new Set(['overview','users','ldap','notifications','upload-limits','data-tables','db-connectors','tickets','audit','webhooks','smtp','diagnostics']);
+            const allowed = new Set(['overview','users','ldap','notifications','feedback-deadline','upload-limits','data-tables','db-connectors','tickets','audit','webhooks','smtp','diagnostics']);
             const tab = allowed.has(legacyHash) ? legacyHash : routeTab;
             if (legacyHash && allowed.has(legacyHash)) {
                 window.history.replaceState({tab}, '', tab === 'overview' ? '/admin' : `/admin/${tab}`);
@@ -1659,7 +1676,53 @@
                 loadAdminDbConnectors();
             } else if (tab === 'data-tables') {
                 adminLoadPendingDataTables();
+            } else if (tab === 'feedback-deadline') {
+                loadFeedbackDeadline();
             }
+        }
+
+        async function loadFeedbackDeadline() {
+            const status = document.getElementById('feedback-deadline-status');
+            try {
+                const res = await fetch('/api/feedback/evaluator-nomination/settings', { credentials: 'include' });
+                const data = await res.json();
+                if (!res.ok || !data.success) throw new Error(data.detail || 'Failed to load deadline');
+                const input = document.getElementById('feedback-deadline-input');
+                input.value = data.deadline ? new Date(data.deadline).toISOString().slice(0, 16) : '';
+                status.style.display = 'block';
+                status.className = `status-box ${data.is_closed ? 'error' : 'success'}`;
+                status.textContent = data.deadline
+                    ? `${data.is_closed ? 'Closed' : 'Open'} until ${new Date(data.deadline).toLocaleString()}`
+                    : 'Nominations are open with no deadline.';
+            } catch (error) {
+                status.style.display = 'block';
+                status.className = 'status-box error';
+                status.textContent = error.message;
+            }
+        }
+
+        async function saveFeedbackDeadline(deadline = null) {
+            const input = document.getElementById('feedback-deadline-input');
+            const value = deadline === null ? input.value : deadline;
+            const isoValue = value ? new Date(value).toISOString() : '';
+            const res = await fetch('/api/feedback/evaluator-nomination/settings', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ deadline: isoValue }),
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                showToast(data.detail || 'Failed to save deadline', 'error');
+                return;
+            }
+            showToast(value ? 'Feedback deadline saved.' : 'Feedback nominations reopened.', 'success');
+            loadFeedbackDeadline();
+        }
+
+        function clearFeedbackDeadline() {
+            document.getElementById('feedback-deadline-input').value = '';
+            saveFeedbackDeadline('');
         }
 
         async function loadAdminOverviewStats() {

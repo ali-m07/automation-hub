@@ -852,6 +852,8 @@
         let searchTimeout = null;
         let currentEvaluatorResults = [];
         let activeEvaluatorResultIndex = -1;
+        let nominationWindowClosed = false;
+        let previousEvaluatorKeys = new Set();
 
         function draftStorageKey() {
             return `servexa:evaluator-draft:${currentUser?.username || 'anonymous'}`;
@@ -901,6 +903,18 @@
                 const response = await fetch('/api/feedback/evaluator-nomination/meta');
                 const data = await response.json();
                 currentUser = data.current_user;
+                nominationWindowClosed = Boolean(data.nomination_window?.is_closed);
+                previousEvaluatorKeys = new Set(data.previous_evaluator_keys || []);
+                if (data.nomination_window?.deadline) {
+                    const status = document.getElementById('currentStatus');
+                    status.style.display = 'block';
+                    status.innerHTML = nominationWindowClosed
+                        ? `<i class="fas fa-lock"></i> Nominations closed on ${new Date(data.nomination_window.deadline).toLocaleString()}.`
+                        : `<i class="fas fa-clock"></i> Submit or edit before ${new Date(data.nomination_window.deadline).toLocaleString()}.`;
+                }
+                document.querySelectorAll('[onclick="openUserPicker()"]').forEach(element => {
+                    element.setAttribute('aria-disabled', nominationWindowClosed ? 'true' : 'false');
+                });
 
                 console.log('=== loadCurrentUser ===');
                 console.log('currentUser:', currentUser);
@@ -1093,6 +1107,10 @@
 
         // User Picker Modal
         function openUserPicker() {
+            if (nominationWindowClosed) {
+                showToast('The evaluator nomination deadline has passed.', 'error');
+                return;
+            }
             document.getElementById('userPickerModal').classList.add('active');
             document.getElementById('userSearch').value = '';
             document.getElementById('userResults').innerHTML = '';
@@ -1201,6 +1219,7 @@
 
                     const availableUsers = users.filter(u => {
                         const userEmail = (u.email || '').toLowerCase().trim();
+                        const identityKey = userEmail.split('@')[0];
 
                         // Use .some() to check if email already exists
                         const isAlreadyAdded = evaluators.some(e =>
@@ -1209,7 +1228,7 @@
 
                         console.log('Checking userEmail:', userEmail, '-> isAlreadyAdded:', isAlreadyAdded);
 
-                        return !isAlreadyAdded;
+                        return !isAlreadyAdded && !previousEvaluatorKeys.has(identityKey);
                     });
 
                     console.log('Available users after filter:', availableUsers.map(u => u.email));
@@ -1217,7 +1236,7 @@
                     if (availableUsers.length === 0) {
                         currentEvaluatorResults = [];
                         activeEvaluatorResultIndex = -1;
-                        document.getElementById('userResults').innerHTML = '<div class="no-results">All matching emails already added</div>';
+                        document.getElementById('userResults').innerHTML = '<div class="no-results">Matching people were already selected in this or an earlier nomination.</div>';
                         return;
                     }
 
@@ -1332,6 +1351,10 @@
 
         async function submitNomination() {
             const submitBtn = document.getElementById('submitBtn');
+            if (nominationWindowClosed) {
+                showToast('The evaluator nomination deadline has passed.', 'error');
+                return;
+            }
             // Get manager email from the input field (editable by user)
             const managerEmailValue = document.getElementById('managerEmailValue');
             const managerEmail = managerEmailValue ? managerEmailValue.value.trim() : '';

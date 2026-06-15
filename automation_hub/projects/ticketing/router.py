@@ -79,6 +79,67 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _identity_key(value: Any) -> str:
+    """Compare local usernames and corporate emails as the same identity."""
+    normalized = str(value or "").strip().lower()
+    return normalized.split("@", 1)[0]
+
+
+def _get_feedback_nomination_deadline() -> Optional[str]:
+    conn = db.db_connect(db.get_db_file())
+    try:
+        row = conn.execute(
+            "SELECT value FROM app_settings WHERE key = ?",
+            ("feedback_nomination_deadline",),
+        ).fetchone()
+        return str(row["value"]).strip() if row and row["value"] else None
+    finally:
+        conn.close()
+
+
+def _deadline_state() -> Dict[str, Any]:
+    value = _get_feedback_nomination_deadline()
+    if not value:
+        return {"deadline": None, "is_closed": False}
+    try:
+        deadline = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if deadline.tzinfo is None:
+            deadline = deadline.replace(tzinfo=timezone.utc)
+        return {
+            "deadline": deadline.astimezone(timezone.utc).isoformat(),
+            "is_closed": datetime.now(timezone.utc) > deadline,
+        }
+    except ValueError:
+        return {"deadline": value, "is_closed": False}
+
+
+def _previous_evaluator_keys(nominator_username: str) -> set[str]:
+    keys: set[str] = set()
+    nominator_key = _identity_key(nominator_username)
+    for nomination in _load_evaluator_store().get("nominations", []):
+        if _identity_key(nomination.get("nominator_username")) != nominator_key:
+            continue
+        if nomination.get("status") != "closed" and not any(
+            item.get("status") in {"approved", "rejected"}
+            for item in nomination.get("evaluators", [])
+        ):
+            continue
+        for evaluator in nomination.get("evaluators", []):
+            key = _identity_key(evaluator.get("email") or evaluator.get("username"))
+            if key:
+                keys.add(key)
+    return keys
+
+
+def _require_nomination_window_open() -> None:
+    state = _deadline_state()
+    if state["is_closed"]:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Evaluator nominations closed on {state['deadline']}. Contact an administrator.",
+        )
+
+
 def _load_store() -> Dict[str, Any]:
     path = _store_path()
     if not path.exists():
@@ -1218,9 +1279,13 @@ def _get_user_info(username: str) -> Dict[str, Any]:
             """
             SELECT username, first_name, last_name, email, role, modules_json, department, manager_username
             FROM users
-            WHERE username = ?
+            WHERE lower(username) = ? OR lower(email) = ? OR lower(username) = ?
             """,
-            (username,),
+            (
+                str(username or "").strip().lower(),
+                str(username or "").strip().lower(),
+                _identity_key(username),
+            ),
         ).fetchone()
         if row:
             return {
@@ -1328,9 +1393,13 @@ async def evaluator_nomination_meta(request: Request):
             "current_user": user_info,
             "manager": manager_info,
             "permissions": {
-                "can_nominate": True,
+                "can_nominate": not _deadline_state()["is_closed"],
                 "can_approve": True,
             },
+            "nomination_window": _deadline_state(),
+            "previous_evaluator_keys": sorted(
+                _previous_evaluator_keys(user.get("username", ""))
+            ),
         }
     )
 
@@ -1378,14 +1447,15 @@ async def evaluator_user_filters(request: Request):
 async def get_my_nomination(request: Request):
     """Get current user's nomination request."""
     user = _require_feedback_access(request)
-    username = user.get("username", "")
+    username = _identity_key(user.get("username", ""))
     store = _load_evaluator_store()
 
     nomination = next(
         (
             n
             for n in store.get("nominations", [])
-            if n.get("nominator_username") == username and n.get("status") != "closed"
+            if _identity_key(n.get("nominator_username")) == username
+            and n.get("status") != "closed"
         ),
         None,
     )
@@ -1412,12 +1482,12 @@ async def get_my_nomination(request: Request):
 async def get_my_nomination_history(request: Request):
     """Return every evaluator nomination submitted by the current user."""
     user = _require_feedback_access(request)
-    username = user.get("username", "")
+    username = _identity_key(user.get("username", ""))
     store = _load_evaluator_store()
     nominations = [
         nomination
         for nomination in store.get("nominations", [])
-        if nomination.get("nominator_username") == username
+        if _identity_key(nomination.get("nominator_username")) == username
     ]
     nominations.sort(
         key=lambda item: item.get("submitted_at") or item.get("created_at") or "",
@@ -1441,14 +1511,17 @@ async def get_my_nomination_history(request: Request):
 async def get_manager_requests(request: Request):
     """Get nomination requests for manager approval."""
     user = _require_feedback_access(request)
-    username = user.get("username", "")
+    username = _identity_key(user.get("username", ""))
     store = _load_evaluator_store()
 
     # Get all pending nominations assigned to this manager
     nominations = [
         n
         for n in store.get("nominations", [])
-        if (user.get("role") == "admin" or n.get("manager_username") == username)
+        if (
+            user.get("role") == "admin"
+            or _identity_key(n.get("manager_username")) == username
+        )
         and n.get("status") in ["pending", "partial"]
     ]
 
@@ -1471,11 +1544,12 @@ async def get_manager_requests(request: Request):
 async def submit_evaluator_nomination(request: Request):
     """Submit evaluator nomination for manager approval."""
     user = _require_feedback_access(request)
+    _require_nomination_window_open()
     payload = await request.json()
 
-    nominator_username = user.get("username", "")
+    nominator_username = _identity_key(user.get("username", ""))
     evaluators = payload.get("evaluators", [])
-    manager_username = payload.get("manager_username", "")
+    manager_username = _identity_key(payload.get("manager_username", ""))
 
     if not evaluators:
         raise HTTPException(
@@ -1514,12 +1588,31 @@ async def submit_evaluator_nomination(request: Request):
 
     store = _load_evaluator_store()
 
+    previously_nominated = _previous_evaluator_keys(nominator_username)
+
+    duplicate_emails = sorted(
+        {
+            str(item.get("email") or item.get("username") or "").strip()
+            for item in evaluators
+            if _identity_key(item.get("email") or item.get("username"))
+            in previously_nominated
+        }
+    )
+    if duplicate_emails:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "These evaluators were already nominated in an earlier request: "
+                + ", ".join(duplicate_emails)
+            ),
+        )
+
     # Check if user already has an active nomination
     existing = next(
         (
             n
             for n in store.get("nominations", [])
-            if n.get("nominator_username") == nominator_username
+            if _identity_key(n.get("nominator_username")) == nominator_username
             and n.get("status") != "closed"
         ),
         None,
@@ -1576,7 +1669,9 @@ async def approve_evaluator(nomination_id: str, request: Request):
     if not nomination:
         raise HTTPException(status_code=404, detail="Nomination not found")
 
-    if user.get("role") != "admin" and nomination.get("manager_username") != username:
+    if user.get("role") != "admin" and _identity_key(
+        nomination.get("manager_username")
+    ) != _identity_key(username):
         raise HTTPException(
             status_code=403, detail="Only the assigned manager can approve"
         )
@@ -1714,7 +1809,9 @@ async def reject_evaluator(nomination_id: str, request: Request):
     if not nomination:
         raise HTTPException(status_code=404, detail="Nomination not found")
 
-    if user.get("role") != "admin" and nomination.get("manager_username") != username:
+    if user.get("role") != "admin" and _identity_key(
+        nomination.get("manager_username")
+    ) != _identity_key(username):
         raise HTTPException(
             status_code=403, detail="Only the assigned manager can reject"
         )
@@ -1771,7 +1868,9 @@ async def add_evaluator_as_manager(nomination_id: str, request: Request):
     if not nomination:
         raise HTTPException(status_code=404, detail="Nomination not found")
 
-    if user.get("role") != "admin" and nomination.get("manager_username") != username:
+    if user.get("role") != "admin" and _identity_key(
+        nomination.get("manager_username")
+    ) != _identity_key(username):
         raise HTTPException(
             status_code=403, detail="Only the assigned manager can add evaluators"
         )
@@ -1835,7 +1934,9 @@ async def remove_manager_added_evaluator(nomination_id: str, request: Request):
 
     if not nomination:
         raise HTTPException(status_code=404, detail="Nomination not found")
-    if user.get("role") != "admin" and nomination.get("manager_username") != username:
+    if user.get("role") != "admin" and _identity_key(
+        nomination.get("manager_username")
+    ) != _identity_key(username):
         raise HTTPException(
             status_code=403,
             detail="Only the assigned manager can remove this evaluator",
@@ -1882,7 +1983,9 @@ async def close_nomination(nomination_id: str, request: Request):
     if not nomination:
         raise HTTPException(status_code=404, detail="Nomination not found")
 
-    if user.get("role") != "admin" and nomination.get("manager_username") != username:
+    if user.get("role") != "admin" and _identity_key(
+        nomination.get("manager_username")
+    ) != _identity_key(username):
         raise HTTPException(
             status_code=403,
             detail="Only the assigned manager or an admin can close this nomination",

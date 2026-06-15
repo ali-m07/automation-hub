@@ -140,6 +140,7 @@ ADMIN_SECTIONS = {
     "webhooks",
     "smtp",
     "diagnostics",
+    "feedback-deadline",
 }
 
 
