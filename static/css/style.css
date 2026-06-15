@@ -49,6 +49,20 @@ body {
     overflow-x: hidden;
     position: relative;
     transition: background 0.3s ease, color 0.3s ease;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4 {
+    letter-spacing: -0.025em;
+    line-height: 1.2;
+}
+
+h1 { font-weight: 750; }
+h2, h3, h4 { font-weight: 700; }
+
+p, .subtitle, td, th, input, select, textarea, button {
+    line-height: 1.5;
 }
 
 /* soft background blobs */
@@ -1294,6 +1308,14 @@ header h1 {
 [data-theme="dark"] p,
 [data-theme="dark"] .subtitle,
 [data-theme="dark"] small { color: var(--text-secondary); }
+[data-theme="dark"] [style*="color: #6b7280"],
+[data-theme="dark"] [style*="color:#6b7280"],
+[data-theme="dark"] [style*="color: #9ca3af"],
+[data-theme="dark"] [style*="color:#9ca3af"] { color: var(--text-secondary) !important; }
+[data-theme="dark"] [style*="color: #111827"],
+[data-theme="dark"] [style*="color:#111827"],
+[data-theme="dark"] [style*="color: #374151"],
+[data-theme="dark"] [style*="color:#374151"] { color: var(--text-primary) !important; }
 [data-theme="dark"] .app-sidebar {
     background: color-mix(in srgb, var(--surface-raised) 96%, transparent);
     border-color: var(--border-color);

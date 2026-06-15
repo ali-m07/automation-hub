@@ -7,25 +7,25 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --primary: #3b82f6;
-            --primary-hover: #2563eb;
+            --primary: var(--accent);
+            --primary-hover: color-mix(in srgb, var(--accent) 84%, #000);
             --success: #10b981;
             --success-light: #d1fae5;
             --danger: #ef4444;
             --danger-light: #fee2e2;
-            --gray-50: #f9fafb;
-            --gray-100: #f3f4f6;
-            --gray-200: #e5e7eb;
-            --gray-300: #d1d5db;
-            --gray-400: #9ca3af;
-            --gray-500: #6b7280;
-            --gray-600: #4b5563;
-            --gray-700: #374151;
-            --gray-800: #1f2937;
-            --gray-900: #111827;
-            --border: #e5e7eb;
-            --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --gray-50: var(--surface-muted);
+            --gray-100: var(--bg-tertiary);
+            --gray-200: var(--border-color);
+            --gray-300: color-mix(in srgb, var(--text-secondary) 45%, var(--bg-primary));
+            --gray-400: var(--text-secondary);
+            --gray-500: var(--text-secondary);
+            --gray-600: var(--text-secondary);
+            --gray-700: var(--text-primary);
+            --gray-800: var(--text-primary);
+            --gray-900: var(--text-primary);
+            --border: var(--border-color);
+            --shadow: 0 8px 24px rgba(0, 0, 0, .16);
+            --shadow-lg: 0 18px 42px rgba(0, 0, 0, .24);
             --radius: 8px;
             --radius-lg: 12px;
         }
@@ -75,7 +75,7 @@
 
         .btn-primary {
             background: var(--primary);
-            color: white;
+            color: #062d2a;
         }
 
         .btn-primary:hover {
@@ -104,7 +104,8 @@
         }
 
         .card {
-            background: white;
+            background: var(--surface-raised);
+            border: 1px solid var(--border-color);
             border-radius: var(--radius-lg);
             box-shadow: 0 1px 3px rgba(0,0,0,0.08);
             padding: 24px;
@@ -158,7 +159,7 @@
 
         .evaluator-card {
             min-height: 54px;
-            background: white;
+            background: var(--surface-raised);
             border-bottom: 1px solid var(--gray-100);
             transition: background 0.15s ease;
         }
@@ -215,7 +216,8 @@
             line-height: 20px;
             border: 1px solid var(--gray-200);
             border-radius: 8px;
-            background: white;
+            background: var(--bg-primary);
+            color: var(--text-primary);
             resize: none;
             overflow: hidden;
             transition: border-color 0.2s, box-shadow 0.2s;
@@ -366,6 +368,24 @@
             font-size: 13px;
         }
 
+        .empty-state-action {
+            margin-top: 16px;
+            min-height: 42px;
+            padding: 9px 16px;
+            border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--border-color));
+            border-radius: 10px;
+            background: var(--accent-soft);
+            color: var(--on-accent-soft);
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .empty-state-action:hover {
+            border-color: var(--accent);
+            transform: translateY(-1px);
+        }
+
         /* Modal Styles */
         .modal-overlay {
             position: fixed;
@@ -387,7 +407,7 @@
         }
 
         .modal {
-            background: white;
+            background: var(--surface-raised);
             border-radius: var(--radius-lg);
             width: 100%;
             max-width: 480px;
@@ -650,6 +670,10 @@
                     <i class="fas fa-user-plus"></i>
                     <h3>No Evaluators Added</h3>
                     <p>Click "Add Evaluator" to search by email and select people who will evaluate your performance.</p>
+                    <button type="button" class="empty-state-action" onclick="openUserPicker()">
+                        <i class="fas fa-plus"></i>
+                        Add your first evaluator
+                    </button>
                 </div>
             </div>
         </div>
@@ -658,11 +682,11 @@
         <div class="card">
             <div class="manager-section" style="margin-top: 0; padding-top: 0; border-top: none;">
                 <h3><i class="fas fa-user-tie"></i> Send to Manager</h3>
-                <div class="manager-display" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #f3f4f6; border-radius: 8px; border: 1px solid #e5e7eb;">
+                <div class="manager-display" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--surface-muted); border-radius: 12px; border: 1px solid var(--border-color);">
                     <div class="manager-avatar" id="managerAvatar" style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #10b981 0%, #059669 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 14px;">AB</div>
                     <div class="manager-info" style="flex: 1;">
-                        <div class="name" id="managerName" style="font-size: 14px; font-weight: 500; color: #111827;">Ali Borhani</div>
-                        <div class="email" id="managerEmail" style="font-size: 12px; color: #6b7280;">ali.borhani@snapp.cab</div>
+                        <div class="name" id="managerName" style="font-size: 14px; font-weight: 650; color: var(--text-primary);">Ali Borhani</div>
+                        <div class="email" id="managerEmail" style="font-size: 12px; color: var(--text-secondary);">ali.borhani@snapp.cab</div>
                     </div>
                     <input type="hidden" id="managerEmailValue" value="ali.borhani@snapp.cab">
                 </div>
