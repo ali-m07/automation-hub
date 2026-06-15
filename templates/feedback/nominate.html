@@ -349,6 +349,15 @@
             text-align: center;
             padding: 48px 24px;
             color: var(--gray-500);
+            cursor: pointer;
+            border-radius: 12px;
+            transition: background-color .18s ease, color .18s ease;
+        }
+
+        .empty-state:hover,
+        .empty-state:focus-visible {
+            background: color-mix(in srgb, var(--accent) 6%, transparent);
+            outline: none;
         }
 
         .empty-state i {
@@ -368,22 +377,14 @@
             font-size: 13px;
         }
 
-        .empty-state-action {
-            margin-top: 16px;
-            min-height: 42px;
-            padding: 9px 16px;
-            border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--border-color));
-            border-radius: 10px;
-            background: var(--accent-soft);
-            color: var(--on-accent-soft);
-            font: inherit;
+        .empty-state-hint {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            margin-top: 14px;
+            color: var(--accent);
+            font-size: 13px;
             font-weight: 700;
-            cursor: pointer;
-        }
-
-        .empty-state-action:hover {
-            border-color: var(--accent);
-            transform: translateY(-1px);
         }
 
         /* Modal Styles */
@@ -666,14 +667,14 @@
                 <span class="selected-count" id="selectedCount">0</span>
             </div>
             <div id="evaluatorsList" class="evaluators-list">
-                <div class="empty-state" id="emptyState">
+                <div class="empty-state" id="emptyState" role="button" tabindex="0"
+                     onclick="openUserPicker()"
+                     onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openUserPicker(); }"
+                     aria-label="Add your first evaluator">
                     <i class="fas fa-user-plus"></i>
                     <h3>No Evaluators Added</h3>
-                    <p>Click "Add Evaluator" to search by email and select people who will evaluate your performance.</p>
-                    <button type="button" class="empty-state-action" onclick="openUserPicker()">
-                        <i class="fas fa-plus"></i>
-                        Add your first evaluator
-                    </button>
+                    <p>Tap anywhere here to search and add someone who will evaluate your performance.</p>
+                    <span class="empty-state-hint"><i class="fas fa-plus"></i> Add evaluator</span>
                 </div>
             </div>
         </div>
