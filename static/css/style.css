@@ -1378,6 +1378,197 @@ header h1 {
 [data-theme="dark"] .notification-item { border-color: var(--border-color) !important; background: var(--surface-raised) !important; }
 [data-theme="dark"] .notification-item:not([data-read="true"]) { background: var(--accent-soft) !important; }
 
+/* Compact dark workspace, inspired by professional data-management tools. */
+[data-theme="dark"] {
+    --bg-primary: #111318;
+    --bg-secondary: #0c0e12;
+    --bg-tertiary: #090b0f;
+    --surface-raised: #14171d;
+    --surface-muted: #0f1217;
+    --border-color: #272b34;
+    --text-primary: #f0f1f3;
+    --text-secondary: #8f96a3;
+    --accent: #6d7cff;
+    --accent-soft: #20264a;
+    --on-accent-soft: #e0e4ff;
+    --shadow: rgba(0, 0, 0, .28);
+}
+
+[data-theme="dark"] body {
+    padding: 10px;
+    background: var(--bg-tertiary);
+    font-size: 14px;
+}
+
+[data-theme="dark"] body::before,
+[data-theme="dark"] body::after { display: none; }
+
+[data-theme="dark"] .container {
+    max-width: none;
+    padding: 0 8px 24px;
+}
+
+[data-theme="dark"] .app-sidebar {
+    top: 10px;
+    bottom: 10px;
+    left: 10px;
+    width: 238px;
+    border-radius: 8px;
+    background: #101218;
+    box-shadow: none;
+}
+
+[data-theme="dark"] .sidebar-header {
+    min-height: 54px;
+    padding: 10px 12px;
+}
+
+[data-theme="dark"] .sidebar-section { padding: 10px 12px; }
+[data-theme="dark"] .sidebar-title {
+    margin-bottom: 5px;
+    font-size: .68rem;
+    letter-spacing: .09em;
+}
+[data-theme="dark"] .sidebar-user {
+    padding: 10px 11px;
+    border-radius: 6px;
+}
+[data-theme="dark"] .sidebar-link {
+    min-height: 34px;
+    padding: 7px 9px;
+    border-radius: 5px;
+    font-size: .85rem;
+}
+[data-theme="dark"] .sidebar-feedback-section.active {
+    background: #151824;
+    border-color: transparent;
+}
+[data-theme="dark"] .sidebar-submenu {
+    margin-top: 4px;
+    padding-left: 8px;
+    gap: 1px;
+}
+
+[data-theme="dark"] .top-nav {
+    min-height: 54px;
+    margin-bottom: 14px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: #11141a;
+    box-shadow: none;
+    backdrop-filter: none;
+}
+[data-theme="dark"] .top-nav-logo {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+}
+[data-theme="dark"] .top-nav-title { font-size: .98rem; }
+[data-theme="dark"] .top-nav-sub { font-size: .72rem; }
+[data-theme="dark"] .top-nav-right { gap: 7px; }
+[data-theme="dark"] .top-nav-right #platform-search {
+    width: 240px !important;
+    min-height: 36px;
+    padding: 7px 10px !important;
+    margin-right: 0 !important;
+}
+[data-theme="dark"] .header-action,
+[data-theme="dark"] .theme-toggle {
+    min-height: 36px;
+    padding: 0 10px;
+    border-radius: 6px;
+    background: #12151b;
+    font-size: .8rem;
+}
+
+[data-theme="dark"] h1 { font-size: clamp(1.55rem, 2vw, 2rem); }
+[data-theme="dark"] h2 { font-size: 1.25rem; }
+[data-theme="dark"] h3 { font-size: 1rem; }
+
+[data-theme="dark"] .card {
+    padding: 16px;
+    margin-bottom: 12px;
+    border-radius: 8px;
+    background: #12151b !important;
+    box-shadow: none;
+}
+[data-theme="dark"] .card:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: #353b47;
+}
+[data-theme="dark"] .card-header {
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+}
+
+[data-theme="dark"] .form-group { margin-bottom: 12px; }
+[data-theme="dark"] .form-group label { margin-bottom: 5px; font-size: .78rem; }
+[data-theme="dark"] .form-control,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea,
+[data-theme="dark"] input {
+    min-height: 36px;
+    padding: 7px 10px;
+    border-radius: 5px;
+    background: #0d1015;
+    font-size: .84rem;
+}
+[data-theme="dark"] .btn {
+    min-height: 34px;
+    padding: 7px 12px;
+    border-radius: 5px;
+    font-size: .8rem;
+}
+[data-theme="dark"] .btn-primary {
+    background: #6574f7;
+    color: #fff;
+}
+
+[data-theme="dark"] table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #0f1217;
+}
+[data-theme="dark"] th {
+    padding: 8px 10px !important;
+    background: #12151b;
+    color: #8f96a3 !important;
+    font-size: .7rem !important;
+    letter-spacing: .04em;
+}
+[data-theme="dark"] td {
+    padding: 8px 10px !important;
+    background: #0f1217;
+    font-size: .8rem;
+}
+[data-theme="dark"] tbody tr:hover td { background: #151922; }
+
+[data-theme="dark"] .modal-content,
+[data-theme="dark"] #profile-panel > div,
+[data-theme="dark"] #security-panel > div {
+    border-radius: 8px !important;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, .55) !important;
+}
+[data-theme="dark"] .header-popover {
+    border-radius: 7px;
+    box-shadow: 0 14px 36px rgba(0, 0, 0, .5) !important;
+}
+
+[data-theme="dark"] .kanban-column,
+[data-theme="dark"] .workflow-lane,
+[data-theme="dark"] .evaluation-card,
+[data-theme="dark"] .ticket-card,
+[data-theme="dark"] .performance-card {
+    border-radius: 7px;
+    box-shadow: none;
+}
+
+@media (min-width: 1024px) {
+    [data-theme="dark"] body.sidebar-shell { padding-left: 258px; }
+    [data-theme="dark"] body.sidebar-shell .top-nav { top: 10px; }
+}
+
 .card,
 .kanban-column,
 .ticket-card,
