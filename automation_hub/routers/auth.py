@@ -465,11 +465,40 @@ async def list_notifications(request: Request):
     finally:
         conn.close()
     items = [dict(row) for row in rows]
+    feedback_summary = {"open_request_count": 0, "evaluator_count": 0}
+    try:
+        from automation_hub.projects.ticketing import router as feedback_legacy
+
+        if feedback_legacy._has_feedback_access(user):
+            username = feedback_legacy._identity_key(user.get("username", ""))
+            nominations = [
+                nomination
+                for nomination in feedback_legacy._load_evaluator_store().get(
+                    "nominations", []
+                )
+                if nomination.get("status") in {"pending", "partial"}
+                and (
+                    feedback_legacy._can_review_all_feedback(user)
+                    or feedback_legacy._identity_key(nomination.get("manager_username"))
+                    == username
+                )
+            ]
+            feedback_summary = {
+                "open_request_count": len(nominations),
+                "evaluator_count": sum(
+                    len(nomination.get("evaluators", [])) for nomination in nominations
+                ),
+            }
+    except Exception:
+        feedback_summary = {"open_request_count": 0, "evaluator_count": 0}
+    unread_count = sum(1 for item in items if not item.get("read_at"))
     return JSONResponse(
         {
             "success": True,
             "notifications": items,
-            "unread_count": sum(1 for item in items if not item.get("read_at")),
+            "unread_count": unread_count,
+            "feedback": feedback_summary,
+            "total_count": unread_count + feedback_summary["open_request_count"],
         }
     )
 

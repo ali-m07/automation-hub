@@ -3897,16 +3897,30 @@ async function loadNotifications() {
             return;
         }
         const items = data.notifications || [];
+        const feedback = data.feedback || {};
+        const feedbackCount = Number(feedback.open_request_count || 0);
+        const evaluatorCount = Number(feedback.evaluator_count || 0);
         if (badgeEl) {
-            const c = data.unread_count || 0;
+            const c = data.total_count || 0;
             badgeEl.textContent = c;
             badgeEl.style.display = c > 0 ? 'inline' : 'none';
         }
-        if (items.length === 0) {
+        const feedbackItem = feedbackCount > 0 ? `
+            <a class="notification-item feedback-notification" href="/feedback/nomination-approvals" style="display:block; padding:12px; border-bottom:1px solid var(--border-color); text-decoration:none; color:var(--text-primary);">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                    <div style="font-weight:800; font-size:0.92rem;">Feedback requests waiting</div>
+                    <span class="header-badge" style="display:inline-grid;">${feedbackCount}</span>
+                </div>
+                <div style="font-size:0.85rem; color:var(--text-secondary); margin-top:4px;">
+                    ${feedbackCount} ticket${feedbackCount === 1 ? '' : 's'} · ${evaluatorCount} evaluator${evaluatorCount === 1 ? '' : 's'}
+                </div>
+            </a>
+        ` : '';
+        if (items.length === 0 && feedbackCount === 0) {
             listEl.innerHTML = '<p style="padding:12px; color:#6b7280;">No notifications.</p>';
             return;
         }
-        listEl.innerHTML = items.map(n => `
+        listEl.innerHTML = feedbackItem + items.map(n => `
             <div class="notification-item" data-id="${n.id}" data-read="${n.read_at ? 'true' : 'false'}" style="padding:10px 12px; border-bottom:1px solid var(--border-color); cursor:pointer;" onclick="markNotificationRead(${n.id})">
                 <div style="font-weight:600; font-size:0.9rem;">${escapeHtml(n.title)}</div>
                 ${n.body ? `<div style="font-size:0.85rem; color:#6b7280; margin-top:4px;">${escapeHtml(n.body)}</div>` : ''}
@@ -3917,6 +3931,10 @@ async function loadNotifications() {
         listEl.innerHTML = '<p style="padding:12px; color:#ef4444;">Error loading notifications.</p>';
     }
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    if (document.getElementById('notifications-badge')) loadNotifications();
+});
 
 async function markNotificationRead(id) {
     try {

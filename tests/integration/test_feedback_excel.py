@@ -124,6 +124,78 @@ def test_feedback_hrbp_can_use_full_review_access(client: TestClient, monkeypatc
     assert workbook["Nominations"]["A2"].value == "NOM_HRBP"
 
 
+def test_feedback_notification_badge_counts_open_requests(
+    client: TestClient, monkeypatch
+):
+    from automation_hub.core import auth, db
+
+    ticketing = import_module("automation_hub.projects.ticketing.router")
+    monkeypatch.setattr(
+        ticketing,
+        "_load_evaluator_store",
+        lambda: {
+            "nominations": [
+                {
+                    "id": "NOM_ONE",
+                    "manager_username": "manager",
+                    "status": "pending",
+                    "evaluators": [
+                        {"email": "one@snapp.cab"},
+                        {"email": "two@snapp.cab"},
+                    ],
+                },
+                {
+                    "id": "NOM_TWO",
+                    "manager_username": "manager",
+                    "status": "partial",
+                    "evaluators": [{"email": "three@snapp.cab"}],
+                },
+                {
+                    "id": "NOM_OTHER",
+                    "manager_username": "other",
+                    "status": "pending",
+                    "evaluators": [{"email": "four@snapp.cab"}],
+                },
+            ]
+        },
+    )
+
+    conn = db.db_connect(db.get_db_file())
+    try:
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO users (
+                username, password, role, level, modules_json, status
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "manager@snapp.cab",
+                auth.hash_password("ManagerBadge1!"),
+                "user",
+                "custom",
+                '["feedback_180"]',
+                "active",
+            ),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    login = client.post(
+        "/login",
+        data={"username": "manager@snapp.cab", "password": "ManagerBadge1!"},
+        follow_redirects=False,
+    )
+    assert login.status_code == 302
+
+    response = client.get("/api/notifications")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["feedback"]["open_request_count"] == 2
+    assert data["feedback"]["evaluator_count"] == 3
+    assert data["total_count"] == 2
+
+
 def test_nomination_template_download(authenticated_client: TestClient):
     response = authenticated_client.get(
         "/api/feedback/evaluator-nomination/template.xlsx"
