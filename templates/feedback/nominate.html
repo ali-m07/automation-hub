@@ -1001,7 +1001,16 @@
                 const data = await response.json();
 
                 if (data.nomination && Array.isArray(data.nomination.evaluators) && data.nomination.evaluators.length) {
-                    window.location.href = '/feedback/my-evaluations';
+                    const nom = data.nomination;
+                    const date = new Date(nom.submitted_at || nom.created_at || Date.now());
+                    const status = document.getElementById('currentStatus');
+                    status.style.display = 'block';
+                    status.innerHTML = `<i class="fas fa-info-circle"></i> You have a pending nomination submitted on ${date.toLocaleDateString('en-US', {
+                        year: 'numeric', month: 'long', day: 'numeric'
+                    })}. You can modify and resubmit.`;
+
+                    evaluators = nom.evaluators || [];
+                    renderEvaluators();
                     return true;
                 }
             } catch (error) {
