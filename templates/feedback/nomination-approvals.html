@@ -381,10 +381,22 @@
 
         .evaluator-picker-filters {
             display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
+            grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 10px;
             align-items: center;
             margin-bottom: 16px;
+        }
+
+        .evaluator-picker-email {
+            grid-column: 1 / -1;
+            width: 100%;
+            min-width: 0;
+            height: 46px;
+            padding: 10px 14px;
+            font-size: 14px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: white;
         }
 
         .evaluator-picker-filters > input {
@@ -396,7 +408,7 @@
         .modal-overlay {
             position: fixed;
             inset: 0;
-            z-index: 1200;
+            z-index: 2200;
             display: none;
             align-items: center;
             justify-content: center;
@@ -413,7 +425,7 @@
         }
 
         .modal-overlay .modal {
-            width: min(920px, 100%);
+            width: min(880px, 100%);
             max-height: min(760px, calc(100dvh - 48px));
             overflow: hidden;
             background: white;
@@ -496,7 +508,7 @@
             }
 
             .evaluator-picker-filters {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
+                grid-template-columns: 1fr;
             }
         }
 
@@ -513,6 +525,27 @@
 
             .evaluator-picker-filters {
                 grid-template-columns: 1fr;
+            }
+
+            .modal-overlay {
+                align-items: flex-start;
+                padding: 14px;
+                overflow-y: auto;
+            }
+
+            .modal-overlay .modal {
+                width: 100%;
+                max-height: none;
+                border-radius: 16px;
+            }
+
+            .modal-overlay .modal-body {
+                max-height: none;
+                padding: 18px !important;
+            }
+
+            .modal-overlay .modal-header {
+                padding: 16px 18px !important;
             }
         }
 
@@ -746,6 +779,97 @@
             background: white;
         }
 
+        @media (max-width: 720px) {
+            .detail-toolbar {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .detail-actions {
+                display: grid;
+                grid-template-columns: 1fr;
+                width: 100%;
+            }
+
+            .detail-actions .btn,
+            .detail-actions .export-link {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .request-header {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .request-body {
+                padding: 14px;
+            }
+
+            .evaluator-row {
+                display: grid;
+                grid-template-columns: 44px minmax(0, 1fr);
+                gap: 12px;
+                padding: 14px;
+            }
+
+            .evaluator-avatar {
+                width: 44px;
+                height: 44px;
+            }
+
+            .evaluator-actions {
+                grid-column: 1 / -1;
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                width: 100%;
+            }
+
+            .action-btn {
+                justify-content: center;
+                padding: 9px 10px;
+                width: 100%;
+            }
+
+            .evaluator-reason {
+                overflow-wrap: anywhere;
+                word-break: normal;
+            }
+        }
+
+        @media (max-width: 430px) {
+            .review-tabs {
+                padding: 10px 14px;
+            }
+
+            .review-tab {
+                flex: 1 0 auto;
+                justify-content: center;
+                min-width: 96px;
+            }
+
+            .evaluator-row {
+                grid-template-columns: 38px minmax(0, 1fr);
+                padding: 12px;
+            }
+
+            .evaluator-avatar {
+                width: 38px;
+                height: 38px;
+                font-size: 13px;
+            }
+
+            .evaluator-meta {
+                display: grid;
+                gap: 5px;
+            }
+
+            .evaluator-actions {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
         .review-tab {
             display: inline-flex;
             align-items: center;
@@ -953,15 +1077,14 @@
                     If someone is missing from the current list, search the employee roster by team, sub-team, vertical, or email and add them as an evaluator.
                 </p>
                 <div class="evaluator-picker-filters">
-                    <input class="filter-select" id="addTeamFilter" list="addTeamOptions" placeholder="1. Search team" oninput="searchUsersToAdd()" autocomplete="off">
-                    <datalist id="addTeamOptions"></datalist>
-                    <input class="filter-select" id="addSubTeamFilter" list="addSubTeamOptions" placeholder="2. Search sub-team" oninput="searchUsersToAdd()" autocomplete="off">
-                    <datalist id="addSubTeamOptions"></datalist>
-                    <input class="filter-select" id="addVerticalFilter" list="addVerticalOptions" placeholder="3. Search vertical" oninput="searchUsersToAdd()" autocomplete="off">
-                    <datalist id="addVerticalOptions"></datalist>
-                    <input type="email" id="addEvaluatorSearch" placeholder="4. Email"
-                           style="width:100%; padding:10px 14px; font-size:14px; border:1px solid var(--border); border-radius:8px;"
+                    <input type="email" class="evaluator-picker-email" id="addEvaluatorSearch" placeholder="Email"
                            oninput="searchUsersToAdd()">
+                    <input class="filter-select" id="addTeamFilter" list="addTeamOptions" placeholder="Search team" oninput="searchUsersToAdd()" autocomplete="off">
+                    <datalist id="addTeamOptions"></datalist>
+                    <input class="filter-select" id="addSubTeamFilter" list="addSubTeamOptions" placeholder="Search sub-team" oninput="searchUsersToAdd()" autocomplete="off">
+                    <datalist id="addSubTeamOptions"></datalist>
+                    <input class="filter-select" id="addVerticalFilter" list="addVerticalOptions" placeholder="Search vertical" oninput="searchUsersToAdd()" autocomplete="off">
+                    <datalist id="addVerticalOptions"></datalist>
                 </div>
                 <div id="addUserResults" style="max-height: 300px; overflow-y: auto;"></div>
                 <div id="addEvaluatorReasonPanel" style="display:none; margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
