@@ -96,6 +96,18 @@
             <span id="data-grid-status" class="status-box" aria-live="polite"></span>
         </div>
 
+        <div class="sheet-editor-bar">
+            <div class="sheet-name-box" id="sheet-active-cell">A1</div>
+            <label class="sheet-formula-label" for="sheet-formula-input">fx</label>
+            <input
+                type="text"
+                id="sheet-formula-input"
+                class="form-control sheet-formula-input"
+                placeholder="Select a cell to edit its value here"
+                aria-label="Formula bar"
+            >
+        </div>
+
         <div class="sheet-quickbar" style="margin-bottom:14px;">
             <input type="text" id="grid-search" class="form-control" placeholder="Search rows..." oninput="searchDataGrid(this.value)" aria-label="Search rows">
             <button class="btn" type="button" onclick="loadSampleData()">Load sample data</button>

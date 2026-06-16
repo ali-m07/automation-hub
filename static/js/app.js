@@ -245,7 +245,7 @@ const DATA_DEFAULT_ROWS = 20;
 function buildDefaultColumns() {
     const cols = [];
     for (let i = 1; i <= DATA_DEFAULT_COLUMNS; i++) {
-        const title = String.fromCharCode(64 + i);
+        const title = columnIndexToName(i - 1);
         cols.push({
             title,
             field: `c${i}`,
@@ -261,6 +261,54 @@ function buildBlankRows(count) {
         rows.push({});
     }
     return rows;
+}
+
+function columnIndexToName(index) {
+    let value = Number(index) + 1;
+    let output = '';
+    while (value > 0) {
+        const remainder = (value - 1) % 26;
+        output = String.fromCharCode(65 + remainder) + output;
+        value = Math.floor((value - 1) / 26);
+    }
+    return output || 'A';
+}
+
+function getCellAddress(x, y) {
+    return `${columnIndexToName(x)}${Number(y) + 1}`;
+}
+
+function updateSheetSelectionUi(x = 0, y = 0) {
+    const activeCellEl = document.getElementById('sheet-active-cell');
+    const formulaInput = document.getElementById('sheet-formula-input');
+    if (!state.dataGrid || !state.dataGrid.instance) return;
+    const safeX = Number.isFinite(Number(x)) ? Number(x) : 0;
+    const safeY = Number.isFinite(Number(y)) ? Number(y) : 0;
+    state.activeSheetCell = { x: safeX, y: safeY };
+    if (activeCellEl) {
+        activeCellEl.textContent = getCellAddress(safeX, safeY);
+    }
+    if (formulaInput && typeof state.dataGrid.instance.getValueFromCoords === 'function') {
+        const value = state.dataGrid.instance.getValueFromCoords(safeX, safeY);
+        formulaInput.value = value == null ? '' : String(value);
+    }
+}
+
+function bindSheetFormulaBar() {
+    const formulaInput = document.getElementById('sheet-formula-input');
+    if (!formulaInput || formulaInput.dataset.bound === 'true') return;
+    formulaInput.dataset.bound = 'true';
+    formulaInput.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter') return;
+        if (!state.dataGrid || !state.dataGrid.instance || !state.activeSheetCell) return;
+        event.preventDefault();
+        const { x, y } = state.activeSheetCell;
+        if (typeof state.dataGrid.instance.setValueFromCoords === 'function') {
+            state.dataGrid.instance.setValueFromCoords(x, y, formulaInput.value, true);
+            handleDataGridChanged();
+            updateSheetSelectionUi(x, y);
+        }
+    });
 }
 
 function ensureColumnsForData() {
@@ -934,8 +982,13 @@ function renderSpreadsheetGrid(columns, rows, opts = {}) {
         autoCasting: true,
         search: false,
         fullScreen: false,
+        onselection: function (_worksheet, x1, y1) {
+            updateSheetSelectionUi(x1, y1);
+        },
         onchange: function () {
             handleDataGridChanged();
+            const activeCell = state.activeSheetCell || { x: 0, y: 0 };
+            updateSheetSelectionUi(activeCell.x, activeCell.y);
         },
         onafterchanges: function () {
             handleDataGridChanged();
@@ -967,6 +1020,8 @@ function renderSpreadsheetGrid(columns, rows, opts = {}) {
     state.dataGridColumns = sheetColumns;
     state.dataGrid = createDataGridAdapter(instance);
     state.dataGridInitialized = true;
+    bindSheetFormulaBar();
+    updateSheetSelectionUi(0, 0);
 
     const label = document.getElementById('data-grid-column-label');
     if (label) {
@@ -1041,7 +1096,7 @@ function createDataGridAdapter(instance) {
         addColumn(colDef) {
             const cols = normalizeDataColumns(state.dataGridColumns || buildDefaultColumns());
             const nextCol = {
-                title: colDef.title || `Col ${cols.length + 1}`,
+                title: colDef.title || columnIndexToName(cols.length),
                 field: colDef.field || `c${cols.length + 1}`,
                 width: colDef.width || 170,
                 type: 'text',
@@ -1141,6 +1196,7 @@ function initDataGrid() {
         readOnly: state.currentPermission === 'view' || state.currentPermission === 'view_nocopy',
         tableTitle: document.getElementById('current-table-title')?.textContent || 'Data table'
     });
+    bindSheetFormulaBar();
     loadDataGrid();
 }
 

@@ -788,6 +788,47 @@ header h1 {
     display: none;
 }
 
+input[type="file"].form-control,
+.form-control[type="file"] {
+    position: relative;
+    min-height: 62px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    border-radius: 18px;
+    border: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--surface-raised) 92%, transparent);
+    color: var(--text-secondary);
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+}
+
+input[type="file"].form-control::file-selector-button,
+.form-control[type="file"]::file-selector-button {
+    margin-right: 14px;
+    padding: 10px 16px;
+    border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border-color));
+    border-radius: 14px;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent-soft) 84%, white), color-mix(in srgb, var(--accent) 18%, white));
+    color: var(--text-primary);
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+}
+
+input[type="file"].form-control:hover::file-selector-button,
+.form-control[type="file"]:hover::file-selector-button {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px color-mix(in srgb, var(--accent) 16%, transparent);
+    filter: brightness(1.03);
+}
+
+input[type="file"].form-control:focus,
+.form-control[type="file"]:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
 .loading {
     display: inline-block;
     width: 20px;
@@ -929,6 +970,49 @@ header h1 {
     background: color-mix(in srgb, var(--surface-muted) 90%, transparent);
 }
 
+.sheet-editor-bar {
+    display: grid;
+    grid-template-columns: 92px 44px minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+    padding: 12px 14px;
+    border-radius: 18px;
+    border: 1px solid color-mix(in srgb, var(--border-color) 90%, transparent);
+    background: color-mix(in srgb, var(--surface-raised) 92%, transparent);
+    box-shadow: var(--shadow-sm);
+}
+
+.sheet-name-box {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    border-radius: 14px;
+    border: 1px solid color-mix(in srgb, var(--border-color) 90%, transparent);
+    background: #fff;
+    color: var(--text-primary);
+    font-weight: 800;
+    letter-spacing: 0.02em;
+}
+
+.sheet-formula-label {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    border-radius: 14px;
+    border: 1px solid color-mix(in srgb, var(--border-color) 90%, transparent);
+    background: #fff;
+    color: var(--accent-strong);
+    font-weight: 900;
+}
+
+.sheet-formula-input {
+    min-height: 44px;
+    background: #fff;
+    font-family: "Inter", "Segoe UI", sans-serif;
+}
+
 .sheet-grid-shell {
     padding: 12px;
     border-radius: 24px;
@@ -960,7 +1044,7 @@ header h1 {
     border-color: color-mix(in srgb, var(--border-color) 90%, transparent);
     background: #fff;
     min-height: 420px;
-    max-height: 62vh;
+    max-height: 70vh;
     overflow: auto !important;
 }
 
@@ -999,6 +1083,10 @@ header h1 {
     background: #fcfdff;
 }
 
+#data-grid .jss > tbody > tr:hover > td {
+    background: #f8fbff;
+}
+
 #data-grid .jss > thead > tr > th:first-child,
 #data-grid .jss > tbody > tr > td.jss_row {
     min-width: 56px;
@@ -1016,6 +1104,11 @@ header h1 {
 #data-grid .jss > tbody > tr.selected > td,
 #data-grid .jss > thead > tr > th.selected {
     background: #e0ecff;
+}
+
+#data-grid .jss > tbody > tr > td.highlight,
+#data-grid .jss > tbody > tr > td.selected {
+    box-shadow: inset 0 0 0 2px #7c9cff;
 }
 
 #data-grid .jss_input,
@@ -1037,13 +1130,25 @@ header h1 {
     .sheet-toolbar,
     .sheet-quickbar,
     .sheet-status-row,
+    .sheet-editor-bar,
     .sheet-toolbar-group,
     .sheet-meta-row {
         align-items: stretch;
     }
 
     .sheet-toolbar-group,
-    .sheet-meta-row {
+    .sheet-meta-row,
+    .sheet-editor-bar {
+        width: 100%;
+    }
+
+    .sheet-editor-bar {
+        grid-template-columns: 1fr;
+    }
+
+    .sheet-name-box,
+    .sheet-formula-label,
+    .sheet-formula-input {
         width: 100%;
     }
 
