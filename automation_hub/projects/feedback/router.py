@@ -314,9 +314,9 @@ async def import_evaluator_nomination(request: Request, file: UploadFile = File(
 async def export_evaluator_nominations(request: Request):
     user = legacy._require_feedback_access(request)
     current_username = legacy._identity_key(user.get("username", ""))
-    is_admin = user.get("role") == "admin"
+    can_export_all = legacy._can_review_all_feedback(user)
     nominations = legacy._load_evaluator_store().get("nominations", [])
-    if not is_admin:
+    if not can_export_all:
         nominations = [
             item
             for item in nominations
@@ -326,7 +326,7 @@ async def export_evaluator_nominations(request: Request):
     workbook = _build_nomination_export(nominations)
     filename = (
         "servexa-all-feedback-nominations.xlsx"
-        if is_admin
+        if can_export_all
         else "servexa-my-team-feedback-nominations.xlsx"
     )
     return _xlsx_response(workbook, filename)
@@ -347,12 +347,12 @@ async def export_single_evaluator_nomination(nomination_id: str, request: Reques
         raise HTTPException(status_code=404, detail="Nomination not found")
     current_username = legacy._identity_key(user.get("username", ""))
     if (
-        user.get("role") != "admin"
+        not legacy._can_review_all_feedback(user)
         and legacy._identity_key(nomination.get("manager_username")) != current_username
     ):
         raise HTTPException(
             status_code=403,
-            detail="Only the assigned manager or an admin can export this request",
+            detail="Only the assigned manager, HRBP, or an admin can export this request",
         )
     nominator = legacy._get_user_info(nomination.get("nominator_username", ""))
     filename_key = legacy._identity_key(

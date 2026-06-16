@@ -29,6 +29,13 @@ except ImportError:  # pragma: no cover
         raise RuntimeError("Database connector service not available (pyodbc missing)")
 
 
+def _is_project_admin_module(module_key: str) -> bool:
+    for module in constants.MODULES:
+        if module["key"] == module_key:
+            return module.get("access_type") == "admin"
+    return module_key.endswith("_admin")
+
+
 def _db():
     conn = db.db_connect(db.get_db_file())
     return conn
@@ -506,7 +513,7 @@ async def admin_create_user(request: Request):
     allowed_keys = {m["key"] for m in constants.MODULES}
     modules = [m for m in modules if m in allowed_keys]
     if role == "project_admin" and not any(
-        module.endswith("_admin") for module in modules
+        _is_project_admin_module(module) for module in modules
     ):
         return JSONResponse(
             {
@@ -637,7 +644,7 @@ async def admin_update_user(username: str, request: Request):
         allowed_keys = {module["key"] for module in constants.MODULES}
         modules = [module for module in modules if module in allowed_keys]
         if role == "project_admin" and not any(
-            module.endswith("_admin") for module in modules
+            _is_project_admin_module(module) for module in modules
         ):
             return JSONResponse(
                 {

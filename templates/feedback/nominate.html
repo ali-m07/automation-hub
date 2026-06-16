@@ -1002,11 +1002,12 @@
 
                 if (data.nomination && Array.isArray(data.nomination.evaluators) && data.nomination.evaluators.length) {
                     const nom = data.nomination;
-                    document.getElementById('currentStatus').style.display = 'block';
                     const date = new Date(nom.submitted_at);
-                    document.getElementById('submittedDate').textContent = date.toLocaleDateString('en-US', {
+                    const status = document.getElementById('currentStatus');
+                    status.style.display = 'block';
+                    status.innerHTML = `<i class="fas fa-info-circle"></i> You have a pending nomination submitted on ${date.toLocaleDateString('en-US', {
                         year: 'numeric', month: 'long', day: 'numeric'
-                    });
+                    })}. You can modify and resubmit.`;
 
                     evaluators = nom.evaluators || [];
                     renderEvaluators();
@@ -1454,11 +1455,12 @@
                     submitBtn.classList.add('is-success');
                     submitBtn.innerHTML = '<i class="fas fa-check"></i> Submitted successfully';
                     showToast('Nomination submitted for approval!', 'success');
-                    document.getElementById('currentStatus').style.display = 'block';
                     const date = new Date();
-                    document.getElementById('submittedDate').textContent = date.toLocaleDateString('en-US', {
+                    const status = document.getElementById('currentStatus');
+                    status.style.display = 'block';
+                    status.innerHTML = `<i class="fas fa-info-circle"></i> You have a pending nomination submitted on ${date.toLocaleDateString('en-US', {
                         year: 'numeric', month: 'long', day: 'numeric'
-                    });
+                    })}. You can modify and resubmit.`;
                 } else {
                     showToast(data.detail || data.error || 'Error submitting', 'error');
                 }

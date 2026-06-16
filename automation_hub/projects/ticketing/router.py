@@ -27,6 +27,7 @@ from automation_hub.services import employee_roster
 
 MODULE_KEY = "feedback_180"
 ADMIN_MODULE_KEY = "feedback_180_admin"
+HRBP_MODULE_KEY = "feedback_hrbp"
 
 router = APIRouter(prefix="/api/ticketing", tags=["ticketing"])
 feedback_handlers = APIRouter()
@@ -187,8 +188,20 @@ def _is_feedback_admin(user: Dict[str, Any]) -> bool:
     return (
         user.get("role") == "admin"
         or ADMIN_MODULE_KEY in modules
+        or HRBP_MODULE_KEY in modules
         or "ticketing_admin" in modules
     )
+
+
+def _can_review_all_feedback(user: Dict[str, Any]) -> bool:
+    modules = user.get("modules") or []
+    return user.get("role") == "admin" or HRBP_MODULE_KEY in modules
+
+
+def _can_manage_nomination(user: Dict[str, Any], nomination: Dict[str, Any]) -> bool:
+    return _can_review_all_feedback(user) or _identity_key(
+        nomination.get("manager_username")
+    ) == _identity_key(user.get("username"))
 
 
 def _has_feedback_access(user: Dict[str, Any]) -> bool:
@@ -197,6 +210,7 @@ def _has_feedback_access(user: Dict[str, Any]) -> bool:
         user.get("role") == "admin"
         or MODULE_KEY in modules
         or ADMIN_MODULE_KEY in modules
+        or HRBP_MODULE_KEY in modules
         or "ticketing" in modules
         or "ticketing_admin" in modules
     )
@@ -1536,12 +1550,12 @@ async def get_manager_requests(request: Request):
     username = _identity_key(user.get("username", ""))
     store = _load_evaluator_store()
 
-    # Get all pending nominations assigned to this manager
+    # Managers see their assigned requests; HRBP and super admins see all open requests.
     nominations = [
         n
         for n in store.get("nominations", [])
         if (
-            user.get("role") == "admin"
+            _can_review_all_feedback(user)
             or _identity_key(n.get("manager_username")) == username
         )
         and n.get("status") in ["pending", "partial"]
@@ -1698,11 +1712,10 @@ async def approve_evaluator(nomination_id: str, request: Request):
     if not nomination:
         raise HTTPException(status_code=404, detail="Nomination not found")
 
-    if user.get("role") != "admin" and _identity_key(
-        nomination.get("manager_username")
-    ) != _identity_key(username):
+    if not _can_manage_nomination(user, nomination):
         raise HTTPException(
-            status_code=403, detail="Only the assigned manager can approve"
+            status_code=403,
+            detail="Only the assigned manager, HRBP, or an admin can approve",
         )
 
     evaluator_found = False
@@ -1839,11 +1852,10 @@ async def reject_evaluator(nomination_id: str, request: Request):
     if not nomination:
         raise HTTPException(status_code=404, detail="Nomination not found")
 
-    if user.get("role") != "admin" and _identity_key(
-        nomination.get("manager_username")
-    ) != _identity_key(username):
+    if not _can_manage_nomination(user, nomination):
         raise HTTPException(
-            status_code=403, detail="Only the assigned manager can reject"
+            status_code=403,
+            detail="Only the assigned manager, HRBP, or an admin can reject",
         )
 
     evaluator_found = False
@@ -1899,11 +1911,10 @@ async def add_evaluator_as_manager(nomination_id: str, request: Request):
     if not nomination:
         raise HTTPException(status_code=404, detail="Nomination not found")
 
-    if user.get("role") != "admin" and _identity_key(
-        nomination.get("manager_username")
-    ) != _identity_key(username):
+    if not _can_manage_nomination(user, nomination):
         raise HTTPException(
-            status_code=403, detail="Only the assigned manager can add evaluators"
+            status_code=403,
+            detail="Only the assigned manager, HRBP, or an admin can add evaluators",
         )
 
     evaluator_info = _get_user_info(evaluator_username)
@@ -1966,12 +1977,10 @@ async def remove_manager_added_evaluator(nomination_id: str, request: Request):
 
     if not nomination:
         raise HTTPException(status_code=404, detail="Nomination not found")
-    if user.get("role") != "admin" and _identity_key(
-        nomination.get("manager_username")
-    ) != _identity_key(username):
+    if not _can_manage_nomination(user, nomination):
         raise HTTPException(
             status_code=403,
-            detail="Only the assigned manager can remove this evaluator",
+            detail="Only the assigned manager, HRBP, or an admin can remove this evaluator",
         )
 
     requested = str(evaluator_username or "").lower()
@@ -2016,12 +2025,10 @@ async def close_nomination(nomination_id: str, request: Request):
     if not nomination:
         raise HTTPException(status_code=404, detail="Nomination not found")
 
-    if user.get("role") != "admin" and _identity_key(
-        nomination.get("manager_username")
-    ) != _identity_key(username):
+    if not _can_manage_nomination(user, nomination):
         raise HTTPException(
             status_code=403,
-            detail="Only the assigned manager or an admin can close this nomination",
+            detail="Only the assigned manager, HRBP, or an admin can close this nomination",
         )
 
     # Check all evaluators are processed

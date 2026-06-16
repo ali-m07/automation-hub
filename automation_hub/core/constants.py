@@ -61,6 +61,12 @@ MODULES: List[Dict[str, Any]] = [
         "access_type": "admin",
     },
     {
+        "key": "feedback_hrbp",
+        "label": "180 Feedback: HRBP full review access",
+        "project": "Feedback",
+        "access_type": "admin",
+    },
+    {
         "key": "process_designer",
         "label": "Process Designer: use shared workflows and fields",
         "project": "Process Designer",

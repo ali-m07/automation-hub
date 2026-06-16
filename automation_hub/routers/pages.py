@@ -269,6 +269,7 @@ async def evaluator_nomination_page(request: Request):
         and "feedback_180" not in modules
         and "feedback" not in modules
         and "feedback_180_admin" not in modules
+        and "feedback_hrbp" not in modules
     ):
         return RedirectResponse(url="/summary", status_code=302)
     from automation_hub.projects.ticketing.router import _deadline_state
@@ -303,6 +304,8 @@ async def my_evaluations_page(request: Request):
         user.get("role") != "admin"
         and "feedback_180" not in modules
         and "feedback" not in modules
+        and "feedback_180_admin" not in modules
+        and "feedback_hrbp" not in modules
     ):
         return RedirectResponse(url="/summary", status_code=302)
     from automation_hub.projects.ticketing.router import (
@@ -311,6 +314,7 @@ async def my_evaluations_page(request: Request):
         _identity_key,
         _load_evaluator_store,
     )
+
     nomination_window = _deadline_state()
 
     nominations = [
@@ -324,14 +328,29 @@ async def my_evaluations_page(request: Request):
         reverse=True,
     )
     for nomination in nominations:
+        has_manager_action = any(
+            evaluator.get("status") in {"approved", "rejected"}
+            for evaluator in nomination.get("evaluators", [])
+        )
         nomination["can_edit"] = (
             not nomination_window["is_closed"]
             and nomination.get("status") == "pending"
-            and not any(
-                evaluator.get("status") in {"approved", "rejected"}
-                for evaluator in nomination.get("evaluators", [])
-            )
+            and not has_manager_action
         )
+        nomination["has_manager_action"] = has_manager_action
+        nomination["is_finished"] = nomination.get("status") == "closed"
+        created_at = nomination.get("created_at") or nomination.get("submitted_at")
+        if created_at:
+            try:
+                from datetime import datetime
+
+                nomination["created_display"] = datetime.fromisoformat(
+                    created_at.replace("Z", "+00:00")
+                ).strftime("%B %d, %Y at %H:%M")
+            except (TypeError, ValueError):
+                nomination["created_display"] = created_at
+        else:
+            nomination["created_display"] = "Unknown"
         submitted_at = nomination.get("submitted_at") or nomination.get("created_at")
         if submitted_at:
             try:
@@ -386,6 +405,7 @@ async def nomination_approvals_page(request: Request):
         and "feedback_180" not in modules
         and "feedback" not in modules
         and "feedback_180_admin" not in modules
+        and "feedback_hrbp" not in modules
     ):
         return RedirectResponse(url="/summary", status_code=302)
 

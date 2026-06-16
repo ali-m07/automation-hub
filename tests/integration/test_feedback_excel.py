@@ -48,6 +48,82 @@ def test_feedback_project_admin_can_open_feedback_settings(client: TestClient):
     assert platform_users.status_code == 403
 
 
+def test_feedback_hrbp_can_use_full_review_access(client: TestClient, monkeypatch):
+    from automation_hub.core import auth, db
+
+    router = import_module("automation_hub.projects.feedback.router")
+    monkeypatch.setattr(
+        router.legacy,
+        "_load_evaluator_store",
+        lambda: {
+            "nominations": [
+                {
+                    "id": "NOM_HRBP",
+                    "nominator_username": "employee",
+                    "manager_username": "other-manager",
+                    "submitted_at": "2026-06-15T10:00:00+00:00",
+                    "status": "pending",
+                    "evaluators": [
+                        {
+                            "full_name": "Evaluator",
+                            "email": "evaluator@snapp.cab",
+                            "team": "Platform",
+                            "reason": "Same project",
+                            "status": "pending",
+                        }
+                    ],
+                }
+            ]
+        },
+    )
+    monkeypatch.setattr(
+        router.legacy,
+        "_get_user_info",
+        lambda username: {
+            "full_name": "Employee",
+            "email": f"{username}@snapp.cab",
+            "team": "People",
+        },
+    )
+
+    conn = db.db_connect(db.get_db_file())
+    try:
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO users (
+                username, password, role, level, modules_json, status
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "hrbp@snapp.cab",
+                auth.hash_password("FeedbackHrbp1!"),
+                "project_admin",
+                "custom",
+                '["feedback_hrbp"]',
+                "active",
+            ),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    login = client.post(
+        "/login",
+        data={"username": "hrbp@snapp.cab", "password": "FeedbackHrbp1!"},
+        follow_redirects=False,
+    )
+    assert login.status_code == 302
+
+    requests = client.get("/api/feedback/evaluator-nomination/manager/requests")
+    assert requests.status_code == 200
+    assert requests.json()["nominations"][0]["id"] == "NOM_HRBP"
+
+    export = client.get("/api/feedback/evaluator-nomination/export.xlsx")
+    assert export.status_code == 200
+    workbook = load_workbook(BytesIO(export.content), read_only=True)
+    assert workbook["Nominations"]["A2"].value == "NOM_HRBP"
+
+
 def test_nomination_template_download(authenticated_client: TestClient):
     response = authenticated_client.get(
         "/api/feedback/evaluator-nomination/template.xlsx"
