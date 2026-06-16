@@ -5,27 +5,93 @@
 
 {% block extra_css %}
 <style>
-    .evaluation-list { display: grid; gap: 16px; }
-    .evaluation-card { background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 16px; overflow: hidden; }
-    .evaluation-head { display: flex; justify-content: space-between; gap: 16px; padding: 18px 20px; background: var(--bg-secondary); border-bottom: 1px solid var(--border-color); }
-    .evaluation-meta { color: var(--text-secondary); font-size: 0.85rem; margin-top: 4px; }
-    .evaluation-status { align-self: flex-start; padding: 5px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--on-accent-soft); font-size: 0.75rem; font-weight: 800; }
-    .evaluation-actions { display: flex; align-items: center; gap: 10px; }
-    .evaluation-edit { display: inline-flex; align-items: center; min-height: 36px; padding: 7px 13px; border-radius: 9px; background: var(--accent); color: white; text-decoration: none; font-size: 0.82rem; font-weight: 700; }
-    .evaluation-locked { color: var(--text-secondary); font-size: 0.78rem; }
-    .evaluation-table { width: 100%; border-collapse: collapse; }
-    .evaluation-table th, .evaluation-table td { padding: 12px 20px; text-align: left; border-bottom: 1px solid var(--border-color); vertical-align: top; }
-    .evaluation-table th { color: var(--text-secondary); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; }
-    .evaluation-table tr:last-child td { border-bottom: 0; }
+    .history-card {
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 18px;
+        overflow: hidden;
+        box-shadow: var(--shadow-md);
+    }
+    .history-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        padding: 18px 22px;
+        background: var(--bg-secondary);
+        border-bottom: 1px solid var(--border-color);
+    }
+    .history-head strong { font-size: 1rem; }
+    .history-note { color: var(--text-secondary); font-size: 0.88rem; margin-top: 3px; }
+    .history-count {
+        min-width: 34px;
+        height: 34px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: var(--on-accent-soft);
+        font-weight: 800;
+    }
+    .history-table-wrap { overflow-x: auto; }
+    .history-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 880px;
+    }
+    .history-table th,
+    .history-table td {
+        padding: 14px 22px;
+        text-align: left;
+        border-bottom: 1px solid var(--border-color);
+        vertical-align: top;
+    }
+    .history-table th {
+        color: var(--text-secondary);
+        background: var(--bg-muted);
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+    }
+    .history-table tr:last-child td { border-bottom: 0; }
+    .history-date { white-space: nowrap; color: var(--text-secondary); font-size: 0.92rem; }
+    .history-person { font-weight: 700; }
+    .history-email { color: var(--text-secondary); font-size: 0.9rem; margin-top: 3px; }
     .reason-text { white-space: pre-wrap; line-height: 1.5; }
-    .history-empty { padding: 48px 24px; text-align: center; color: var(--text-secondary); }
-    @media (max-width: 700px) {
-        .evaluation-head { flex-direction: column; }
-        .evaluation-table thead { display: none; }
-        .evaluation-table, .evaluation-table tbody, .evaluation-table tr, .evaluation-table td { display: block; width: 100%; }
-        .evaluation-table tr { padding: 12px 16px; border-bottom: 1px solid var(--border-color); }
-        .evaluation-table td { border: 0; padding: 4px 0; }
-        .evaluation-table td::before { content: attr(data-label); display: block; color: var(--text-secondary); font-size: 0.68rem; font-weight: 700; text-transform: uppercase; }
+    .history-empty {
+        padding: 54px 24px;
+        text-align: center;
+        color: var(--text-secondary);
+    }
+    @media (max-width: 760px) {
+        .history-head { align-items: flex-start; flex-direction: column; }
+        .history-table { min-width: 0; }
+        .history-table thead { display: none; }
+        .history-table,
+        .history-table tbody,
+        .history-table tr,
+        .history-table td {
+            display: block;
+            width: 100%;
+        }
+        .history-table tr {
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .history-table td {
+            border: 0;
+            padding: 5px 0;
+        }
+        .history-table td::before {
+            content: attr(data-label);
+            display: block;
+            color: var(--text-secondary);
+            font-size: 0.68rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
     }
 </style>
 {% endblock %}
@@ -34,55 +100,58 @@
 <header>
     <div class="eyebrow">Feedback</div>
     <h1>My Evaluations</h1>
-    <p class="subtitle">Review your evaluator nomination lists, reasons, and created dates.</p>
+    <p class="subtitle">Every evaluator you submitted, in one clean list.</p>
 </header>
 {% if nomination_window.is_closed %}
-<div class="status-box info" style="margin-bottom:18px;">The nomination deadline has passed. Your evaluator lists are now read-only.</div>
+<div class="status-box info" style="margin-bottom:18px;">The nomination deadline has passed. Your evaluator list is read-only.</div>
 {% endif %}
 
-<div class="evaluation-list">
-    {% for nomination in nominations %}
-    <article class="evaluation-card">
-        <div class="evaluation-head">
-            <div>
-                <strong>Evaluator nomination</strong>
-                <div class="evaluation-meta">
-                    Submitted {{ nomination.submitted_display }}
-                    &middot; Created {{ nomination.created_display }}
-                    &middot; Manager: {{ nomination.manager_info.full_name or nomination.manager_username or '-' }}
-                </div>
-            </div>
-            <div class="evaluation-actions">
-                {% if nomination.can_edit %}
-                <a class="evaluation-edit" href="/feedback/nominate">Edit nomination</a>
-                {% elif nomination.has_manager_action %}
-                <span class="evaluation-locked">Manager review started</span>
-                {% endif %}
-                {% if nomination.is_finished %}
-                <span class="evaluation-status">
-                    Finished
-                </span>
-                {% endif %}
-            </div>
+<section class="history-card">
+    <div class="history-head">
+        <div>
+            <strong>Evaluator nomination list</strong>
+            <div class="history-note">Only the created date is shown here. Manager actions stay in Team Feedback.</div>
         </div>
-        <table class="evaluation-table">
-            <thead><tr><th>Evaluator</th><th>Email</th><th>Team</th><th>Reason</th></tr></thead>
-            <tbody>
-                {% for evaluator in nomination.evaluators %}
+        <span class="history-count">
+            {{ total_evaluators }}
+        </span>
+    </div>
+    <div class="history-table-wrap">
+        <table class="history-table">
+            <thead>
                 <tr>
-                    <td data-label="Evaluator">{{ evaluator.full_name or evaluator.username or '-' }}</td>
-                    <td data-label="Email">{{ evaluator.email or '-' }}</td>
-                    <td data-label="Team">{{ evaluator.team or '-' }}</td>
-                    <td data-label="Reason" class="reason-text">{{ evaluator.reason or '-' }}</td>
+                    <th>Created</th>
+                    <th>Evaluator</th>
+                    <th>Email</th>
+                    <th>Team</th>
+                    <th>Reason</th>
+                    <th>Manager</th>
                 </tr>
-                {% else %}
-                <tr><td colspan="4" class="history-empty">No evaluators were stored for this nomination.</td></tr>
+            </thead>
+            <tbody>
+                {% set ns = namespace(row_count=0) %}
+                {% for nomination in nominations %}
+                    {% for evaluator in nomination.evaluators %}
+                    {% set ns.row_count = ns.row_count + 1 %}
+                    <tr>
+                        <td data-label="Created" class="history-date">{{ nomination.created_display }}</td>
+                        <td data-label="Evaluator">
+                            <div class="history-person">{{ evaluator.full_name or evaluator.username or '-' }}</div>
+                        </td>
+                        <td data-label="Email">{{ evaluator.email or '-' }}</td>
+                        <td data-label="Team">{{ evaluator.team or '-' }}</td>
+                        <td data-label="Reason" class="reason-text">{{ evaluator.reason or '-' }}</td>
+                        <td data-label="Manager">{{ nomination.manager_info.full_name or nomination.manager_username or '-' }}</td>
+                    </tr>
+                    {% endfor %}
                 {% endfor %}
+                {% if ns.row_count == 0 %}
+                <tr>
+                    <td colspan="6" class="history-empty">No evaluator nominations submitted yet.</td>
+                </tr>
+                {% endif %}
             </tbody>
         </table>
-    </article>
-    {% else %}
-    <div class="evaluation-card history-empty">No evaluation nominations submitted yet.</div>
-    {% endfor %}
-</div>
+    </div>
+</section>
 {% endblock %}

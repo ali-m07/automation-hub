@@ -1001,16 +1001,7 @@
                 const data = await response.json();
 
                 if (data.nomination && Array.isArray(data.nomination.evaluators) && data.nomination.evaluators.length) {
-                    const nom = data.nomination;
-                    const date = new Date(nom.submitted_at);
-                    const status = document.getElementById('currentStatus');
-                    status.style.display = 'block';
-                    status.innerHTML = `<i class="fas fa-info-circle"></i> You have a pending nomination submitted on ${date.toLocaleDateString('en-US', {
-                        year: 'numeric', month: 'long', day: 'numeric'
-                    })}. You can modify and resubmit.`;
-
-                    evaluators = nom.evaluators || [];
-                    renderEvaluators();
+                    window.location.href = '/feedback/my-evaluations';
                     return true;
                 }
             } catch (error) {
@@ -1461,6 +1452,9 @@
                     status.innerHTML = `<i class="fas fa-info-circle"></i> You have a pending nomination submitted on ${date.toLocaleDateString('en-US', {
                         year: 'numeric', month: 'long', day: 'numeric'
                     })}. You can modify and resubmit.`;
+                    setTimeout(() => {
+                        window.location.href = '/feedback/my-evaluations';
+                    }, 700);
                 } else {
                     showToast(data.detail || data.error || 'Error submitting', 'error');
                 }

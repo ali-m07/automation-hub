@@ -373,6 +373,9 @@ async def my_evaluations_page(request: Request):
             for key, value in info.items():
                 if value not in (None, "", []):
                     evaluator[key] = value
+    total_evaluators = sum(
+        len(nomination.get("evaluators", [])) for nomination in nominations
+    )
 
     templates = _get_templates(request)
     if not templates:
@@ -384,6 +387,7 @@ async def my_evaluations_page(request: Request):
             "request": request,
             "user": user,
             "nominations": nominations,
+            "total_evaluators": total_evaluators,
             "nomination_window": nomination_window,
             "feedback_nomination_closed": nomination_window["is_closed"],
         },
