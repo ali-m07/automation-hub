@@ -784,10 +784,11 @@ function initDataGrid() {
 
     // Default generic columns so the user can immediately type or paste like Excel
     const defaultColumns = buildDefaultColumns();
+    const isMobile = window.matchMedia && window.matchMedia('(max-width: 640px)').matches;
 
     state.dataGrid = new Tabulator('#data-grid', {
-        height: '70vh',
-        layout: 'fitColumns', // Only show existing columns, no empty space
+        height: isMobile ? 'auto' : '70vh',
+        layout: isMobile ? 'fitDataStretch' : 'fitColumns',
         placeholder: 'Click and start typing, or paste from Excel/Sheets.',
         // Virtual DOM required for range selection (works well with large datasets)
         virtualDom: true,
@@ -815,11 +816,12 @@ function initDataGrid() {
         autoColumns: false,
         autoColumnsDefinitions: false,
         // Prevent empty column space
-        columnMinWidth: 100,
+        columnMinWidth: isMobile ? 80 : 100,
         resizableColumns: true,
         // Better keyboard navigation
         tabEndNewRow: true, // Tab at end of row creates new row
-        tabEndNewRowEdit: true // Start editing new row immediately
+        tabEndNewRowEdit: true, // Start editing new row immediately
+        rowHeight: isMobile ? 38 : 42
     });
 
     // Pre-create a few empty rows so you can type immediately
