@@ -861,105 +861,70 @@ header h1 {
     cursor: pointer;
 }
 
-/* Tabulator grid container tweaks so it fits nicely inside cards */
+/* Spreadsheet-like data grid */
 #data-grid {
     max-width: 100%;
-    overflow: auto;
-    border-radius: 12px;
-    border: 1px solid #e5e7eb;
-    background: white;
+    overflow: hidden;
+    border-radius: 18px;
+    border: 1px solid color-mix(in srgb, var(--border-color) 90%, transparent);
+    background: var(--surface-raised);
+    box-shadow: var(--shadow-md);
 }
 
-/* Ensure Tabulator only shows defined columns, no empty spacer columns */
-#data-grid .tabulator-tableHolder {
-    overflow-x: auto;
+#data-grid .jss_container {
+    width: 100% !important;
+    background: transparent;
+    color: var(--text-primary);
 }
 
-#data-grid .tabulator-col {
-    min-width: 0;
+#data-grid .jss_content {
+    border-top: 0;
+    box-shadow: none;
+    border-color: color-mix(in srgb, var(--border-color) 90%, transparent);
+    background: color-mix(in srgb, var(--bg-primary) 94%, white);
 }
 
-/* Hide any empty placeholder columns */
-#data-grid .tabulator-col:empty,
-#data-grid .tabulator-col[aria-label=""]:not([data-field]) {
-    display: none !important;
+#data-grid .jss {
+    width: 100% !important;
+    background: transparent;
+    color: var(--text-primary);
 }
 
-/* Enhanced cell range selection styling (like Excel) - VERY VISIBLE */
-#data-grid .tabulator-cell.tabulator-range-selected {
-    background-color: #bfdbfe !important;
-    border: 2px solid #2563eb !important;
-    box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.5) !important;
-    position: relative;
-    z-index: 2;
+#data-grid .jss > thead > tr > th {
+    position: sticky;
+    top: 0;
+    background: color-mix(in srgb, var(--accent-soft) 28%, var(--bg-primary));
+    color: var(--text-primary);
+    font-weight: 700;
+    border-color: color-mix(in srgb, var(--border-color) 90%, transparent);
 }
 
-/* Selected single cell */
-#data-grid .tabulator-cell.tabulator-selected {
-    background-color: #bfdbfe !important;
-    border: 2px solid #2563eb !important;
-    box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.5) !important;
-    z-index: 2;
+#data-grid .jss > tbody > tr > td {
+    background: color-mix(in srgb, var(--bg-primary) 92%, white);
+    color: var(--text-primary);
+    border-color: color-mix(in srgb, var(--border-color) 92%, transparent);
+    min-height: 38px;
 }
 
-/* Make sure selected cells stand out */
-#data-grid .tabulator-cell.tabulator-range-selected,
-#data-grid .tabulator-cell.tabulator-selected {
-    background: linear-gradient(135deg, #bfdbfe 0%, #93c5fd 100%) !important;
+#data-grid .jss > tbody > tr:nth-child(even) > td {
+    background: color-mix(in srgb, var(--accent-soft) 10%, var(--bg-primary));
 }
 
-#data-grid .tabulator-cell.tabulator-range-selected.tabulator-editing {
-    background-color: white !important;
-    border: 3px solid #2563eb !important;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.3) !important;
-    z-index: 15 !important;
+#data-grid .jss > tbody > tr > td:focus,
+#data-grid .jss > tbody > tr.selected > td,
+#data-grid .jss > thead > tr > th.selected {
+    background: var(--accent-soft);
 }
 
-/* Active cell (currently editing) */
-#data-grid .tabulator-cell.tabulator-editing {
-    background-color: white !important;
-    border: 3px solid #0f766e !important;
-    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.25) !important;
-    z-index: 10 !important;
+#data-grid .jss_input,
+#data-grid .jss_style_form_group input,
+#data-grid .jss_style_form_group select,
+#data-grid .jss_style_form_group textarea {
+    color: var(--text-primary);
 }
 
-/* Selected row highlight */
-#data-grid .tabulator-row.tabulator-selected {
-    background-color: #eff6ff !important;
-}
-
-#data-grid .tabulator-row.tabulator-selected .tabulator-cell {
-    background-color: #eff6ff !important;
-}
-
-/* Better hover states */
-#data-grid .tabulator-cell:hover {
-    background-color: #f3f4f6;
-    cursor: cell;
-}
-
-#data-grid .tabulator-cell.tabulator-range-selected:hover {
-    background-color: #93c5fd !important;
-    border-color: #1d4ed8 !important;
-}
-
-/* Make cells focusable for keyboard navigation */
-#data-grid .tabulator-cell {
-    cursor: cell;
-    outline: none;
-}
-
-#data-grid .tabulator-cell:focus {
-    outline: 2px solid #0f766e;
-    outline-offset: -2px;
-    z-index: 5;
-}
-
-/* Active/focused cell styling */
-#data-grid .tabulator-cell.tabulator-focus {
-    background-color: #f0fdf4 !important;
-    border: 2px solid #0f766e !important;
-    box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.1);
+#data-grid .jss_toolbar {
+    display: none;
 }
 
 /* Table pills for multiple logical tables */
@@ -1618,14 +1583,29 @@ header h1 {
 
 @media (max-width: 860px) {
     .top-nav { align-items: flex-start; border-radius: 22px; }
-    .top-nav-right { justify-content: flex-end; flex-wrap: wrap; }
+    .top-nav-right { justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
     .top-nav-right #platform-search { width: min(100%, 220px) !important; }
+    .top-nav-right .theme-toggle,
+    .top-nav-right .header-action,
+    .top-nav-right .header-logout { order: 2; }
+    .top-nav-right .notifications-wrap { order: 3; }
 }
 
 @media (max-width: 640px) {
-    .top-nav-sub, .top-nav-right #platform-search, .top-nav-right > .top-nav-link { display: none; }
-    .top-nav-right { gap: 6px; }
-    .header-action, .theme-toggle { min-height: 40px; padding-left: 10px; padding-right: 10px; font-size: .82rem; }
+    .top-nav { padding: 10px 12px; }
+    .top-nav-sub,
+    .top-nav-right #platform-search {
+        display: none;
+    }
+    .top-nav-right { gap: 6px; width: 100%; justify-content: space-between; flex-wrap: wrap; }
+    .header-action,
+    .theme-toggle {
+        min-height: 40px;
+        padding-left: 10px;
+        padding-right: 10px;
+        font-size: .82rem;
+    }
+    .header-logout { display: inline-flex; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; } }
 .wizard-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 20px; }

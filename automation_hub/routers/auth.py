@@ -183,12 +183,10 @@ async def login(
 
     # 2FA: if TOTP enabled, require second factor before setting session
     # در محیط تست می‌توانیم با ENV غیرفعال کنیم (ENABLE_2FA=1 برای فعال بودن).
-    enable_2fa = os.getenv("ENABLE_2FA", "0").lower() in ("1", "true", "yes")
-    if enable_2fa:
-        totp_enabled = bool(record.get("totp_enabled"))
-        if totp_enabled and record.get("totp_secret") and pyotp:
-            request.session["pending_2fa"] = username
-            return RedirectResponse(url="/login?step=2fa", status_code=302)
+    totp_enabled = bool(record.get("totp_enabled"))
+    if totp_enabled and record.get("totp_secret") and pyotp:
+        request.session["pending_2fa"] = username
+        return RedirectResponse(url="/login?step=2fa", status_code=302)
 
     now = db.utc_now_iso()
     conn = _db()

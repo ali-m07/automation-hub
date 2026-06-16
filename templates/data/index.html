@@ -4,6 +4,10 @@
 
 {% block subtitle %}Manage data pools and database connectors{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/jspreadsheet.min.css">
+{% endblock %}
+
 {% block content %}
 <section class="page-hero">
     <div>
@@ -115,9 +119,10 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="/static/js/jspreadsheet.min.js"></script>
 <script>
-    if (typeof ensureTabulatorLoaded === 'function') {
-        ensureTabulatorLoaded(() => initDataGrid());
+    if (typeof ensureSpreadsheetLoaded === 'function') {
+        ensureSpreadsheetLoaded(() => initDataGrid());
     } else if (typeof initDataGrid === 'function') {
         initDataGrid();
     }
