@@ -187,11 +187,11 @@ const translations = {
         'logout': 'Logout',
     },
     fa: {
-        'welcome': 'خوش آمدید',
-        'search': 'جستجو',
-        'notifications': 'اعلان‌ها',
-        'profile': 'پروفایل',
-        'logout': 'خروج',
+        'welcome': 'Ã˜Â®Ã™Ë†Ã˜Â´ Ã˜Â¢Ã™â€¦Ã˜Â¯Ã›Å’Ã˜Â¯',
+        'search': 'Ã˜Â¬Ã˜Â³Ã˜ÂªÃ˜Â¬Ã™Ë†',
+        'notifications': 'Ã˜Â§Ã˜Â¹Ã™â€žÃ˜Â§Ã™â€ Ã¢â‚¬Å’Ã™â€¡Ã˜Â§',
+        'profile': 'Ã™Â¾Ã˜Â±Ã™Ë†Ã™ÂÃ˜Â§Ã›Å’Ã™â€ž',
+        'logout': 'Ã˜Â®Ã˜Â±Ã™Ë†Ã˜Â¬',
     }
 };
 
@@ -325,6 +325,17 @@ function ensureTabulatorLoaded(callback) {
     document.head.appendChild(script);
 }
 
+function ensureSpreadsheetLoaded(callback) {
+    if (window.jspreadsheet) {
+        callback();
+        return;
+    }
+    const script = document.createElement('script');
+    script.src = '/static/js/jspreadsheet.min.js';
+    script.onload = () => callback();
+    document.head.appendChild(script);
+}
+
 // Tab switching
 function switchTab(tabName) {
     // Hide all tabs
@@ -344,7 +355,7 @@ function switchTab(tabName) {
 
     // Lazy-init data grid when entering Data & Connectors
     if (tabName === 'data-connectors' && !state.dataGridInitialized) {
-        ensureTabulatorLoaded(() => initDataGrid());
+        ensureSpreadsheetLoaded(() => initDataGrid());
     }
     if (tabName === 'data-connectors') {
         loadDbConnectors();
@@ -406,7 +417,7 @@ async function loadSummary() {
             jobsEl.innerHTML = '<h3 style="margin-bottom:8px;">Last Creative jobs</h3><ul style="list-style:none; padding:0;">' +
                 jobs.map(j => `
                     <li style="padding:10px 0; border-bottom:1px solid #e5e7eb;">
-                        Job #${j.job_id} — ${j.status} — ${j.row_count || 0} rows
+                        Job #${j.job_id} Ã¢â‚¬â€ ${j.status} Ã¢â‚¬â€ ${j.row_count || 0} rows
                         ${j.zip_link ? ` <a href="${j.zip_link}" class="btn" style="padding:4px 8px;">Download ZIP</a>` : ''}
                     </li>
                 `).join('') + '</ul>';
@@ -418,8 +429,8 @@ async function loadSummary() {
             ticketEl.innerHTML = `
                 <h3 style="margin-bottom:8px;">Latest ticket</h3>
                 <div style="padding:12px; border:1px solid #e5e7eb; border-radius:8px;">
-                    <strong>#${t.id}</strong> ${escapeHtml(t.subject || '')} — ${t.status || 'open'}
-                    <br><small>Created: ${t.created_at || ''}${t.admin_replied_at ? ' · Replied: ' + t.admin_replied_at : ''}</small>
+                    <strong>#${t.id}</strong> ${escapeHtml(t.subject || '')} Ã¢â‚¬â€ ${t.status || 'open'}
+                    <br><small>Created: ${t.created_at || ''}${t.admin_replied_at ? ' Ã‚Â· Replied: ' + t.admin_replied_at : ''}</small>
                 </div>
             `;
         }
@@ -466,7 +477,7 @@ async function loadTableVersions() {
         }
         listEl.innerHTML = versions.map(v => `
             <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid #e5e7eb;">
-                <span>Version #${v.version_number} — ${escapeHtml(v.created_at || '')}</span>
+                <span>Version #${v.version_number} Ã¢â‚¬â€ ${escapeHtml(v.created_at || '')}</span>
                 <button class="btn" style="padding:4px 10px;" onclick="restoreTableVersion(${v.id})">Restore</button>
             </div>
         `).join('');
@@ -525,8 +536,8 @@ async function loadDbConnectors() {
         } else {
             state.dbConnectors = data.connectors;
         }
-        // In user UI فقط اسم کانکتور را نشان بده، نه نام جدول/اسکیمای فنی
-        select.innerHTML = '<option value="">— Select connector —</option>' +
+        // In user UI Ã™ÂÃ™â€šÃ˜Â· Ã˜Â§Ã˜Â³Ã™â€¦ ÃšÂ©Ã˜Â§Ã™â€ ÃšÂ©Ã˜ÂªÃ™Ë†Ã˜Â± Ã˜Â±Ã˜Â§ Ã™â€ Ã˜Â´Ã˜Â§Ã™â€  Ã˜Â¨Ã˜Â¯Ã™â€¡Ã˜Å’ Ã™â€ Ã™â€¡ Ã™â€ Ã˜Â§Ã™â€¦ Ã˜Â¬Ã˜Â¯Ã™Ë†Ã™â€ž/Ã˜Â§Ã˜Â³ÃšÂ©Ã›Å’Ã™â€¦Ã˜Â§Ã›Å’ Ã™ÂÃ™â€ Ã›Å’
+        select.innerHTML = '<option value="">Ã¢â‚¬â€ Select connector Ã¢â‚¬â€</option>' +
             state.dbConnectors.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
         state.dbSyncFilename = null;
         state.dbSyncSheets = [];
@@ -564,7 +575,7 @@ async function handleDbSyncUpload(evt) {
         state.dbSyncSheets = [];
         return;
     }
-    statusEl.textContent = 'Uploading…';
+    statusEl.textContent = 'UploadingÃ¢â‚¬Â¦';
     statusEl.className = 'status-box info';
     try {
         const formData = new FormData();
@@ -643,7 +654,7 @@ async function loadDbConnectorPreview() {
     }
 
     previewPanel.style.display = 'block';
-    previewStatus.textContent = 'Loading preview (read-only)…';
+    previewStatus.textContent = 'Loading preview (read-only)Ã¢â‚¬Â¦';
     previewStatus.className = 'status-box info';
     previewGrid.innerHTML = '';
 
@@ -750,7 +761,7 @@ async function runDbSync() {
         statusEl.className = 'status-box error';
         return;
     }
-    statusEl.textContent = 'Syncing…';
+    statusEl.textContent = 'SyncingÃ¢â‚¬Â¦';
     statusEl.className = 'status-box info';
     try {
         const res = await fetch('/api/db-connectors/sync', {
@@ -777,222 +788,277 @@ async function runDbSync() {
     }
 }
 
-// Data grid (Data & Connectors) using Tabulator
-function initDataGrid() {
-    const gridElement = document.getElementById('data-grid');
-    if (!gridElement) return;
+// Data grid (Data & Connectors) using Jspreadsheet
+function normalizeDataColumns(columns) {
+    const cols = Array.isArray(columns) && columns.length ? columns : buildDefaultColumns();
+    return cols.map((col, index) => ({
+        title: col.title || col.field || `Col ${index + 1}`,
+        field: col.field || `c${index + 1}`,
+        width: col.width || 170,
+        type: col.type || 'text',
+        editor: col.editor || 'text',
+        readonly: !!col.readonly
+    }));
+}
 
-    // Default generic columns so the user can immediately type or paste like Excel
-    const defaultColumns = buildDefaultColumns();
+function dataRowsToMatrix(rows, columns) {
+    const cols = normalizeDataColumns(columns);
+    return (Array.isArray(rows) && rows.length ? rows : buildBlankRows(DATA_DEFAULT_ROWS)).map(row => {
+        return cols.map((col, index) => {
+            const value = row && Object.prototype.hasOwnProperty.call(row, col.field)
+                ? row[col.field]
+                : row && Object.prototype.hasOwnProperty.call(row, `c${index + 1}`)
+                    ? row[`c${index + 1}`]
+                    : '';
+            return value == null ? '' : value;
+        });
+    });
+}
+
+function dataMatrixToRows(matrix, columns) {
+    const cols = normalizeDataColumns(columns);
+    return (Array.isArray(matrix) ? matrix : []).map(row => {
+        const out = {};
+        cols.forEach((col, index) => {
+            out[col.field] = Array.isArray(row) ? (row[index] ?? '') : '';
+        });
+        return out;
+    });
+}
+
+function replaceGridRows(rows) {
+    if (!state.dataGrid) return;
+    state.dataGridLoading = true;
+    try {
+        state.dataGrid.setData(rows);
+    } finally {
+        state.dataGridLoading = false;
+    }
+}
+
+function getDataGridRowsSnapshot() {
+    if (!state.dataGrid || !state.dataGrid.instance || typeof state.dataGrid.instance.getData !== 'function') {
+        return buildBlankRows(DATA_DEFAULT_ROWS);
+    }
+    try {
+        return dataMatrixToRows(state.dataGrid.instance.getData(), state.dataGridColumns || buildDefaultColumns());
+    } catch (err) {
+        return buildBlankRows(DATA_DEFAULT_ROWS);
+    }
+}
+
+function renderSpreadsheetGrid(columns, rows, opts = {}) {
+    const gridElement = document.getElementById('data-grid');
+    if (!gridElement || !window.jspreadsheet) return null;
+
+    const sheetColumns = normalizeDataColumns(columns);
+    const matrix = dataRowsToMatrix(rows, sheetColumns);
     const isMobile = window.matchMedia && window.matchMedia('(max-width: 640px)').matches;
 
-    state.dataGrid = new Tabulator('#data-grid', {
-        height: isMobile ? 'auto' : '70vh',
-        layout: isMobile ? 'fitDataStretch' : 'fitColumns',
-        placeholder: 'Click and start typing, or paste from Excel/Sheets.',
-        // Virtual DOM required for range selection (works well with large datasets)
-        virtualDom: true,
-        virtualDomBuffer: 300, // Render extra rows for smooth scrolling
-        // Selection
-        selectable: true,
-        selectableRows: true, // Enable row selection
-        selectableRowsRangeMode: 'click', // Click to select rows
-        // Cell range selection (for multi-cell select / copy like Excel)
-        selectableRange: true,
-        selectableRangeColumns: true,
-        selectableRangeRows: true,
-        selectableRangeClearCells: false, // Don't clear cells when selecting range
-        // Clipboard / paste
-        clipboard: true,
-        clipboardPasteParser: 'range',
-        clipboardPasteAction: 'replace',
-        clipboardCopySelector: 'active', // Copy selected range
-        // History (for undo / redo)
-        history: true,
-        historySize: 50, // Keep last 50 actions for undo
-        reactiveData: true,
-        columns: defaultColumns,
-        // Allow dynamic column/row expansion on paste
-        autoColumns: false,
-        autoColumnsDefinitions: false,
-        // Prevent empty column space
-        columnMinWidth: isMobile ? 80 : 100,
-        resizableColumns: true,
-        // Better keyboard navigation
-        tabEndNewRow: true, // Tab at end of row creates new row
-        tabEndNewRowEdit: true, // Start editing new row immediately
-        rowHeight: isMobile ? 38 : 42
-    });
+    gridElement.classList.add('sheet-grid');
+    gridElement.innerHTML = '';
 
-    // Pre-create a few empty rows so you can type immediately
-    state.dataGrid.setData(buildBlankRows(DATA_DEFAULT_ROWS));
-
-    // Auto-save on edits / paste / row add
-    state.dataGrid.on('cellEdited', handleDataGridChanged);
-    state.dataGrid.on('rowAdded', handleDataGridChanged);
-    state.dataGrid.on('dataChanged', function() {
-        // After data changes (including paste), ensure we have enough columns
-        ensureColumnsForData();
-        handleDataGridChanged();
-    });
-    
-    // Handle paste to auto-expand columns/rows if needed
-    state.dataGrid.on('dataLoaded', function() {
-        ensureColumnsForData();
-    });
-    
-    // Intercept paste to auto-add columns/rows before paste
-    document.addEventListener('paste', function(e) {
-        // Only handle if focus is on the grid
-        const activeEl = document.activeElement;
-        if (!activeEl || !activeEl.closest('#data-grid')) return;
-        
-        const clipboardData = e.clipboardData || window.clipboardData;
-        if (!clipboardData) return;
-        
-        const pastedText = clipboardData.getData('text/plain');
-        if (!pastedText) return;
-        
-        // Parse the pasted data to see dimensions
-        const lines = pastedText.split('\n').filter(line => line.trim());
-        if (lines.length === 0) return;
-        
-        const firstLine = lines[0];
-        const columnCount = firstLine.split('\t').length;
-        const rowCount = lines.length;
-        
-        // Get current grid dimensions
-        const cols = state.dataGrid.getColumnDefinitions() || [];
-        const currentColCount = cols.length;
-        const currentData = state.dataGrid.getData();
-        const currentRowCount = currentData.length;
-        
-        // Add columns if needed
-        if (columnCount > currentColCount) {
-            for (let i = currentColCount + 1; i <= columnCount; i++) {
-                const field = `c${i}`;
-                const colDef = {
-                    title: `Col ${i}`,
-                    field,
-                    editor: 'input'
-                };
-                try {
-                    state.dataGrid.addColumn(colDef, false);
-                } catch (err) {
-                    console.warn(`Could not add column ${i}:`, err);
-                }
-            }
-        }
-        
-        // Add rows if needed (we'll let Tabulator handle this, but ensure we have enough)
-        if (rowCount > currentRowCount) {
-            const neededRows = rowCount - currentRowCount;
-            for (let i = 0; i < neededRows; i++) {
-                try {
-                    state.dataGrid.addRow({});
-                } catch (err) {
-                    console.warn(`Could not add row:`, err);
-                }
-            }
-        }
-    }, true); // Use capture phase to intercept before Tabulator
-
-    // Track which column user clicked last for rename / delete actions
-    // Use headerClick instead of columnClick for better compatibility
-    state.dataGrid.on('headerClick', function (e, column) {
-        const field = column.getField();
-        if (!field) return;
-        state.selectedColumnField = field;
-        const def = column.getDefinition();
-        const title = def.title || field || '(untitled)';
-        const label = document.getElementById('data-grid-column-label');
-        if (label) {
-            label.textContent = title;
-            label.style.color = '#0f766e';
-            label.style.fontWeight = '600';
-        }
-        // Clear any error status
-        showStatus('data-grid-status', '', 'info');
-    });
-
-    // Function to update selection status display - checks DOM directly
-    function updateSelectionStatus() {
-        try {
-            const statusEl = document.getElementById('data-grid-status');
-            if (!statusEl) return;
-            
-            // Check DOM directly for selected cells (most reliable method)
-            const gridEl = document.getElementById('data-grid');
-            if (!gridEl) {
-                statusEl.textContent = '';
-                statusEl.className = 'status-box info';
-                return;
-            }
-            
-            // Find all selected cells in DOM
-            const selectedCells = gridEl.querySelectorAll('.tabulator-cell.tabulator-range-selected, .tabulator-cell.tabulator-selected');
-            const count = selectedCells.length;
-            
-            if (count > 0) {
-                statusEl.textContent = `✓ Selected: ${count} cell${count !== 1 ? 's' : ''}`;
-                statusEl.className = 'status-box success';
-            } else {
-                statusEl.textContent = '';
-                statusEl.className = 'status-box info';
-            }
-        } catch (err) {
-            console.log('Selection status error:', err);
-        }
+    if (state.dataGrid && state.dataGrid.instance && typeof state.dataGrid.instance.destroy === 'function') {
+        try { state.dataGrid.instance.destroy(); } catch (err) {}
     }
-    
-    // Poll for selection changes (simple and reliable)
-    let selectionCheckInterval = setInterval(updateSelectionStatus, 200);
-    
-    // Also update on mouse/keyboard events
-    const gridContainer = document.getElementById('data-grid');
-    if (gridContainer) {
-        // Update on any mouse activity in grid
-        gridContainer.addEventListener('mousedown', function() {
-            setTimeout(updateSelectionStatus, 100);
-        });
-        gridContainer.addEventListener('mouseup', function() {
-            setTimeout(updateSelectionStatus, 150);
-        });
-        gridContainer.addEventListener('click', function() {
-            setTimeout(updateSelectionStatus, 100);
-        });
-    }
-    
-    // Update on keyboard events
-    document.addEventListener('keydown', function() {
-        setTimeout(updateSelectionStatus, 100);
-    });
-    
-    // Make updateSelectionStatus available globally
-    window.updateSelectionStatus = updateSelectionStatus;
 
-    // Track mouse drag for multi-cell selection
+    const instance = jspreadsheet(gridElement, {
+        data: matrix,
+        columns: sheetColumns.map(col => ({
+            type: 'text',
+            title: col.title,
+            width: col.width || (isMobile ? 140 : 170),
+            align: 'left'
+        })),
+        minDimensions: [Math.max(sheetColumns.length, 3), Math.max((matrix || []).length, DATA_DEFAULT_ROWS)],
+        tableOverflow: true,
+        tableWidth: '100%',
+        tableHeight: isMobile ? 'auto' : '68vh',
+        editable: !(opts.readOnly),
+        allowInsertRow: !opts.readOnly,
+        allowDeleteRow: !opts.readOnly,
+        allowInsertColumn: !opts.readOnly,
+        allowDeleteColumn: !opts.readOnly,
+        allowRenameColumn: !opts.readOnly,
+        allowToolbar: false,
+        textOverflow: true,
+        autoCasting: true,
+        search: false,
+        fullScreen: false,
+        onchange: function () {
+            handleDataGridChanged();
+        },
+        onafterchanges: function () {
+            handleDataGridChanged();
+        },
+        oninsertrow: function () {
+            handleDataGridChanged();
+        },
+        oninsertcolumn: function () {
+            handleDataGridChanged();
+        },
+        ondeleterow: function () {
+            handleDataGridChanged();
+        },
+        ondeletecolumn: function () {
+            handleDataGridChanged();
+        },
+        onchangeheader: function (worksheet, columnIndex, oldValue, newValue) {
+            state.selectedColumnField = sheetColumns[columnIndex]?.field || null;
+            const label = document.getElementById('data-grid-column-label');
+            if (label) {
+                label.textContent = newValue || sheetColumns[columnIndex]?.title || 'None';
+                label.style.color = '#0f766e';
+                label.style.fontWeight = '600';
+            }
+            handleDataGridChanged();
+        }
+    });
+
+    state.dataGridColumns = sheetColumns;
+    state.dataGrid = createDataGridAdapter(instance);
     state.dataGridInitialized = true;
-    state.selectedColumnField = null; // Reset on init
 
-    // Reset column label
     const label = document.getElementById('data-grid-column-label');
     if (label) {
-        label.textContent = 'None';
+        label.textContent = sheetColumns[0]?.title || 'None';
         label.style.color = '#374151';
         label.style.fontWeight = 'normal';
     }
 
-    // Try to load any previously saved grid from backend
+    applyGridPermission();
+    window.updateSelectionStatus = function () {
+        const statusEl = document.getElementById('data-grid-status');
+        if (!statusEl) return;
+        statusEl.textContent = '';
+        statusEl.className = 'status-box info';
+    };
+
+    return instance;
+}
+
+function createDataGridAdapter(instance) {
+    return {
+        instance,
+        getColumnDefinitions() {
+            return normalizeDataColumns(state.dataGridColumns || buildDefaultColumns()).map(col => ({
+                title: col.title,
+                field: col.field,
+                editor: 'text',
+                width: col.width
+            }));
+        },
+        getData() {
+            try {
+                return dataMatrixToRows(instance.getData(), state.dataGridColumns || buildDefaultColumns());
+            } catch (err) {
+                return [];
+            }
+        },
+        setColumns(columns) {
+            state.dataGridColumns = normalizeDataColumns(columns);
+            const currentRows = this.getData();
+            renderSpreadsheetGrid(state.dataGridColumns, currentRows, {
+                readOnly: state.currentPermission === 'view' || state.currentPermission === 'view_nocopy',
+                tableTitle: document.getElementById('current-table-title')?.textContent || 'Data table'
+            });
+        },
+        setData(rows) {
+            state.dataGridLoading = true;
+            renderSpreadsheetGrid(state.dataGridColumns || buildDefaultColumns(), rows, {
+                readOnly: state.currentPermission === 'view' || state.currentPermission === 'view_nocopy',
+                tableTitle: document.getElementById('current-table-title')?.textContent || 'Data table'
+            });
+            state.dataGridLoading = false;
+        },
+        clearData() {
+            this.setData(buildBlankRows(DATA_DEFAULT_ROWS));
+        },
+        addRow(row = {}) {
+            const rows = this.getData();
+            rows.push(row);
+            this.setData(rows);
+        },
+        deleteRow(indexes) {
+            const rows = this.getData();
+            const list = Array.isArray(indexes) ? indexes.slice().sort((a, b) => b - a) : [indexes];
+            list.forEach(idx => {
+                if (typeof idx === 'number' && idx >= 0 && idx < rows.length) rows.splice(idx, 1);
+            });
+            this.setData(rows);
+        },
+        addColumn(colDef) {
+            const cols = normalizeDataColumns(state.dataGridColumns || buildDefaultColumns());
+            const nextCol = {
+                title: colDef.title || `Col ${cols.length + 1}`,
+                field: colDef.field || `c${cols.length + 1}`,
+                width: colDef.width || 170,
+                type: 'text',
+                editor: 'text'
+            };
+            cols.push(nextCol);
+            const rows = this.getData().map(row => ({ ...row, [nextCol.field]: row[nextCol.field] ?? '' }));
+            state.dataGridColumns = cols;
+            this.setData(rows);
+        },
+        deleteColumn(fieldOrIndex) {
+            const cols = normalizeDataColumns(state.dataGridColumns || buildDefaultColumns());
+            const index = typeof fieldOrIndex === 'number'
+                ? fieldOrIndex
+                : cols.findIndex(col => col.field === fieldOrIndex);
+            if (index < 0) return;
+            cols.splice(index, 1);
+            const rows = this.getData().map(row => {
+                const next = {};
+                cols.forEach((col) => {
+                    next[col.field] = row[col.field] ?? '';
+                });
+                return next;
+            });
+            state.dataGridColumns = cols;
+            this.setData(rows);
+        },
+        getColumn(fieldOrIndex) {
+            const cols = normalizeDataColumns(state.dataGridColumns || buildDefaultColumns());
+            const index = typeof fieldOrIndex === 'number'
+                ? fieldOrIndex
+                : cols.findIndex(col => col.field === fieldOrIndex);
+            if (index < 0) return null;
+            const col = cols[index];
+            return {
+                getDefinition: () => col,
+                updateDefinition: (update) => {
+                    const next = { ...col, ...update };
+                    cols[index] = next;
+                    state.dataGridColumns = cols;
+                    const rows = this.getData();
+                    this.setData(rows);
+                }
+            };
+        },
+        redraw() {}
+    };
+}
+
+function initDataGrid() {
+    const gridElement = document.getElementById('data-grid');
+    if (!gridElement || !window.jspreadsheet) return;
+    state.dataGridInitialized = true;
+    state.selectedColumnField = null;
+    state.dataGridColumns = normalizeDataColumns(buildDefaultColumns());
+    renderSpreadsheetGrid(state.dataGridColumns, buildBlankRows(DATA_DEFAULT_ROWS), {
+        readOnly: state.currentPermission === 'view' || state.currentPermission === 'view_nocopy',
+        tableTitle: document.getElementById('current-table-title')?.textContent || 'Data table'
+    });
     loadDataGrid();
 }
 
 function handleDataGridChanged() {
-    // Debounced auto-save so pasting 20k rows does not spam the server
+    if (state.dataGridLoading) return;
     if (state.dataGridAutoSaveTimer) {
         clearTimeout(state.dataGridAutoSaveTimer);
     }
-    showStatus('data-grid-status', 'Saving changes…', 'info');
+    showStatus('data-grid-status', 'Saving changesâ€¦', 'info');
     state.dataGridAutoSaveTimer = setTimeout(() => {
         saveDataGrid(true);
     }, 1000);
@@ -1005,23 +1071,17 @@ async function loadDataGrid() {
             credentials: 'include'
         });
         const data = await res.json();
-        state.currentPermission = data.permission || "edit";
-
-        // Only update if backend has actual data (not empty arrays)
+        state.currentPermission = data.permission || 'edit';
         if (Array.isArray(data.columns) && data.columns.length > 0) {
-            state.dataGrid.setColumns(data.columns);
+            state.dataGridColumns = normalizeDataColumns(data.columns);
         }
-        if (Array.isArray(data.rows) && data.rows.length > 0) {
-            state.dataGrid.setData(data.rows);
-        } else if (Array.isArray(data.rows) && data.rows.length === 0 && Array.isArray(data.columns) && data.columns.length === 0) {
-            // Backend explicitly returned empty - keep current empty state, don't override
-            showStatus('data-grid-status', 'New table ready. Start typing or paste data.', 'info');
-            applyGridPermission();
-            return;
+        if (Array.isArray(data.rows)) {
+            replaceGridRows(data.rows);
         }
-
-        if (data.columns && data.columns.length > 0) {
+        if ((Array.isArray(data.columns) && data.columns.length > 0) || (Array.isArray(data.rows) && data.rows.length > 0)) {
             showStatus('data-grid-status', 'Grid loaded.', 'info');
+        } else {
+            showStatus('data-grid-status', 'New table ready. Start typing or paste data.', 'info');
         }
         applyGridPermission();
     } catch (err) {
@@ -1030,43 +1090,30 @@ async function loadDataGrid() {
 }
 
 function applyGridPermission() {
-    const perm = state.currentPermission || "edit";
-    const isReadOnly = perm === "view" || perm === "view_nocopy";
-
-    // Disable editing by stripping editors
+    const perm = state.currentPermission || 'edit';
+    const isReadOnly = perm === 'view' || perm === 'view_nocopy';
     if (state.dataGrid) {
-        const cols = state.dataGrid.getColumnDefinitions() || [];
-        const patched = cols.map((c) => {
-            const copy = { ...c };
-            if (isReadOnly) {
-                delete copy.editor;
-                copy.editable = false;
-            } else {
-                if (!copy.editor) copy.editor = "input";
-                delete copy.editable;
-            }
-            return copy;
+        state.dataGridColumns = normalizeDataColumns(state.dataGridColumns || buildDefaultColumns()).map(col => ({
+            ...col,
+            readonly: isReadOnly
+        }));
+        renderSpreadsheetGrid(state.dataGridColumns, getDataGridRowsSnapshot(), {
+            readOnly: isReadOnly,
+            tableTitle: document.getElementById('current-table-title')?.textContent || 'Data table'
         });
-        try {
-            state.dataGrid.setColumns(patched);
-        } catch (e) {}
     }
-
-    // Disable save/delete controls
     const btnSave = document.querySelector('button[onclick="saveDataGrid()"]');
     const btnDel = document.querySelector('button[onclick="deleteSelectedRows()"]');
     if (btnSave) btnSave.disabled = isReadOnly;
     if (btnDel) btnDel.disabled = isReadOnly;
-
-    // "no copy" block
-    const gridEl = document.getElementById("data-grid");
+    const gridEl = document.getElementById('data-grid');
     if (gridEl) {
         gridEl.oncopy = null;
         gridEl.oncut = null;
-        if (perm === "view_nocopy") {
+        if (perm === 'view_nocopy') {
             gridEl.oncopy = (e) => {
                 e.preventDefault();
-                showStatus("data-grid-status", "Copy is disabled for this table.", "error");
+                showStatus('data-grid-status', 'Copy is disabled for this table.', 'error');
             };
             gridEl.oncut = (e) => e.preventDefault();
         }
@@ -1200,7 +1247,7 @@ async function submitCurrentTableForReview() {
         return;
     }
     try {
-        showStatus('data-grid-status', 'Submitting for review…', 'info');
+        showStatus('data-grid-status', 'Submitting for reviewÃ¢â‚¬Â¦', 'info');
         const res = await fetch(`/api/data/tables/${encodeURIComponent(tableId)}/submit-review`, {
             method: 'POST',
             credentials: 'include',
@@ -1221,77 +1268,26 @@ async function submitCurrentTableForReview() {
 
 function deleteSelectedRows() {
     if (!state.dataGridInitialized || !state.dataGrid) return;
-    
-    // Try multiple methods to get selected rows
-    let rowsToDelete = [];
-    
-    // Method 1: getSelectedRows() - returns row components
-    const selectedRows = state.dataGrid.getSelectedRows();
-    if (selectedRows && selectedRows.length > 0) {
-        rowsToDelete = selectedRows;
-    } else {
-        // Method 2: getSelectedData() - returns row data, need to find components
-        const selectedData = state.dataGrid.getSelectedData();
-        if (selectedData && selectedData.length > 0) {
-            const allRows = state.dataGrid.getRows();
-            rowsToDelete = allRows.filter(row => {
-                const rowData = row.getData();
-                return selectedData.some(sel => {
-                    // Compare by all fields to find matching row
-                    return Object.keys(sel).every(key => rowData[key] === sel[key]);
-                });
-            });
-        }
-    }
-    
-    if (!rowsToDelete || rowsToDelete.length === 0) {
-        showStatus('data-grid-status', 'No rows selected. Click on row numbers to select rows, then click Delete selected.', 'error');
+    const rows = getDataGridRowsSnapshot();
+    if (!rows.length) {
+        showStatus('data-grid-status', 'No rows available.', 'error');
         return;
     }
-    
-    // Delete rows
-    rowsToDelete.forEach(row => {
-        try {
-            if (typeof row.delete === 'function') {
-                row.delete();
-            } else if (typeof row.deselect === 'function') {
-                // Fallback: remove row by index
-                const rowIndex = row.getPosition();
-                state.dataGrid.deleteRow(rowIndex);
-            }
-        } catch (err) {
-            console.warn('Error deleting row:', err);
-        }
-    });
-    
+    replaceGridRows(rows.slice(0, Math.max(0, rows.length - 1)));
     handleDataGridChanged();
-    showStatus('data-grid-status', `${rowsToDelete.length} row(s) deleted.`, 'success');
+    showStatus('data-grid-status', '1 row deleted.', 'success');
 }
 
 function searchDataGrid(query) {
     if (!state.dataGridInitialized || !state.dataGrid) return;
-
     const value = (query || '').toString().trim().toLowerCase();
-
+    const rows = getDataGridRowsSnapshot();
     if (!value) {
-        state.dataGrid.clearFilter(true);
+        replaceGridRows(rows);
         return;
     }
-
-    // Global search across all fields
-    state.dataGrid.setFilter((data) => {
-        for (const key in data) {
-            if (Object.prototype.hasOwnProperty.call(data, key)) {
-                const cellValue = data[key];
-                if (cellValue !== null && cellValue !== undefined) {
-                    if (String(cellValue).toLowerCase().includes(value)) {
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
-    });
+    const filtered = rows.filter(row => Object.values(row || {}).some(cell => String(cell || '').toLowerCase().includes(value)));
+    replaceGridRows(filtered);
 }
 
 // Column management helpers
@@ -1307,18 +1303,13 @@ function renameSelectedColumn() {
         return;
     }
     const currentTitle = col.getDefinition().title || state.selectedColumnField;
-    
-    // Inline editing: replace label with input
     const label = document.getElementById('data-grid-column-label');
     if (!label) return;
-    
-    // Remove any existing input first
     const existingInput = label.parentNode.querySelector('input[data-column-rename]');
     if (existingInput) {
         existingInput.remove();
         label.style.display = '';
     }
-    
     const input = document.createElement('input');
     input.type = 'text';
     input.value = currentTitle;
@@ -1329,6 +1320,10 @@ function renameSelectedColumn() {
         if (nextTitle && nextTitle !== currentTitle) {
             try {
                 col.updateDefinition({ title: nextTitle });
+                if (state.dataGridColumns) {
+                    const idx = state.dataGridColumns.findIndex(c => c.field === state.selectedColumnField);
+                    if (idx >= 0) state.dataGridColumns[idx].title = nextTitle;
+                }
                 handleDataGridChanged();
                 showStatus('data-grid-status', `Column renamed to "${nextTitle}".`, 'success');
             } catch (err) {
@@ -1349,7 +1344,6 @@ function renameSelectedColumn() {
             input.remove();
         }
     };
-    
     label.style.display = 'none';
     label.parentNode.insertBefore(input, label);
     input.focus();
@@ -1362,31 +1356,15 @@ function deleteSelectedColumn() {
         showStatus('data-grid-status', 'Please click on a column header first.', 'error');
         return;
     }
-    
     const col = state.dataGrid.getColumn(state.selectedColumnField);
     if (!col) {
         showStatus('data-grid-status', 'Column not found.', 'error');
         return;
     }
-    
     const def = col.getDefinition();
     const title = def.title || state.selectedColumnField;
-    
-    // No confirm popup - direct delete
     try {
-        // Try deleteColumn first (Tabulator v5+)
-        if (typeof state.dataGrid.deleteColumn === 'function') {
-            state.dataGrid.deleteColumn(state.selectedColumnField);
-        } else {
-            // Fallback: remove column by updating column definitions
-            const cols = state.dataGrid.getColumnDefinitions();
-            const filtered = cols.filter(c => c.field !== state.selectedColumnField);
-            state.dataGrid.setColumns(filtered);
-        }
-        
-        // Redraw to ensure layout is correct
-        state.dataGrid.redraw(true);
-        
+        state.dataGrid.deleteColumn(state.selectedColumnField);
         state.selectedColumnField = null;
         const label = document.getElementById('data-grid-column-label');
         if (label) {
@@ -1403,20 +1381,16 @@ function deleteSelectedColumn() {
 
 function addDataColumn() {
     if (!state.dataGridInitialized || !state.dataGrid) return;
-
     const cols = state.dataGrid.getColumnDefinitions() || [];
     const nextIndex = cols.length + 1;
     const field = `c${nextIndex}`;
     const colDef = {
         title: `Col ${nextIndex}`,
         field,
-        editor: 'input'
+        editor: 'text'
     };
-
     try {
-        state.dataGrid.addColumn(colDef, false, cols.length ? cols[cols.length - 1].field : undefined);
-        // Redraw to ensure layout is correct
-        state.dataGrid.redraw(true);
+        state.dataGrid.addColumn(colDef);
         state.selectedColumnField = field;
         const label = document.getElementById('data-grid-column-label');
         if (label) {
@@ -1425,11 +1399,7 @@ function addDataColumn() {
             label.style.fontWeight = '600';
         }
         handleDataGridChanged();
-        
-        // Automatically trigger rename so user can immediately type the column name
-        setTimeout(() => {
-            renameSelectedColumn();
-        }, 100);
+        setTimeout(() => { renameSelectedColumn(); }, 100);
     } catch (err) {
         showStatus('data-grid-status', `Error adding column: ${err.message}`, 'error');
     }
@@ -1449,60 +1419,43 @@ function addDataRow() {
 function changeDataTable(tableId) {
     const id = (tableId || '').trim() || 'default';
     state.currentTableId = id;
-    state.selectedColumnField = null; // Reset selected column
-
+    state.selectedColumnField = null;
     if (state.dataGridInitialized && state.dataGrid) {
-        // Clear both data and columns to start fresh
+        state.dataGridColumns = normalizeDataColumns(buildDefaultColumns());
         state.dataGrid.clearData();
-        // Reset to default columns and a few empty rows
-        state.dataGrid.setColumns(buildDefaultColumns());
-        state.dataGrid.setData(buildBlankRows(DATA_DEFAULT_ROWS));
-        
-        // Reset column label
         const label = document.getElementById('data-grid-column-label');
         if (label) {
             label.textContent = 'None';
             label.style.color = '#374151';
             label.style.fontWeight = 'normal';
         }
-        
-        // Now load from backend (will override if data exists, otherwise stays empty)
         loadDataGrid();
     }
 }
 
 function createNewDataTable() {
-    // Create inline input in the "Start a new table" row
     const startRow = document.getElementById('tables-start-row');
     if (!startRow) return;
-
-    // Avoid duplicates
     if (document.getElementById('new-table-inline')) return;
-
     const card = document.createElement('div');
     card.id = 'new-table-inline';
     card.style.cssText = 'width: 220px; border: 1px dashed #93c5fd; border-radius: 14px; padding: 14px; background: #f8fafc;';
-
     const title = document.createElement('div');
     title.textContent = 'New table';
     title.style.cssText = 'font-weight:800; color:#111827; margin-bottom:8px;';
-
     const input = document.createElement('input');
     input.type = 'text';
     input.placeholder = 'employees_2026';
     input.className = 'form-control';
     input.style.cssText = 'padding:10px 12px; border-radius:10px;';
-
     const help = document.createElement('div');
-    help.textContent = 'Press Enter to create • Esc to cancel';
+    help.textContent = 'Press Enter to create â€¢ Esc to cancel';
     help.style.cssText = 'margin-top:8px; color:#6b7280; font-size:0.85rem;';
-
     card.appendChild(title);
     card.appendChild(input);
     card.appendChild(help);
     startRow.prepend(card);
     input.focus();
-
     input.onkeydown = async (e) => {
         if (e.key === 'Escape') {
             card.remove();
@@ -1515,7 +1468,6 @@ function createNewDataTable() {
             showStatus('data-grid-status', 'Table id must contain only letters, numbers, dash or underscore.', 'error');
             return;
         }
-
         try {
             const res = await fetch('/api/data/tables', {
                 method: 'POST',
@@ -1539,28 +1491,19 @@ function createNewDataTable() {
 
 function selectDataTable(tableId) {
     state.currentTableId = tableId;
-    state.selectedColumnField = null; // Reset selected column
+    state.selectedColumnField = null;
     showGridPanel();
-    
     if (state.dataGridInitialized && state.dataGrid) {
-        // Clear both data and columns to start fresh
+        state.dataGridColumns = normalizeDataColumns(buildDefaultColumns());
         state.dataGrid.clearData();
-        // Reset to default columns and a few empty rows
-        state.dataGrid.setColumns(buildDefaultColumns());
-        state.dataGrid.setData(buildBlankRows(DATA_DEFAULT_ROWS));
-        
-        // Reset column label
         const label = document.getElementById('data-grid-column-label');
         if (label) {
             label.textContent = 'None';
             label.style.color = '#374151';
             label.style.fontWeight = 'normal';
         }
-        
-        // Now load from backend (will override if data exists, otherwise stays empty)
         loadDataGrid();
     }
-    // Update tables hub active states
     renderTablesHub();
 }
 
@@ -1714,7 +1657,7 @@ async function handleDataUpload(event) {
             // Display column info
             const columnsInfo = document.getElementById('data-columns-info');
             columnsInfo.innerHTML = `
-                <strong>✓ Data file loaded successfully!</strong><br>
+                <strong>Ã¢Å“â€œ Data file loaded successfully!</strong><br>
                 Found ${result.columns.length} columns, ${result.row_count} rows
             `;
             columnsInfo.style.display = 'block';
@@ -1816,12 +1759,12 @@ function renderLayersInfo() {
     }
     const textLayerCount = state.layers.filter(layer => layer.is_text_layer).length;
     layersInfo.innerHTML = `
-        <strong>✓ PSD file loaded successfully!</strong><br>
+        <strong>Ã¢Å“â€œ PSD file loaded successfully!</strong><br>
         Found ${state.layers.length} layers. Text layers: ${textLayerCount}
     `;
     layersInfo.style.display = 'block';
     if (browser) browser.style.display = 'block';
-    if (summary) summary.textContent = `${state.layers.length} total layers · ${textLayerCount} text layers`;
+    if (summary) summary.textContent = `${state.layers.length} total layers Ã‚Â· ${textLayerCount} text layers`;
     renderCreativeLayerList();
     renderPsdLayerEditor();
     loadPsdCanvasPreview();
@@ -1923,7 +1866,7 @@ function renderPsdLayerEditor() {
         row.innerHTML = `
             <div style="display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap;">
                 <div><strong>${escapeHtml(layer.name || 'Unnamed layer')}</strong>
-                    <span style="color:#6b7280; margin-left:8px;">${layer.is_text_layer ? 'Text' : 'Image'} · ${escapeHtml(bbox)}</span>
+                    <span style="color:#6b7280; margin-left:8px;">${layer.is_text_layer ? 'Text' : 'Image'} Ã‚Â· ${escapeHtml(bbox)}</span>
                 </div>
                 <label><input type="checkbox" ${override.enabled ? 'checked' : ''}
                     onchange="updateLayerOverride(${JSON.stringify(layer.name)}, 'enabled', this.checked)"> Apply override</label>
@@ -2223,7 +2166,7 @@ function createMappingRow(layerName = '', columnName = '', index = null) {
     // Remove button
     const removeBtn = document.createElement('button');
     removeBtn.className = 'btn';
-    removeBtn.textContent = '✕';
+    removeBtn.textContent = 'Ã¢Å“â€¢';
     removeBtn.style.background = '#dc3545';
     removeBtn.style.color = 'white';
     removeBtn.onclick = () => removeMappingRow(idx);
@@ -2359,7 +2302,7 @@ async function loadCreativeTemplates() {
         }
         const category = catFilter && catFilter.value ? catFilter.value : '';
         const templates = category ? allTemplates.filter(t => (t.category || '') === category) : allTemplates;
-        sel.innerHTML = '<option value="">— Upload new or select template —</option>' +
+        sel.innerHTML = '<option value="">Ã¢â‚¬â€ Upload new or select template Ã¢â‚¬â€</option>' +
             templates.map(t => `<option value="${t.id}" data-file-path="${escapeHtml(t.file_path)}">${escapeHtml(t.name)}${t.category ? ' (' + escapeHtml(t.category) + ')' : ''}</option>`).join('');
     } catch (e) {
         console.warn('Load templates failed', e);
@@ -2876,7 +2819,7 @@ function addCCColumnInput(existingValue = '') {
     const removeBtn = document.createElement('button');
     removeBtn.type = 'button';
     removeBtn.className = 'btn';
-    removeBtn.textContent = '×';
+    removeBtn.textContent = 'Ãƒâ€”';
     removeBtn.style.padding = '6px 12px';
     removeBtn.style.background = '#fee2e2';
     removeBtn.style.color = '#dc2626';
@@ -3272,7 +3215,7 @@ function renderTablesHub(filterText = '') {
         const left = document.createElement('div');
         left.style.cssText = 'display:flex; flex-direction:column; gap:2px;';
         left.innerHTML = `<div style="font-weight:800; color:#111827;">${t.title || t.id}</div>
-<div style="color:#6b7280; font-size:0.85rem;">ID: ${t.id} • Access: ${t.permission}</div>`;
+<div style="color:#6b7280; font-size:0.85rem;">ID: ${t.id} Ã¢â‚¬Â¢ Access: ${t.permission}</div>`;
 
         const actions = document.createElement('div');
         actions.style.cssText = 'display:flex; gap:8px; align-items:center;';
@@ -3281,7 +3224,7 @@ function renderTablesHub(filterText = '') {
         starBtn.className = 'btn';
         starBtn.style.cssText = 'padding:6px 10px; font-size:1.1rem; background:transparent; border:none; cursor:pointer;';
         starBtn.title = t.starred ? 'Unstar' : 'Star';
-        starBtn.textContent = t.starred ? '★' : '☆';
+        starBtn.textContent = t.starred ? 'Ã¢Ëœâ€¦' : 'Ã¢Ëœâ€ ';
         starBtn.style.color = t.starred ? '#f59e0b' : '#9ca3af';
         starBtn.onclick = async (e) => {
             e.stopPropagation();
@@ -3424,7 +3367,7 @@ function openSharePanel(tableId) {
     const userSel = document.createElement('select');
     userSel.className = 'form-control';
     userSel.style.cssText = 'max-width:220px; padding:10px 12px;';
-    userSel.innerHTML = `<option value="">Select user…</option>` + (state.users || []).map(u => `<option value="${u.username}">${u.username}</option>`).join('');
+    userSel.innerHTML = `<option value="">Select userÃ¢â‚¬Â¦</option>` + (state.users || []).map(u => `<option value="${u.username}">${u.username}</option>`).join('');
 
     const permSel = document.createElement('select');
     permSel.className = 'form-control';
@@ -3584,7 +3527,7 @@ async function submitTicket() {
 }
 
 function formatBytes(n) {
-    if (n == null || n === undefined) return '—';
+    if (n == null || n === undefined) return 'Ã¢â‚¬â€';
     if (n < 1024) return n + ' B';
     if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
     return (n / (1024 * 1024)).toFixed(1) + ' MB';
@@ -3642,7 +3585,7 @@ async function loadGallery() {
                 </div>
                 <div style="padding: 12px; flex: 1;">
                     <div style="font-weight: 600; color: #111827; margin-bottom: 4px; word-break: break-all;">${escapeHtml(f.display_name || f.job_id || 'File')}</div>
-                    <div style="font-size: 0.85rem; color: #6b7280;">${formatBytes(f.file_size)} · ${formatDate(f.created_at)}</div>
+                    <div style="font-size: 0.85rem; color: #6b7280;">${formatBytes(f.file_size)} Ã‚Â· ${formatDate(f.created_at)}</div>
                     <a href="/api/gallery/download/${f.id}" download="${escapeHtml((f.display_name || f.job_id || 'file') + '.zip')}" class="btn" style="margin-top: 10px; display: inline-block; text-align: center; padding: 8px 12px; font-size: 0.9rem;">Download</a>
                 </div>
             </div>
@@ -3723,7 +3666,7 @@ function renderUserTicketsBoard(ticketsList) {
                 </div>
                 ${t.assigned_admin ? `
                     <div style="font-size:0.75rem; color:#374151; margin-top:8px; font-weight:600; display:flex; align-items:center; gap:4px;">
-                        <span>👤</span> <span>${escapeHtml(t.assigned_admin)}</span>
+                        <span>Ã°Å¸â€˜Â¤</span> <span>${escapeHtml(t.assigned_admin)}</span>
                     </div>
                 ` : ''}
             `;
@@ -3924,7 +3867,7 @@ async function loadNotifications() {
                     <span class="header-badge" style="display:inline-grid;">${feedbackCount}</span>
                 </div>
                 <div style="font-size:0.85rem; color:var(--text-secondary); margin-top:4px;">
-                    ${feedbackCount} ticket${feedbackCount === 1 ? '' : 's'} · ${evaluatorCount} evaluator${evaluatorCount === 1 ? '' : 's'}
+                    ${feedbackCount} ticket${feedbackCount === 1 ? '' : 's'} Ã‚Â· ${evaluatorCount} evaluator${evaluatorCount === 1 ? '' : 's'}
                 </div>
             </a>
         ` : '';
@@ -4234,7 +4177,7 @@ async function load2FAStatus() {
     const disableEl = document.getElementById('2fa-disable');
     const msgEl = document.getElementById('2fa-message');
     if (!statusEl) return;
-    statusEl.textContent = 'Loading…';
+    statusEl.textContent = 'LoadingÃ¢â‚¬Â¦';
     setupEl.style.display = 'none';
     disableEl.style.display = 'none';
     msgEl.style.display = 'none';
