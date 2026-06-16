@@ -153,7 +153,7 @@ async def login(
     finally:
         conn.close()
 
-    # اما همچنان رکورد واقعی DB را برای session_version و role استفاده می‌کنیم.
+    # Still use the real database record for session_version and role handling.
     valid_local = bool(
         record and auth.verify_password(password, record.get("password") or "")
     )
@@ -182,7 +182,7 @@ async def login(
             conn.close()
 
     # 2FA: if TOTP enabled, require second factor before setting session
-    # در محیط تست می‌توانیم با ENV غیرفعال کنیم (ENABLE_2FA=1 برای فعال بودن).
+    # This can be disabled in test environments via ENV if needed.
     totp_enabled = bool(record.get("totp_enabled"))
     if totp_enabled and record.get("totp_secret") and pyotp:
         request.session["pending_2fa"] = username

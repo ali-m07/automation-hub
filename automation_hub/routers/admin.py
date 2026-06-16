@@ -1166,7 +1166,7 @@ async def admin_get_auth_config(request: Request):
         or "",
         "ldap_group_base_dn": raw.get("ldap_group_base_dn") or "",
         "ldap_bind_dn": raw.get("ldap_bind_dn") or "",
-        # برای امنیت، پسورد را به UI برنمی‌گردانیم؛ فقط وجود/عدم وجودش در UI هندل می‌شود.
+        # For security, do not return the bind password to the UI.
         "ldap_bind_password_set": bool(raw.get("ldap_bind_password")),
         "ldap_user_filter": raw.get("ldap_user_filter")
         or "(&(objectClass=user)(sAMAccountName={username}))",
@@ -1203,7 +1203,7 @@ async def admin_update_auth_config(request: Request):
     ldap_bind_dn = (body.get("ldap_bind_dn") or "").strip()
     ldap_bind_password = body.get(
         "ldap_bind_password"
-    )  # رشته یا None (برای «تغییر نده»)
+    )  # String or None when the password should remain unchanged.
     ldap_user_filter = (
         body.get("ldap_user_filter") or ""
     ).strip() or "(&(objectClass=user)(sAMAccountName={username}))"
@@ -1218,7 +1218,7 @@ async def admin_update_auth_config(request: Request):
         body.get("ldap_department_groups_enabled", False)
     )
 
-    # ذخیره در app_settings
+    # Persist the values in app_settings.
     conn = _db()
     try:
 
@@ -1239,7 +1239,7 @@ async def admin_update_auth_config(request: Request):
         _set("ldap_group_base_dn", ldap_group_base_dn)
         _set("ldap_bind_dn", ldap_bind_dn)
         if ldap_bind_password is not None:
-            # اگر رشتهٔ خالی بدهی، یعنی پسورد را پاک می‌کنیم
+            # An empty string explicitly clears the stored bind password.
             _set("ldap_bind_password", ldap_bind_password)
         _set("ldap_user_filter", ldap_user_filter)
         _set("ldap_user_principal", ldap_user_principal)

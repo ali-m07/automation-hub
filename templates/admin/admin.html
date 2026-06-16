@@ -1940,7 +1940,7 @@
                 document.getElementById('ldap-user-base-dn').value = cfg.ldap_user_base_dn || '';
                 document.getElementById('ldap-group-base-dn').value = cfg.ldap_group_base_dn || '';
                 document.getElementById('ldap-bind-dn').value = cfg.ldap_bind_dn || '';
-                // bind password را برای امنیت پر نمی‌کنیم؛ فقط اگر خالی گذاشت، یعنی تغییر نده
+                // Leave the bind password blank in the UI unless the admin wants to change it.
                 document.getElementById('ldap-bind-password').value = '';
                 document.getElementById('ldap-user-filter').value = cfg.ldap_user_filter || '(&(objectClass=user)(sAMAccountName={username}))';
                 document.getElementById('ldap-user-principal').value = cfg.ldap_user_principal || '{username}@snapp.local';
@@ -1975,7 +1975,7 @@
                     ldap_department_groups_enabled: document.getElementById('ldap-department-groups-enabled').checked,
                 };
                 const pwd = document.getElementById('ldap-bind-password').value;
-                // اگر کاربر چیزی تایپ کرده، آن را هم بفرست؛ اگر خالی است، پسورد را تغییر نده
+                // Only send the bind password when the admin entered a new value.
                 if (pwd !== '') {
                     payload.ldap_bind_password = pwd;
                 }
