@@ -272,26 +272,9 @@ async def evaluator_nomination_page(request: Request):
         and "feedback_hrbp" not in modules
     ):
         return RedirectResponse(url="/summary", status_code=302)
-    from automation_hub.projects.ticketing.router import (
-        _deadline_state,
-        _identity_key,
-        _load_evaluator_store,
-    )
+    from automation_hub.projects.ticketing.router import _deadline_state
 
     if _deadline_state()["is_closed"]:
-        return RedirectResponse(url="/feedback/my-evaluations", status_code=302)
-    user_key = _identity_key(user.get("username", ""))
-    active_nomination = next(
-        (
-            nomination
-            for nomination in _load_evaluator_store().get("nominations", [])
-            if _identity_key(nomination.get("nominator_username")) == user_key
-            and nomination.get("status") != "closed"
-            and nomination.get("evaluators")
-        ),
-        None,
-    )
-    if active_nomination:
         return RedirectResponse(url="/feedback/my-evaluations", status_code=302)
 
     templates = _get_templates(request)

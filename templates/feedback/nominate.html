@@ -955,8 +955,7 @@
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
             await loadCurrentUser();
-            const hasSubmittedNomination = await loadExistingNomination();
-            if (!hasSubmittedNomination) restoreDraft();
+            restoreDraft();
         });
 
         async function loadCurrentUser() {
@@ -993,21 +992,6 @@
                 document.getElementById('managerEmail').textContent = 'Manager unavailable';
                 document.getElementById('managerName').textContent = 'Manager not assigned';
             }
-        }
-
-        async function loadExistingNomination() {
-            try {
-                const response = await fetch('/api/feedback/evaluator-nomination/my-nomination');
-                const data = await response.json();
-
-                if (data.nomination && Array.isArray(data.nomination.evaluators) && data.nomination.evaluators.length) {
-                    window.location.href = '/feedback/my-evaluations';
-                    return true;
-                }
-            } catch (error) {
-                console.error('Error loading nomination:', error);
-            }
-            return false;
         }
 
         function renderEvaluatorsLegacy() {

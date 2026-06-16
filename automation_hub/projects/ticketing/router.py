@@ -1649,47 +1649,17 @@ async def submit_evaluator_nomination(request: Request):
             ),
         )
 
-    # Check if user already has an active nomination
-    existing = next(
-        (
-            n
-            for n in store.get("nominations", [])
-            if _identity_key(n.get("nominator_username")) == nominator_username
-            and n.get("status") != "closed"
-        ),
-        None,
-    )
-
-    if existing:
-        manager_has_acted = any(
-            evaluator.get("status") in {"approved", "rejected"}
-            for evaluator in existing.get("evaluators", [])
-        )
-        if manager_has_acted:
-            raise HTTPException(
-                status_code=409,
-                detail="This nomination can no longer be edited because the manager has already reviewed it.",
-            )
-        # Update existing nomination
-        existing["evaluators"] = evaluators
-        existing["manager_username"] = manager_username
-        existing["status"] = "pending"
-        existing["submitted_at"] = _now()
-        existing["updated_at"] = _now()
-        nomination = existing
-    else:
-        # Create new nomination
-        nomination = {
-            "id": f"NOM_{secrets.token_hex(6)}",
-            "nominator_username": nominator_username,
-            "manager_username": manager_username,
-            "evaluators": evaluators,
-            "status": "pending",
-            "submitted_at": _now(),
-            "created_at": _now(),
-            "updated_at": _now(),
-        }
-        store.setdefault("nominations", []).append(nomination)
+    nomination = {
+        "id": f"NOM_{secrets.token_hex(6)}",
+        "nominator_username": nominator_username,
+        "manager_username": manager_username,
+        "evaluators": evaluators,
+        "status": "pending",
+        "submitted_at": _now(),
+        "created_at": _now(),
+        "updated_at": _now(),
+    }
+    store.setdefault("nominations", []).append(nomination)
 
     _save_evaluator_store(store)
     return JSONResponse({"success": True, "nomination": nomination})
