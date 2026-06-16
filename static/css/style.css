@@ -1884,3 +1884,281 @@ td, [data-theme="dark"] td { background: color-mix(in srgb, var(--surface-raised
 
 @keyframes badgePulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--danger) 35%, transparent); } 50% { box-shadow: 0 0 0 6px transparent; } }
 @keyframes gradientShift { 0%, 100% { background-position: 0 50%; } 50% { background-position: 100% 50%; } }
+
+/* Unified product pages */
+.page-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 20px;
+    align-items: end;
+    margin-bottom: 24px;
+}
+
+.page-hero h1 {
+    margin: 0 0 8px;
+    letter-spacing: -0.035em;
+}
+
+.page-hero p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: clamp(1rem, 1.4vw, 1.12rem);
+}
+
+.hero-eyebrow {
+    color: var(--accent-strong);
+    font-size: 0.75rem;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+}
+
+.hero-actions,
+.ux-toolbar,
+.ux-inline-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.ux-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+}
+
+.ux-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.ux-card,
+.ux-card-soft,
+.ux-empty,
+.ux-upload,
+.ux-preview-shell {
+    border: 1px solid var(--border-color);
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--surface-raised) 88%, transparent);
+    box-shadow: var(--shadow-sm), inset 0 1px rgba(255,255,255,.12);
+}
+
+.ux-card {
+    padding: 18px;
+    transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+}
+
+.ux-card:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--accent) 36%, var(--border-color));
+    box-shadow: var(--shadow-md);
+}
+
+.ux-card-soft {
+    padding: 16px;
+    background: color-mix(in srgb, var(--accent-soft) 38%, var(--surface-raised));
+}
+
+.ux-card-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 8px;
+    color: var(--text-primary);
+    font-weight: 800;
+}
+
+.ux-card p,
+.ux-help p {
+    margin: 0;
+    color: var(--text-secondary);
+    line-height: 1.65;
+}
+
+.ux-icon {
+    width: 38px;
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    color: var(--accent-strong);
+    background: linear-gradient(135deg, var(--accent-soft), color-mix(in srgb, var(--mint) 42%, transparent));
+    box-shadow: inset 0 1px rgba(255,255,255,.28);
+}
+
+.ux-section-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.ux-section-title h2,
+.ux-section-title h3 {
+    margin: 0;
+}
+
+.ux-section-title p {
+    margin: 4px 0 0;
+    color: var(--text-secondary);
+}
+
+.ux-toolbar {
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--surface-muted) 72%, transparent);
+}
+
+.ux-toolbar .form-control {
+    width: auto;
+    min-width: 220px;
+}
+
+.ux-action-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px;
+}
+
+.ux-help {
+    padding: 14px;
+    border-radius: 16px;
+    border: 1px dashed color-mix(in srgb, var(--accent) 40%, var(--border-color));
+    background: color-mix(in srgb, var(--accent-soft) 28%, transparent);
+}
+
+.ux-steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin: 18px 0;
+}
+
+.ux-step {
+    padding: 14px;
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--surface-raised) 80%, transparent);
+}
+
+.ux-step strong {
+    display: block;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.ux-step span {
+    color: var(--text-secondary);
+    font-size: .9rem;
+}
+
+.ux-upload {
+    padding: 18px;
+    min-height: 112px;
+    display: grid;
+    place-items: center;
+    text-align: center;
+    cursor: pointer;
+    transition: transform .2s ease, border-color .2s ease, background .2s ease;
+}
+
+.ux-upload:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--accent) 48%, var(--border-color));
+    background: color-mix(in srgb, var(--accent-soft) 32%, var(--surface-raised));
+}
+
+.ux-preview-shell {
+    min-height: 260px;
+    padding: 14px;
+    overflow: auto;
+    background:
+        linear-gradient(135deg, color-mix(in srgb, var(--surface-muted) 82%, transparent), transparent),
+        color-mix(in srgb, var(--surface-raised) 94%, transparent);
+}
+
+.ux-empty {
+    padding: 28px;
+    text-align: center;
+    color: var(--text-secondary);
+    background: color-mix(in srgb, var(--surface-muted) 65%, transparent);
+}
+
+.ux-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--surface-raised) 88%, transparent);
+}
+
+.ux-table-wrap table {
+    width: 100%;
+    min-width: 720px;
+    border-collapse: collapse;
+}
+
+.template-editor-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, .85fr);
+    gap: 18px;
+}
+
+.template-preview-frame {
+    min-height: 420px;
+    padding: 18px;
+    border: 1px solid var(--border-color);
+    border-radius: 18px;
+    overflow: auto;
+    background: #ffffff;
+    color: #111827;
+}
+
+[data-theme="dark"] .template-preview-frame {
+    background: #f8fafc;
+    color: #111827;
+}
+
+.field-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+}
+
+.field-grid .full-line {
+    grid-column: 1 / -1;
+}
+
+@media (max-width: 900px) {
+    .page-hero,
+    .ux-grid-2,
+    .template-editor-shell {
+        grid-template-columns: 1fr;
+    }
+
+    .hero-actions {
+        justify-content: stretch;
+    }
+
+    .hero-actions .btn,
+    .ux-toolbar .btn,
+    .ux-toolbar .form-control {
+        width: 100%;
+    }
+}
+
+@media (max-width: 560px) {
+    .card {
+        padding: 18px;
+    }
+
+    .ux-toolbar {
+        padding: 10px;
+    }
+}

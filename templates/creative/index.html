@@ -1,216 +1,240 @@
 {% extends "base/layout.html" %}
 
-{% block title %}Creative Studio – Automation Hub{% endblock %}
+{% block title %}Creative Studio - Automation Hub{% endblock %}
 
-{% block subtitle %}Photoshop automation and creative output generation{% endblock %}
+{% block subtitle %}Generate personalized creative assets from PSD templates{% endblock %}
 
 {% block content %}
-<header>
-    <h1>Creative Studio – Photoshop Module</h1>
-    <p class="subtitle">Upload PSD templates, map layers to data columns, and generate creative outputs in bulk.</p>
-</header>
+<section class="page-hero">
+    <div>
+        <div class="hero-eyebrow">Creative automation</div>
+        <h1>Creative Studio</h1>
+        <p>Connect a PSD template with Excel data, map layers to columns, preview the first output, then generate files in bulk.</p>
+    </div>
+</section>
+
+<section class="ux-steps" aria-label="Creative generation workflow">
+    <div class="ux-step"><strong>1. Template</strong><span>Upload a PSD or choose a saved template.</span></div>
+    <div class="ux-step"><strong>2. Data</strong><span>Upload Excel rows for personalization.</span></div>
+    <div class="ux-step"><strong>3. Mapping</strong><span>Map PSD text/image layers to spreadsheet columns.</span></div>
+    <div class="ux-step"><strong>4. Preview and export</strong><span>Review one output before generating the batch.</span></div>
+</section>
 
 <div class="card">
-    <h2>Creative Studio – Photoshop Module</h2>
-    
-    <div class="upload-section">
-        <label>PSD Template:</label>
-        <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
-            <select id="psd-template-category-filter" class="form-control" style="max-width: 160px;" onchange="loadCreativeTemplates()">
-                <option value="">All categories</option>
-            </select>
-            <select id="psd-template-select" class="form-control" style="max-width: 280px;" onchange="onPsdTemplateSelect()">
-                <option value="">— Upload new or select template —</option>
-            </select>
-            <div class="file-upload">
-                <input type="file" id="psd-file" accept=".psd,.psb" onchange="handlePSDUpload(event)">
-                <label for="psd-file" class="upload-button">📁 Upload PSD</label>
-                <span id="psd-file-name" class="file-name"></span>
-            </div>
-            <button type="button" class="btn" id="read-layers-btn" onclick="readCreativeLayers()" disabled>Read layers</button>
-            <button type="button" class="btn" id="save-as-template-btn" onclick="saveCurrentPsdAsTemplate()" style="display: none;">Save as template</button>
-        </div>
-        <div id="psd-layers-info" class="info-box" style="display: none;"></div>
-        <div id="psd-layers-browser" style="display: none; margin-top: 14px; border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px; background: #fcfcfd;">
-            <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 10px;">
-                <div>
-                    <div style="font-weight: 700; color: #111827;">Detected Layers</div>
-                    <div id="psd-layers-summary" style="font-size: 0.92rem; color: #6b7280; margin-top: 2px;"></div>
-                </div>
-                <input
-                    type="text"
-                    id="psd-layer-search"
-                    class="form-control"
-                    placeholder="Search layer names..."
-                    style="max-width: 260px;"
-                    oninput="filterCreativeLayers()"
-                >
-            </div>
-            <div id="psd-layers-list" style="display: grid; gap: 8px; max-height: 320px; overflow-y: auto;"></div>
+    <div class="ux-section-title">
+        <div>
+            <h2>Source files</h2>
+            <p>Start with the creative template and the data file that drives personalization.</p>
         </div>
     </div>
 
-    <div class="upload-section">
-        <label>Excel/CSV Data File:</label>
-        <div class="file-upload">
-            <input type="file" id="data-file" accept=".xlsx,.xls,.csv" onchange="handleDataUpload(event)">
-            <label for="data-file" class="upload-button">📊 Choose Data File</label>
-            <span id="data-file-name" class="file-name"></span>
+    <div class="ux-grid-2">
+        <div class="ux-card">
+            <div class="ux-card-title"><span class="ux-icon">PSD</span> PSD template</div>
+            <div class="form-group">
+                <label for="psd-template-category-filter">Category</label>
+                <select id="psd-template-category-filter" class="form-control" onchange="loadCreativeTemplates()">
+                    <option value="">All categories</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="psd-template-select">Saved template</label>
+                <select id="psd-template-select" class="form-control" onchange="onPsdTemplateSelect()">
+                    <option value="">Select saved template...</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="psd-file">Upload PSD</label>
+                <input type="file" id="psd-file" class="form-control" accept=".psd" onchange="handlePSDUpload(event)">
+                <div id="psd-file-name" style="margin-top:8px; color:var(--text-secondary);"></div>
+            </div>
+            <div class="ux-inline-actions">
+                <button id="read-layers-btn" class="btn" type="button" onclick="readCreativeLayers()">Read layers</button>
+                <button id="save-as-template-btn" class="btn btn-primary" type="button" onclick="saveCurrentPsdAsTemplate()" style="display:none;">Save as template</button>
+            </div>
+            <span id="psd-layers-info" class="status-box" aria-live="polite" style="display:none;"></span>
         </div>
-        <div id="data-columns-info" class="info-box" style="display: none;"></div>
+
+        <div class="ux-card">
+            <div class="ux-card-title"><span class="ux-icon">XL</span> Data source</div>
+            <div class="form-group">
+                <label for="data-file">Excel data file</label>
+                <input type="file" id="data-file" class="form-control" accept=".xlsx,.xls,.csv" onchange="handleDataUpload(event)">
+                <div id="data-file-name" style="margin-top:8px; color:var(--text-secondary);"></div>
+            </div>
+            <div class="ux-help">
+                <p>Use one row per output. Column names should be clear, such as first_name, title, image_file, or discount_code.</p>
+            </div>
+            <span id="data-columns-info" class="status-box" aria-live="polite" style="display:none;"></span>
+        </div>
     </div>
 </div>
 
-<div class="card" id="psd-layer-editor-card" style="display:none;">
-    <h2>Advanced PSD Layer Editor</h2>
-    <p style="color:#6b7280;">
-        Preview the PSD canvas and override text, fonts, data columns, or image layers.
-        These settings apply to both first-row preview and batch ZIP rendering.
-    </p>
-    <div style="display:grid; grid-template-columns:minmax(280px, 1fr) minmax(320px, 1.35fr); gap:16px; align-items:start;">
-        <div style="position:sticky; top:16px; padding:12px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:10px;">
-            <div id="psd-editor-empty" style="color:#6b7280;">Loading PSD canvas...</div>
-            <img id="psd-editor-canvas" alt="PSD canvas preview" style="display:none; width:100%; max-height:70vh; object-fit:contain; border-radius:8px;">
+<div class="card" id="psd-layer-editor-card">
+    <div class="ux-section-title">
+        <div>
+            <h2>PSD layers</h2>
+            <p>Review editable layers before mapping. Select layers that should receive data.</p>
         </div>
-        <div id="psd-layer-editor-list" style="display:grid; gap:10px; max-height:72vh; overflow:auto;"></div>
     </div>
-    <div id="psd-editor-status" class="status-box" style="margin-top:12px;"></div>
+    <div class="ux-grid-2">
+        <div>
+            <div class="ux-toolbar" id="psd-layers-browser" style="display:none; margin-bottom:12px;">
+                <input id="psd-layer-search" class="form-control" placeholder="Search layers..." oninput="filterCreativeLayers()">
+                <span id="psd-layers-summary" style="color:var(--text-secondary);"></span>
+            </div>
+            <div id="psd-layers-list" class="ux-card-soft">
+                <p>Upload or load a PSD to view layers.</p>
+            </div>
+            <div id="psd-layer-editor-list" style="display:grid; gap:10px; margin-top:12px;"></div>
+        </div>
+        <div class="ux-preview-shell">
+            <div id="psd-editor-empty" class="ux-empty">PSD preview will appear here when available.</div>
+            <img id="psd-editor-canvas" alt="PSD preview" style="display:none; max-width:100%; border-radius:14px;">
+            <span id="psd-editor-status" class="status-box" aria-live="polite"></span>
+        </div>
+    </div>
 </div>
 
 <div class="card">
-    <h2>Rendering Font</h2>
-    <p style="color:#6b7280; margin-top:0;">
-        Select the font used for mapped PSD text layers and text watermarks. Uploaded fonts are validated before use.
-    </p>
-    <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
-        <select id="creative-font-select" class="form-control" style="min-width:280px; max-width:440px;" onchange="scheduleAutoPreview()">
-            <option value="">Automatic fallback font</option>
+    <div class="ux-section-title">
+        <div>
+            <h2>Rendering font</h2>
+            <p>Optional: upload a brand font to keep generated text consistent with the design system.</p>
+        </div>
+    </div>
+    <div class="ux-toolbar">
+        <input type="file" id="creative-font-file" class="form-control" accept=".ttf,.otf" onchange="handleCreativeFontUpload(event)">
+        <span id="creative-font-file-name" style="color:var(--text-secondary);"></span>
+        <select id="creative-font-select" class="form-control">
+            <option value="">Use PSD/default font</option>
         </select>
-        <div class="file-upload">
-            <input type="file" id="creative-font-file" accept=".ttf,.otf,.ttc,.woff,.woff2" onchange="handleCreativeFontUpload(event)">
-            <label for="creative-font-file" class="upload-button">Upload Font</label>
-            <span id="creative-font-file-name" class="file-name"></span>
-        </div>
-        <button type="button" class="btn" onclick="loadCreativeFonts()">Refresh fonts</button>
+        <span id="creative-font-status" class="status-box" aria-live="polite"></span>
     </div>
-    <div id="creative-font-status" class="status-box" style="margin-top:10px;"></div>
 </div>
 
-<div class="card" id="mapping-section" style="display: none;">
-    <h2>Step 2: Map Layers to Columns</h2>
-    <p id="creative-mapping-hint" style="margin: 0 0 12px; color: #6b7280;">Upload a PSD to load layer names.</p>
-    <div id="creative-layer-picker" style="display: none; margin-bottom: 14px; padding: 12px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px;">
-        <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
-            <select id="creative-layer-picker-select" class="form-control" style="min-width: 240px; flex: 1 1 260px;"></select>
-            <button class="btn btn-primary" type="button" onclick="addSelectedCreativeLayer()">Add selected layer</button>
+<div class="card" id="mapping-section" style="display:none;">
+    <div class="ux-section-title">
+        <div>
+            <h2>Layer mapping</h2>
+            <p>Choose which Excel column should replace each PSD layer.</p>
         </div>
     </div>
     <datalist id="layer-names"></datalist>
-    <div id="layer-mapping-container"></div>
-    <button class="btn btn-primary" type="button" onclick="addMappingRow()">+ Add Mapping</button>
-</div>
-
-<div class="card" id="filename-section" style="display: none;">
-    <h2>Step 3: Select Filename Fields</h2>
-    <div id="filename-fields-container"></div>
-</div>
-
-<div class="card" id="process-section">
-    <h2>Step 4: Process Files</h2>
-    <p id="creative-process-hint" style="margin: 0 0 12px; color: #6b7280;">Upload PSD and data, then choose at least one layer mapping and filename field.</p>
-    <div class="form-group">
-        <label>Output Format:</label>
-        <select id="output-format" class="form-control" onchange="scheduleAutoPreview()">
-            <option value="png">PNG</option>
-            <option value="webp">WebP</option>
-            <option value="avif">AVIF</option>
-            <option value="pdf">PDF</option>
-            <option value="both">PNG + PSD Export</option>
-            <option value="all">All Formats (PNG, WebP, AVIF, PDF)</option>
-        </select>
+    <div id="creative-layer-picker" class="ux-toolbar" style="display:none; margin-bottom:14px;">
+        <select id="creative-layer-picker-select" class="form-control"></select>
+        <button class="btn" type="button" onclick="addSelectedCreativeLayer()">Use selected layer</button>
     </div>
-    
-    <div class="form-group" style="margin-top: 16px;">
-        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-            <input type="checkbox" id="watermark-enabled" onchange="toggleWatermarkSettings()">
-            <strong>Enable Watermark</strong>
-        </label>
-        <div id="watermark-settings" style="display: none; margin-top: 12px; padding: 12px; background: #f9fafb; border-radius: 8px;">
-            <div class="form-group">
-                <label>Watermark Type:</label>
-                <select id="watermark-type" class="form-control" onchange="toggleWatermarkType()">
-                    <option value="text">Text</option>
-                    <option value="image">Image</option>
-                </select>
-            </div>
-            <div id="watermark-text-group" class="form-group">
-                <label>Watermark Text:</label>
-                <input type="text" id="watermark-text" class="form-control" placeholder="e.g., SAMPLE or © Company Name">
-            </div>
-            <div id="watermark-image-group" class="form-group" style="display: none;">
-                <label>Watermark Image:</label>
-                <div class="file-upload">
-                    <input type="file" id="watermark-image" accept=".png,.jpg,.jpeg,.gif,.webp" onchange="handleWatermarkImageUpload(event)">
-                    <label for="watermark-image" class="upload-button">📷 Upload Watermark</label>
-                    <span id="watermark-image-name" class="file-name"></span>
-                </div>
-            </div>
-            <div class="form-group">
-                <label>Position:</label>
-                <select id="watermark-position" class="form-control">
-                    <option value="top-left">Top Left</option>
-                    <option value="top-right">Top Right</option>
-                    <option value="bottom-left">Bottom Left</option>
-                    <option value="bottom-right" selected>Bottom Right</option>
-                    <option value="center">Center</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Opacity: <span id="watermark-opacity-value">50</span>%</label>
-                <input type="range" id="watermark-opacity" min="0" max="100" value="50" class="form-control" oninput="document.getElementById('watermark-opacity-value').textContent = this.value">
-            </div>
-            <div id="watermark-text-size-group" class="form-group">
-                <label>Font Size:</label>
-                <input type="number" id="watermark-font-size" class="form-control" min="8" max="72" value="24">
-            </div>
+    <p id="creative-mapping-hint" style="color:var(--text-secondary); margin-bottom:12px;">Upload a PSD to load layer names.</p>
+    <div id="layer-mapping-container"></div>
+    <button class="btn" type="button" style="margin-top:12px;" onclick="addMappingRow()">Add mapping row</button>
+    <div class="ux-help" style="margin-top:14px;">
+        <p>Keep mappings explicit. If a layer should stay unchanged, leave it unmapped.</p>
+    </div>
+</div>
+
+<div class="card" id="filename-section" style="display:none;">
+    <div class="ux-section-title">
+        <div>
+            <h2>Output naming</h2>
+            <p>Build predictable file names from static text and Excel variables.</p>
         </div>
     </div>
-    
-    <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 16px; margin-bottom: 12px;">
-        <button class="btn btn-primary" onclick="runPreview()">👁 Preview (first row)</button>
-        <button class="btn btn-success btn-large" id="creative-generate-btn" onclick="processFiles()">🚀 Generate Files</button>
-        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
-            <input type="checkbox" id="process-async" value="1"> Process in background (queue)
-        </label>
-        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
-            <input type="checkbox" id="auto-preview" value="1"> Auto preview on changes
-        </label>
+    <div class="field-grid">
+        <div class="form-group full-line">
+            <label for="filename-template">Filename template</label>
+            <input type="text" id="filename-template" class="form-control" placeholder="campaign_{{email}}">
+        </div>
     </div>
-    <div id="preview-area" style="display: none; margin-bottom: 12px; padding: 12px; background: #f9fafb; border-radius: 8px;">
-        <div style="font-weight: 600; margin-bottom: 8px;">Preview (first row):</div>
-        <img id="preview-image" src="" alt="Preview" style="max-width: 100%; max-height: 300px; border: 1px solid #e5e7eb; border-radius: 6px;">
+    <div id="filename-fields-container" class="ux-toolbar"></div>
+</div>
+
+<div class="card" id="process-section" style="display:none;">
+    <div class="ux-section-title">
+        <div>
+            <h2>Preview and generate</h2>
+            <p>Preview the first row before starting the full batch.</p>
+        </div>
     </div>
-    <div id="process-status" class="status-box"></div>
+    <div class="ux-grid-2">
+        <div class="ux-card">
+            <div class="field-grid">
+                <div class="form-group">
+                    <label for="output-format">Output format</label>
+                    <select id="output-format" class="form-control">
+                        <option value="png">PNG</option>
+                        <option value="jpg">JPG</option>
+                        <option value="pdf">PDF</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="watermark-text">Watermark text</label>
+                    <input type="text" id="watermark-text" class="form-control" placeholder="Optional">
+                </div>
+                <div class="form-group">
+                    <label for="watermark-type">Watermark type</label>
+                    <select id="watermark-type" class="form-control" onchange="toggleWatermarkType()">
+                        <option value="text">Text</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="watermark-font-size">Watermark font size</label>
+                    <input type="number" id="watermark-font-size" class="form-control" min="8" max="120" value="24">
+                </div>
+                <div class="form-group">
+                    <label for="watermark-position">Watermark position</label>
+                    <select id="watermark-position" class="form-control">
+                        <option value="bottom-right">Bottom right</option>
+                        <option value="bottom-left">Bottom left</option>
+                        <option value="top-right">Top right</option>
+                        <option value="top-left">Top left</option>
+                        <option value="center">Center</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="watermark-opacity">Watermark opacity</label>
+                    <input type="number" id="watermark-opacity" class="form-control" min="0" max="100" step="5" value="35">
+                </div>
+            </div>
+            <label style="display:flex; gap:8px; align-items:center; margin-bottom:12px;">
+                <input type="checkbox" id="watermark-enabled" onchange="toggleWatermarkSettings()"> Add watermark to outputs
+            </label>
+            <div id="watermark-settings" style="display:none;"></div>
+            <input type="file" id="watermark-image" accept="image/*" style="display:none;">
+            <label style="display:flex; gap:8px; align-items:center; margin-bottom:12px;">
+                <input type="checkbox" id="auto-preview"> Auto refresh preview
+            </label>
+            <label style="display:flex; gap:8px; align-items:center; margin-bottom:16px;">
+                <input type="checkbox" id="run-in-background" checked> Run generation in background
+            </label>
+            <div class="ux-inline-actions">
+                <button class="btn" type="button" onclick="runPreview()">Preview first row</button>
+                <button id="creative-generate-btn" class="btn btn-primary btn-large" type="button" onclick="processFiles()">Generate files</button>
+            </div>
+            <p id="creative-process-hint" style="color:var(--text-secondary); margin-top:10px;">Upload PSD and data to begin.</p>
+            <span id="process-status" class="status-box" aria-live="polite"></span>
+        </div>
+        <div class="ux-preview-shell">
+            <div id="preview-container" class="ux-empty">Generated preview will appear here.</div>
+        </div>
+    </div>
 </div>
 
 <div class="card">
-    <h2>Job history</h2>
-    <p>List of your Creative jobs (status, date, ZIP link).</p>
-    <div id="creative-jobs-list" style="margin-top:10px; min-height:80px;"></div>
+    <div class="ux-section-title">
+        <div>
+            <h2>Job history</h2>
+            <p>Track recent generation jobs and download completed outputs.</p>
+        </div>
+    </div>
+    <div id="creative-jobs-list" class="ux-table-wrap"></div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    // Initialize Creative Studio on page load
-    if (typeof loadCreativeTemplates === 'function') {
-        loadCreativeTemplates();
-    }
-    if (typeof loadCreativeJobs === 'function') {
-        loadCreativeJobs();
-    }
-    if (typeof loadCreativeFonts === 'function') {
-        loadCreativeFonts();
-    }
+    if (typeof loadCreativeTemplates === 'function') loadCreativeTemplates();
+    if (typeof loadCreativeJobs === 'function') loadCreativeJobs();
+    if (typeof loadCreativeFonts === 'function') loadCreativeFonts();
 </script>
 {% endblock %}

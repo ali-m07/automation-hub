@@ -1,21 +1,45 @@
 {% extends "base/layout.html" %}
 
-{% block title %}Summary – Automation Hub{% endblock %}
+{% block title %}Summary - Automation Hub{% endblock %}
 
 {% block subtitle %}Overview of your workspace{% endblock %}
 
 {% block content %}
-<header>
-    <h1>Summary</h1>
-    <p class="subtitle">Overview of your tables, Creative jobs, gallery files, and latest ticket.</p>
-</header>
+<section class="page-hero">
+    <div>
+        <div class="hero-eyebrow">Workspace</div>
+        <h1>Summary</h1>
+        <p>See the health of your workspace, recent activity, and the next places that need attention.</p>
+    </div>
+</section>
+
+<section class="ux-grid" style="margin-bottom: 18px;">
+    <a class="ux-card" href="/feedback/nominate" style="text-decoration:none;">
+        <div class="ux-card-title"><span class="ux-icon">+</span> Start feedback nomination</div>
+        <p>Create a clean evaluator list, add reasons, and send it to your manager.</p>
+    </a>
+    <a class="ux-card" href="/projects" style="text-decoration:none;">
+        <div class="ux-card-title"><span class="ux-icon">?</span> Request support</div>
+        <p>Open or follow helpdesk requests when your module access allows it.</p>
+    </a>
+    <a class="ux-card" href="/data" style="text-decoration:none;">
+        <div class="ux-card-title"><span class="ux-icon">#</span> Work with data</div>
+        <p>Create tables, edit rows, and export structured data without leaving Servexa.</p>
+    </a>
+</section>
 
 <div class="card">
-    <h2>Summary</h2>
-    <p>Overview of your tables, Creative jobs, gallery files, and latest ticket.</p>
-    <div id="summary-cards" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:16px; margin-top:16px;"></div>
-    <div id="summary-last-jobs" style="margin-top:20px;"></div>
-    <div id="summary-last-ticket" style="margin-top:16px;"></div>
+    <div class="ux-section-title">
+        <div>
+            <h2>Workspace at a glance</h2>
+            <p>Live counts and the latest work items across enabled modules.</p>
+        </div>
+    </div>
+    <div id="summary-cards" class="ux-grid"></div>
+    <div class="ux-grid-2" style="margin-top:20px;">
+        <div id="summary-last-jobs" class="ux-card-soft"></div>
+        <div id="summary-last-ticket" class="ux-card-soft"></div>
+    </div>
 </div>
 {% endblock %}
 

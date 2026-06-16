@@ -383,17 +383,20 @@ async function loadSummary() {
             return;
         }
         cardsEl.innerHTML = `
-            <div class="card" style="padding:16px; border:1px solid #e5e7eb; border-radius:12px;">
-                <div style="font-size:0.9rem; color:#6b7280;">Tables</div>
-                <div style="font-size:1.75rem; font-weight:800; color:#111827;">${data.tables_count ?? 0}</div>
+            <div class="ux-card">
+                <div class="ux-card-title"><span class="ux-icon">#</span> Data tables</div>
+                <div style="font-size:2rem; font-weight:900; color:var(--text-primary);">${data.tables_count ?? 0}</div>
+                <p>Structured tables available in your workspace.</p>
             </div>
-            <div class="card" style="padding:16px; border:1px solid #e5e7eb; border-radius:12px;">
-                <div style="font-size:0.9rem; color:#6b7280;">Creative jobs (last 5)</div>
-                <div style="font-size:1.75rem; font-weight:800; color:#111827;">${(data.last_jobs || []).length}</div>
+            <div class="ux-card">
+                <div class="ux-card-title"><span class="ux-icon">*</span> Creative jobs</div>
+                <div style="font-size:2rem; font-weight:900; color:var(--text-primary);">${(data.last_jobs || []).length}</div>
+                <p>Recent automated output jobs from Creative Studio.</p>
             </div>
-            <div class="card" style="padding:16px; border:1px solid #e5e7eb; border-radius:12px;">
-                <div style="font-size:0.9rem; color:#6b7280;">Files in gallery</div>
-                <div style="font-size:1.75rem; font-weight:800; color:#111827;">${data.gallery_count ?? 0}</div>
+            <div class="ux-card">
+                <div class="ux-card-title"><span class="ux-icon">+</span> Gallery files</div>
+                <div style="font-size:2rem; font-weight:900; color:var(--text-primary);">${data.gallery_count ?? 0}</div>
+                <p>Generated files ready to review or download.</p>
             </div>
         `;
         const jobs = data.last_jobs || [];
@@ -2714,12 +2717,17 @@ async function handleEmailDataUpload(event) {
 
 function toggleImageOptions() {
     const option = document.getElementById('image-option').value;
+    const single = document.getElementById('single-image-section');
+    const folder = document.getElementById('folder-image-section');
     if (option === '1') {
-        document.getElementById('single-image-section').style.display = 'block';
-        document.getElementById('folder-image-section').style.display = 'none';
+        if (single) single.style.display = 'block';
+        if (folder) folder.style.display = 'none';
+    } else if (option === '2') {
+        if (single) single.style.display = 'none';
+        if (folder) folder.style.display = 'block';
     } else {
-        document.getElementById('single-image-section').style.display = 'none';
-        document.getElementById('folder-image-section').style.display = 'block';
+        if (single) single.style.display = 'none';
+        if (folder) folder.style.display = 'none';
     }
 }
 
@@ -2777,11 +2785,6 @@ async function handleFolderImagesUpload(event) {
 
 // Messaging Settings Panel Functions
 function showMessagingSettings() {
-    if (!state.emailDataFileId) {
-        showStatus('email-status', 'Please upload Excel file first', 'error');
-        return;
-    }
-    
     // Create datalist for column suggestions if columns are available
     const columns = state.emailDataColumns || [];
     let datalistHtml = '';
@@ -3047,6 +3050,7 @@ function showToast(message, type) {
 function showTemplateEditor() {
     const modal = document.getElementById('template-editor-modal');
     if (modal) modal.style.display = 'flex';
+    previewTemplate();
 }
 
 function hideTemplateEditor() {
@@ -3069,7 +3073,12 @@ function previewTemplate() {
     const html = document.getElementById('template-html')?.value || '';
     const preview = document.getElementById('template-preview');
     if (!preview) return;
-    preview.innerHTML = html.replace(/\{\{(\w+)\}\}/g, '<span style="background:#fef3c7; padding:2px 4px; border-radius:3px;">{{$1}}</span>');
+    if (!html.trim()) {
+        preview.innerHTML = '<div class="ux-empty">Start typing HTML to preview the email here.</div>';
+        preview.style.display = 'block';
+        return;
+    }
+    preview.innerHTML = html.replace(/\{\{(\w+)\}\}/g, '<span style="background:#fef3c7; color:#92400e; padding:2px 6px; border-radius:8px; font-weight:700;">{{$1}}</span>');
     preview.style.display = 'block';
 }
 
@@ -3233,9 +3242,9 @@ function renderTablesHub(filterText = '') {
     // Start row cards
     startRow.innerHTML = '';
     const newCard = document.createElement('button');
-    newCard.className = 'btn';
-    newCard.style.cssText = 'width:220px; height:110px; border:1px solid #e5e7eb; border-radius:14px; background:#fff; text-align:left; padding:14px; cursor:pointer;';
-    newCard.innerHTML = `<div style="font-weight:900; color:#111827; margin-bottom:6px;">+ Blank table</div><div style="color:#6b7280; font-size:0.9rem;">Create a new empty table</div>`;
+    newCard.className = 'ux-card';
+    newCard.style.cssText = 'width:220px; min-height:110px; text-align:left; cursor:pointer;';
+    newCard.innerHTML = `<div class="ux-card-title"><span class="ux-icon">+</span> Blank table</div><p>Create a new empty table.</p>`;
     newCard.onclick = () => createNewDataTable();
     startRow.appendChild(newCard);
 
@@ -3254,7 +3263,8 @@ function renderTablesHub(filterText = '') {
 
     items.forEach((t, idx) => {
         const row = document.createElement('div');
-        row.style.cssText = 'display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 14px; border-top:1px solid #f3f4f6;';
+        row.className = 'ux-card';
+        row.style.cssText = 'display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 14px;';
         if (idx === 0) row.style.borderTop = 'none';
 
         const left = document.createElement('div');
@@ -3930,6 +3940,27 @@ async function loadNotifications() {
     } catch (e) {
         listEl.innerHTML = '<p style="padding:12px; color:#ef4444;">Error loading notifications.</p>';
     }
+}
+
+function filterTablesList() {
+    renderTablesHub((document.getElementById('tables-search')?.value || ''));
+}
+
+function loadSampleData() {
+    if (!state.dataGridInitialized || !state.dataGrid) return;
+    const sampleRows = [
+        { name: 'Sample employee', email: 'sample@snapp.cab', team: 'Operations' },
+        { name: 'Example user', email: 'example@snapp.cab', team: 'Support' }
+    ];
+    const sampleColumns = [
+        { title: 'Name', field: 'name', editor: 'input' },
+        { title: 'Email', field: 'email', editor: 'input' },
+        { title: 'Team', field: 'team', editor: 'input' }
+    ];
+    state.dataGrid.setColumns(sampleColumns);
+    state.dataGrid.setData(sampleRows);
+    handleDataGridChanged();
+    showStatus('data-grid-status', 'Sample data loaded. Edit it, then save changes.', 'success');
 }
 
 document.addEventListener('DOMContentLoaded', () => {
