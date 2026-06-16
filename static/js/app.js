@@ -14,8 +14,10 @@ let state = {
     dataGridInitialized: false,
     dataGrid: null,
     currentTableId: 'default',
+    currentTableTitle: 'Data table',
     tables: [],
     selectedColumnField: null,
+    dataGridSourceRows: [],
     dataGridAutoSaveTimer: null,
     users: [],
     currentPermission: "edit",
@@ -446,6 +448,7 @@ function showTablesHub() {
     if (panel) panel.style.display = "none";
     const vPanel = document.getElementById('table-versions-panel');
     if (vPanel) vPanel.style.display = 'none';
+    syncDataTableRoute('', false);
 }
 
 function toggleTableVersionsPanel() {
@@ -513,6 +516,39 @@ function showGridPanel() {
     const panel = document.getElementById("grid-panel");
     if (hub) hub.style.display = "none";
     if (panel) panel.style.display = "block";
+}
+
+function cloneGridRows(rows) {
+    return Array.isArray(rows) ? rows.map(row => ({ ...(row || {}) })) : [];
+}
+
+function syncDataTableRoute(tableId, replace = false) {
+    const url = new URL(window.location.href);
+    if (tableId) {
+        url.searchParams.set('table', tableId);
+    } else {
+        url.searchParams.delete('table');
+    }
+    const nextUrl = `${url.pathname}${url.search}${url.hash}`;
+    const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    if (nextUrl === currentUrl) {
+        return;
+    }
+    if (replace) {
+        window.history.replaceState({ tableId: tableId || '' }, '', nextUrl);
+    } else {
+        window.history.pushState({ tableId: tableId || '' }, '', nextUrl);
+    }
+}
+
+function updateCurrentTableHeading(tableId) {
+    const titleEl = document.getElementById('current-table-title');
+    const tableMeta = (state.tables || []).find(item => item.id === tableId);
+    const title = tableMeta?.title || tableId || 'Data table';
+    state.currentTableTitle = title;
+    if (titleEl) {
+        titleEl.textContent = title;
+    }
 }
 
 // Database connectors (Excel sync to SQL Server)
@@ -830,6 +866,7 @@ function replaceGridRows(rows) {
     if (!state.dataGrid) return;
     state.dataGridLoading = true;
     try {
+        state.dataGridSourceRows = cloneGridRows(rows);
         state.dataGrid.setData(rows);
     } finally {
         state.dataGridLoading = false;
@@ -854,6 +891,7 @@ function renderSpreadsheetGrid(columns, rows, opts = {}) {
     const sheetColumns = normalizeDataColumns(columns);
     const matrix = dataRowsToMatrix(rows, sheetColumns);
     const isMobile = window.matchMedia && window.matchMedia('(max-width: 640px)').matches;
+    state.dataGridSourceRows = cloneGridRows(rows);
 
     gridElement.classList.add('sheet-grid');
     gridElement.innerHTML = '';
@@ -867,13 +905,13 @@ function renderSpreadsheetGrid(columns, rows, opts = {}) {
         columns: sheetColumns.map(col => ({
             type: 'text',
             title: col.title,
-            width: col.width || (isMobile ? 140 : 170),
+            width: col.width || (isMobile ? 124 : 180),
             align: 'left'
         })),
         minDimensions: [Math.max(sheetColumns.length, 3), Math.max((matrix || []).length, DATA_DEFAULT_ROWS)],
         tableOverflow: true,
         tableWidth: '100%',
-        tableHeight: isMobile ? 'auto' : '68vh',
+        tableHeight: isMobile ? '52vh' : '62vh',
         editable: !(opts.readOnly),
         allowInsertRow: !opts.readOnly,
         allowDeleteRow: !opts.readOnly,
@@ -925,8 +963,6 @@ function renderSpreadsheetGrid(columns, rows, opts = {}) {
         label.style.color = '#374151';
         label.style.fontWeight = 'normal';
     }
-
-    applyGridPermission();
     window.updateSelectionStatus = function () {
         const statusEl = document.getElementById('data-grid-status');
         if (!statusEl) return;
@@ -965,11 +1001,15 @@ function createDataGridAdapter(instance) {
         },
         setData(rows) {
             state.dataGridLoading = true;
-            renderSpreadsheetGrid(state.dataGridColumns || buildDefaultColumns(), rows, {
-                readOnly: state.currentPermission === 'view' || state.currentPermission === 'view_nocopy',
-                tableTitle: document.getElementById('current-table-title')?.textContent || 'Data table'
-            });
-            state.dataGridLoading = false;
+            try {
+                state.dataGridSourceRows = cloneGridRows(rows);
+                renderSpreadsheetGrid(state.dataGridColumns || buildDefaultColumns(), rows, {
+                    readOnly: state.currentPermission === 'view' || state.currentPermission === 'view_nocopy',
+                    tableTitle: document.getElementById('current-table-title')?.textContent || 'Data table'
+                });
+            } finally {
+                state.dataGridLoading = false;
+            }
         },
         clearData() {
             this.setData(buildBlankRows(DATA_DEFAULT_ROWS));
@@ -1043,6 +1083,7 @@ function createDataGridAdapter(instance) {
 function initDataGrid() {
     const gridElement = document.getElementById('data-grid');
     if (!gridElement || !window.jspreadsheet) return;
+    if (state.dataGridInitialized && state.dataGrid) return;
     state.dataGridInitialized = true;
     state.selectedColumnField = null;
     state.dataGridColumns = normalizeDataColumns(buildDefaultColumns());
@@ -1055,6 +1096,7 @@ function initDataGrid() {
 
 function handleDataGridChanged() {
     if (state.dataGridLoading) return;
+    state.dataGridSourceRows = getDataGridRowsSnapshot();
     if (state.dataGridAutoSaveTimer) {
         clearTimeout(state.dataGridAutoSaveTimer);
     }
@@ -1075,9 +1117,13 @@ async function loadDataGrid() {
         if (Array.isArray(data.columns) && data.columns.length > 0) {
             state.dataGridColumns = normalizeDataColumns(data.columns);
         }
-        if (Array.isArray(data.rows)) {
-            replaceGridRows(data.rows);
-        }
+        const rows = Array.isArray(data.rows) && data.rows.length > 0
+            ? data.rows
+            : buildBlankRows(DATA_DEFAULT_ROWS);
+        renderSpreadsheetGrid(state.dataGridColumns || buildDefaultColumns(), rows, {
+            readOnly: state.currentPermission === 'view' || state.currentPermission === 'view_nocopy',
+            tableTitle: state.currentTableTitle || document.getElementById('current-table-title')?.textContent || 'Data table'
+        });
         if ((Array.isArray(data.columns) && data.columns.length > 0) || (Array.isArray(data.rows) && data.rows.length > 0)) {
             showStatus('data-grid-status', 'Grid loaded.', 'info');
         } else {
@@ -1092,20 +1138,14 @@ async function loadDataGrid() {
 function applyGridPermission() {
     const perm = state.currentPermission || 'edit';
     const isReadOnly = perm === 'view' || perm === 'view_nocopy';
-    if (state.dataGrid) {
-        state.dataGridColumns = normalizeDataColumns(state.dataGridColumns || buildDefaultColumns()).map(col => ({
-            ...col,
-            readonly: isReadOnly
-        }));
-        renderSpreadsheetGrid(state.dataGridColumns, getDataGridRowsSnapshot(), {
-            readOnly: isReadOnly,
-            tableTitle: document.getElementById('current-table-title')?.textContent || 'Data table'
-        });
-    }
     const btnSave = document.querySelector('button[onclick="saveDataGrid()"]');
     const btnDel = document.querySelector('button[onclick="deleteSelectedRows()"]');
+    const btnAddRow = document.querySelector('button[onclick="addDataRow()"]');
+    const btnAddCol = document.querySelector('button[onclick="addDataColumn()"]');
     if (btnSave) btnSave.disabled = isReadOnly;
     if (btnDel) btnDel.disabled = isReadOnly;
+    if (btnAddRow) btnAddRow.disabled = isReadOnly;
+    if (btnAddCol) btnAddCol.disabled = isReadOnly;
     const gridEl = document.getElementById('data-grid');
     if (gridEl) {
         gridEl.oncopy = null;
@@ -1281,13 +1321,23 @@ function deleteSelectedRows() {
 function searchDataGrid(query) {
     if (!state.dataGridInitialized || !state.dataGrid) return;
     const value = (query || '').toString().trim().toLowerCase();
-    const rows = getDataGridRowsSnapshot();
+    const rows = cloneGridRows(state.dataGridSourceRows);
     if (!value) {
-        replaceGridRows(rows);
+        state.dataGridLoading = true;
+        try {
+            state.dataGrid.setData(rows);
+        } finally {
+            state.dataGridLoading = false;
+        }
         return;
     }
     const filtered = rows.filter(row => Object.values(row || {}).some(cell => String(cell || '').toLowerCase().includes(value)));
-    replaceGridRows(filtered);
+    state.dataGridLoading = true;
+    try {
+        state.dataGrid.setData(filtered);
+    } finally {
+        state.dataGridLoading = false;
+    }
 }
 
 // Column management helpers
@@ -1420,6 +1470,8 @@ function changeDataTable(tableId) {
     const id = (tableId || '').trim() || 'default';
     state.currentTableId = id;
     state.selectedColumnField = null;
+    updateCurrentTableHeading(id);
+    syncDataTableRoute(id);
     if (state.dataGridInitialized && state.dataGrid) {
         state.dataGridColumns = normalizeDataColumns(buildDefaultColumns());
         state.dataGrid.clearData();
@@ -1492,7 +1544,9 @@ function createNewDataTable() {
 function selectDataTable(tableId) {
     state.currentTableId = tableId;
     state.selectedColumnField = null;
+    updateCurrentTableHeading(tableId);
     showGridPanel();
+    syncDataTableRoute(tableId);
     if (state.dataGridInitialized && state.dataGrid) {
         state.dataGridColumns = normalizeDataColumns(buildDefaultColumns());
         state.dataGrid.clearData();
@@ -3067,6 +3121,8 @@ setInterval(() => {
 
 // Initialize default data grid and table list on first load
 window.addEventListener('DOMContentLoaded', async () => {
+    const requestedTableId = new URLSearchParams(window.location.search).get('table');
+
     // Load list of existing tables and render as pills
     if (document.getElementById('tables-list')) {
         try {
@@ -3078,15 +3134,19 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (!document.getElementById('data-grid')) return;
-    ensureTabulatorLoaded(() => {
+    ensureSpreadsheetLoaded(() => {
         initDataGrid();
-        showTablesHub();
         // wire search
         const search = document.getElementById('tables-search');
         if (search) {
             search.addEventListener('input', () => renderTablesHub(search.value));
         }
         renderTablesHub();
+        if (requestedTableId) {
+            selectDataTable(requestedTableId);
+        } else {
+            showTablesHub();
+        }
 
         // Global keyboard shortcuts for data grid (undo / redo / copy / paste)
         document.addEventListener('keydown', (evt) => {
@@ -3176,6 +3236,21 @@ window.addEventListener('DOMContentLoaded', async () => {
                 }
             }
         });
+    });
+
+    window.addEventListener('popstate', () => {
+        if (!document.getElementById('data-grid')) return;
+        const tableId = new URLSearchParams(window.location.search).get('table');
+        if (tableId) {
+            if (state.currentTableId !== tableId) {
+                state.currentTableId = tableId;
+                updateCurrentTableHeading(tableId);
+                showGridPanel();
+                loadDataGrid();
+            }
+        } else {
+            showTablesHub();
+        }
     });
 });
 

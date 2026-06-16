@@ -875,6 +875,7 @@ header h1 {
     width: 100% !important;
     background: transparent;
     color: var(--text-primary);
+    display: flex;
 }
 
 #data-grid .jss_content {
@@ -882,10 +883,14 @@ header h1 {
     box-shadow: none;
     border-color: color-mix(in srgb, var(--border-color) 90%, transparent);
     background: color-mix(in srgb, var(--bg-primary) 94%, white);
+    min-height: 420px;
+    max-height: 62vh;
+    overflow: auto !important;
 }
 
 #data-grid .jss {
-    width: 100% !important;
+    width: max-content !important;
+    min-width: 100%;
     background: transparent;
     color: var(--text-primary);
 }
@@ -897,17 +902,37 @@ header h1 {
     color: var(--text-primary);
     font-weight: 700;
     border-color: color-mix(in srgb, var(--border-color) 90%, transparent);
+    min-width: 160px;
+    padding: 14px 16px;
+    white-space: nowrap;
 }
 
 #data-grid .jss > tbody > tr > td {
     background: color-mix(in srgb, var(--bg-primary) 92%, white);
     color: var(--text-primary);
     border-color: color-mix(in srgb, var(--border-color) 92%, transparent);
-    min-height: 38px;
+    min-height: 42px;
+    min-width: 160px;
+    padding: 12px 14px;
+    text-align: left;
+    white-space: nowrap;
 }
 
 #data-grid .jss > tbody > tr:nth-child(even) > td {
     background: color-mix(in srgb, var(--accent-soft) 10%, var(--bg-primary));
+}
+
+#data-grid .jss > thead > tr > th:first-child,
+#data-grid .jss > tbody > tr > td.jss_row {
+    min-width: 56px;
+    width: 56px;
+    text-align: center;
+}
+
+#data-grid .jss > tbody > tr > td.jss_row {
+    font-weight: 700;
+    color: var(--text-secondary);
+    background: color-mix(in srgb, var(--accent-soft) 20%, var(--bg-primary));
 }
 
 #data-grid .jss > tbody > tr > td:focus,
@@ -925,6 +950,20 @@ header h1 {
 
 #data-grid .jss_toolbar {
     display: none;
+}
+
+@media (max-width: 640px) {
+    #data-grid .jss_content {
+        min-height: 360px;
+        max-height: 56vh;
+    }
+
+    #data-grid .jss > thead > tr > th,
+    #data-grid .jss > tbody > tr > td {
+        min-width: 124px;
+        padding: 10px 12px;
+        font-size: 0.92rem;
+    }
 }
 
 /* Table pills for multiple logical tables */
