@@ -117,7 +117,7 @@ def _validate_rows(
 
 def _table_permission_for_user(conn, table_id: str, username: str, role: str) -> str:
     """Return permission string: owner/edit/view/view_nocopy/none."""
-    if role == "admin":
+    if role in {"admin", "project_admin"}:
         return "owner"
     username = _normalize_username(username)
     with conn.cursor() as cur:
@@ -197,16 +197,20 @@ async def list_tables(request: Request):
 
     tables = []
     for r in rows:
+        permission = _table_permission_for_user(conn, r[0], username, role)
         tables.append(
             {
                 "id": r[0],
                 "title": r[1],
+                "owner": r[2],
                 "owner_username": r[2],
+                "permission": permission,
                 "created_at": r[3].isoformat() if r[3] else "",
                 "updated_at": r[4].isoformat() if r[4] else "",
                 "last_opened_at": r[5].isoformat() if r[5] else None,
                 "storage_backend": r[6] or "postgres",
                 "promote_status": r[7] or "draft",
+                "starred": bool(r[8]),
                 "is_favorite": bool(r[8]),
             }
         )

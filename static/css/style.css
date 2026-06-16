@@ -862,18 +862,94 @@ header h1 {
 }
 
 /* Spreadsheet-like data grid */
+.data-workspace-shell {
+    padding: 20px;
+}
+
+.data-table-list {
+    display: grid;
+    gap: 14px;
+}
+
+.sheet-workspace {
+    display: grid;
+    gap: 14px;
+}
+
+.sheet-header {
+    margin-bottom: 4px;
+}
+
+.sheet-toolbar,
+.sheet-quickbar,
+.sheet-status-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.sheet-toolbar-group,
+.sheet-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.sheet-meta-pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--border-color) 90%, transparent);
+    background: color-mix(in srgb, var(--surface-muted) 82%, transparent);
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.sheet-quickbar,
+.sheet-toolbar {
+    padding: 14px;
+    border-radius: 20px;
+    border: 1px solid color-mix(in srgb, var(--border-color) 90%, transparent);
+    background: color-mix(in srgb, var(--surface-raised) 90%, transparent);
+    box-shadow: var(--shadow-sm);
+}
+
+.sheet-quickbar .form-control {
+    min-width: min(320px, 100%);
+    flex: 1 1 260px;
+}
+
+.sheet-help {
+    background: color-mix(in srgb, var(--surface-muted) 90%, transparent);
+}
+
+.sheet-grid-shell {
+    padding: 12px;
+    border-radius: 24px;
+    border: 1px solid color-mix(in srgb, var(--border-color) 92%, transparent);
+    background:
+        linear-gradient(180deg, color-mix(in srgb, var(--surface-muted) 84%, transparent), color-mix(in srgb, var(--surface-raised) 92%, transparent));
+    box-shadow: var(--shadow-md);
+}
+
 #data-grid {
     max-width: 100%;
     overflow: hidden;
-    border-radius: 18px;
+    border-radius: 20px;
     border: 1px solid color-mix(in srgb, var(--border-color) 90%, transparent);
-    background: var(--surface-raised);
-    box-shadow: var(--shadow-md);
+    background: #fff;
+    box-shadow: 0 24px 48px rgba(15, 23, 42, 0.08);
 }
 
 #data-grid .jss_container {
     width: 100% !important;
-    background: transparent;
+    background: #fff;
     color: var(--text-primary);
     display: flex;
 }
@@ -882,7 +958,7 @@ header h1 {
     border-top: 0;
     box-shadow: none;
     border-color: color-mix(in srgb, var(--border-color) 90%, transparent);
-    background: color-mix(in srgb, var(--bg-primary) 94%, white);
+    background: #fff;
     min-height: 420px;
     max-height: 62vh;
     overflow: auto !important;
@@ -891,35 +967,36 @@ header h1 {
 #data-grid .jss {
     width: max-content !important;
     min-width: 100%;
-    background: transparent;
+    background: #fff;
     color: var(--text-primary);
 }
 
 #data-grid .jss > thead > tr > th {
     position: sticky;
     top: 0;
-    background: color-mix(in srgb, var(--accent-soft) 28%, var(--bg-primary));
-    color: var(--text-primary);
+    z-index: 2;
+    background: #f8fafc;
+    color: #475569;
     font-weight: 700;
-    border-color: color-mix(in srgb, var(--border-color) 90%, transparent);
+    border-color: #dbe3ef;
     min-width: 160px;
-    padding: 14px 16px;
+    padding: 12px 14px;
     white-space: nowrap;
 }
 
 #data-grid .jss > tbody > tr > td {
-    background: color-mix(in srgb, var(--bg-primary) 92%, white);
-    color: var(--text-primary);
-    border-color: color-mix(in srgb, var(--border-color) 92%, transparent);
-    min-height: 42px;
+    background: #fff;
+    color: #1f2937;
+    border-color: #e5e7eb;
+    min-height: 40px;
     min-width: 160px;
-    padding: 12px 14px;
+    padding: 10px 12px;
     text-align: left;
     white-space: nowrap;
 }
 
 #data-grid .jss > tbody > tr:nth-child(even) > td {
-    background: color-mix(in srgb, var(--accent-soft) 10%, var(--bg-primary));
+    background: #fcfdff;
 }
 
 #data-grid .jss > thead > tr > th:first-child,
@@ -931,14 +1008,14 @@ header h1 {
 
 #data-grid .jss > tbody > tr > td.jss_row {
     font-weight: 700;
-    color: var(--text-secondary);
-    background: color-mix(in srgb, var(--accent-soft) 20%, var(--bg-primary));
+    color: #64748b;
+    background: #f8fafc;
 }
 
 #data-grid .jss > tbody > tr > td:focus,
 #data-grid .jss > tbody > tr.selected > td,
 #data-grid .jss > thead > tr > th.selected {
-    background: var(--accent-soft);
+    background: #e0ecff;
 }
 
 #data-grid .jss_input,
@@ -953,6 +1030,35 @@ header h1 {
 }
 
 @media (max-width: 640px) {
+    .data-workspace-shell {
+        padding: 14px;
+    }
+
+    .sheet-toolbar,
+    .sheet-quickbar,
+    .sheet-status-row,
+    .sheet-toolbar-group,
+    .sheet-meta-row {
+        align-items: stretch;
+    }
+
+    .sheet-toolbar-group,
+    .sheet-meta-row {
+        width: 100%;
+    }
+
+    .sheet-toolbar .btn,
+    .sheet-quickbar .btn,
+    .sheet-toolbar .form-control,
+    .sheet-quickbar .form-control {
+        width: 100%;
+    }
+
+    .sheet-grid-shell {
+        padding: 8px;
+        border-radius: 18px;
+    }
+
     #data-grid .jss_content {
         min-height: 360px;
         max-height: 56vh;

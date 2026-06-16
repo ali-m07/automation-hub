@@ -13,7 +13,7 @@
     <div>
         <div class="hero-eyebrow">Data workspace</div>
         <h1>Data & Connectors</h1>
-        <p>Create spreadsheet-style data pools, edit rows safely, and export clean files for downstream modules.</p>
+        <p>Work in a familiar spreadsheet flow, keep table access clear, and move clean data into the rest of the platform.</p>
     </div>
     <div class="hero-actions">
         <button class="btn btn-primary" type="button" onclick="createNewDataTable()">New data table</button>
@@ -26,16 +26,16 @@
     <div class="ux-step"><strong>3. Export or review</strong><span>Download Excel/JSON or submit the table for admin review.</span></div>
 </section>
 
-<div class="card">
+<div class="card data-workspace-shell">
     <div id="tables-hub">
         <div class="ux-section-title">
             <div>
                 <h2>Your data tables</h2>
-                <p>Pick a table to continue, or create a new structured dataset.</p>
+                <p>Open a recent table, start a blank sheet, or manage shared datasets with clear permissions.</p>
             </div>
         </div>
 
-        <div class="ux-toolbar" style="margin-bottom:16px;">
+        <div class="ux-toolbar data-hub-toolbar" style="margin-bottom:16px;">
             <input type="text" id="tables-search" class="form-control" placeholder="Search table name..." oninput="filterTablesList()" aria-label="Search tables">
             <button class="btn btn-primary" type="button" onclick="createNewDataTable()">Blank table</button>
         </div>
@@ -60,50 +60,63 @@
 
         <div style="margin-top:22px;">
             <h3 style="margin-bottom:12px;">Recent tables</h3>
-            <div id="tables-list" class="ux-grid"></div>
+            <div id="tables-list" class="data-table-list"></div>
             <p id="tables-empty" class="ux-empty" style="display:none;">No data tables yet. Create one to get started.</p>
         </div>
     </div>
 
     <div id="grid-panel" style="display:none;">
-        <div class="ux-section-title">
+        <div class="sheet-workspace">
+        <div class="ux-section-title sheet-header">
             <div>
                 <h2 id="current-table-title">Data table</h2>
-                <p>Edit cells, add fields, import JSON, and save the current version.</p>
+                <p id="current-table-subtitle">Edit cells, manage columns, review versions, and export with confidence.</p>
             </div>
             <button class="btn" type="button" onclick="showTablesHub()">Back to tables</button>
         </div>
 
-        <div class="ux-toolbar" style="margin-bottom:14px;">
-            <button class="btn btn-primary" type="button" onclick="saveDataGrid()">Save changes</button>
-            <button class="btn" type="button" onclick="downloadExcel()">Export Excel</button>
-            <button class="btn" type="button" onclick="exportTableJson()">Export JSON</button>
+        <div class="sheet-toolbar" style="margin-bottom:14px;">
+            <div class="sheet-toolbar-group">
+                <button class="btn btn-primary" type="button" onclick="saveDataGrid()">Save changes</button>
+                <button class="btn" type="button" onclick="exportTableToExcel()">Export Excel</button>
+                <button class="btn" type="button" onclick="exportTableToJson()">Export JSON</button>
+            </div>
+            <div class="sheet-toolbar-group">
             <label class="btn" for="import-json-input" style="cursor:pointer;">Import JSON</label>
-            <input id="import-json-input" type="file" accept="application/json" style="display:none;" onchange="importTableJson(event)">
-            <button class="btn" type="button" onclick="toggleTableVersionsPanel()">Versions</button>
-            <button class="btn btn-success" type="button" onclick="submitCurrentTableForReview()">Submit for review</button>
+                <input id="import-json-input" type="file" accept="application/json" style="display:none;" onchange="importTableFromJsonFile(event)">
+                <button class="btn" type="button" onclick="toggleTableVersionsPanel()">Versions</button>
+                <button class="btn btn-success" type="button" onclick="submitCurrentTableForReview()">Submit for review</button>
+            </div>
+        </div>
+        <div class="sheet-status-row">
+            <div class="sheet-meta-row">
+                <span class="sheet-meta-pill">Spreadsheet view</span>
+                <span class="sheet-meta-pill" id="current-table-id-label">Table ID: -</span>
+            </div>
             <span id="data-grid-status" class="status-box" aria-live="polite"></span>
         </div>
 
-        <div class="ux-toolbar" style="margin-bottom:14px;">
+        <div class="sheet-quickbar" style="margin-bottom:14px;">
             <input type="text" id="grid-search" class="form-control" placeholder="Search rows..." oninput="searchDataGrid(this.value)" aria-label="Search rows">
             <button class="btn" type="button" onclick="loadSampleData()">Load sample data</button>
             <button class="btn" type="button" onclick="deleteSelectedRows()">Delete selected rows</button>
         </div>
 
-        <div class="ux-action-grid" style="margin-bottom:14px;">
+        <div class="ux-action-grid sheet-action-grid" style="margin-bottom:14px;">
             <button class="btn" type="button" onclick="addDataRow()">Add row</button>
             <button class="btn" type="button" onclick="addDataColumn()">Add column</button>
             <button class="btn" type="button" onclick="renameSelectedColumn()">Rename selected column</button>
             <button class="btn" type="button" onclick="deleteSelectedColumn()">Delete selected column</button>
         </div>
 
-        <div class="ux-help" style="margin-bottom:14px;">
+        <div class="ux-help sheet-help" style="margin-bottom:14px;">
             <p><strong>Grid tips:</strong> click any cell to edit, paste from Excel with Ctrl+V, select row numbers to delete rows, and click a column header before rename or delete.</p>
             <p style="margin-top:8px;">Selected column: <strong id="data-grid-column-label">None</strong></p>
         </div>
 
-        <div id="data-grid" class="ux-table-wrap" style="min-height:420px;"></div>
+        <div class="sheet-grid-shell">
+            <div id="data-grid" class="ux-table-wrap" style="min-height:420px;"></div>
+        </div>
 
         <div id="table-versions-panel" class="ux-card-soft" style="display:none; margin-top:16px;">
             <div class="ux-section-title">
@@ -113,6 +126,7 @@
                 </div>
             </div>
             <div id="table-versions-list"></div>
+        </div>
         </div>
     </div>
 </div>

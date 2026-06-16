@@ -189,11 +189,11 @@ const translations = {
         'logout': 'Logout',
     },
     fa: {
-        'welcome': 'Ã˜Â®Ã™Ë†Ã˜Â´ Ã˜Â¢Ã™â€¦Ã˜Â¯Ã›Å’Ã˜Â¯',
-        'search': 'Ã˜Â¬Ã˜Â³Ã˜ÂªÃ˜Â¬Ã™Ë†',
-        'notifications': 'Ã˜Â§Ã˜Â¹Ã™â€žÃ˜Â§Ã™â€ Ã¢â‚¬Å’Ã™â€¡Ã˜Â§',
-        'profile': 'Ã™Â¾Ã˜Â±Ã™Ë†Ã™ÂÃ˜Â§Ã›Å’Ã™â€ž',
-        'logout': 'Ã˜Â®Ã˜Â±Ã™Ë†Ã˜Â¬',
+        'welcome': 'Welcome',
+        'search': 'Search',
+        'notifications': 'Notifications',
+        'profile': 'Profile',
+        'logout': 'Logout',
     }
 };
 
@@ -239,14 +239,15 @@ function t(key) {
 })();
 
 // Default grid shape for new tables
-const DATA_DEFAULT_COLUMNS = 5;
-const DATA_DEFAULT_ROWS = 5;
+const DATA_DEFAULT_COLUMNS = 8;
+const DATA_DEFAULT_ROWS = 20;
 
 function buildDefaultColumns() {
     const cols = [];
     for (let i = 1; i <= DATA_DEFAULT_COLUMNS; i++) {
+        const title = String.fromCharCode(64 + i);
         cols.push({
-            title: `Col ${i}`,
+            title,
             field: `c${i}`,
             editor: 'input'
         });
@@ -419,7 +420,7 @@ async function loadSummary() {
             jobsEl.innerHTML = '<h3 style="margin-bottom:8px;">Last Creative jobs</h3><ul style="list-style:none; padding:0;">' +
                 jobs.map(j => `
                     <li style="padding:10px 0; border-bottom:1px solid #e5e7eb;">
-                        Job #${j.job_id} Ã¢â‚¬â€ ${j.status} Ã¢â‚¬â€ ${j.row_count || 0} rows
+                        Job #${j.job_id} - ${j.status} - ${j.row_count || 0} rows
                         ${j.zip_link ? ` <a href="${j.zip_link}" class="btn" style="padding:4px 8px;">Download ZIP</a>` : ''}
                     </li>
                 `).join('') + '</ul>';
@@ -431,8 +432,8 @@ async function loadSummary() {
             ticketEl.innerHTML = `
                 <h3 style="margin-bottom:8px;">Latest ticket</h3>
                 <div style="padding:12px; border:1px solid #e5e7eb; border-radius:8px;">
-                    <strong>#${t.id}</strong> ${escapeHtml(t.subject || '')} Ã¢â‚¬â€ ${t.status || 'open'}
-                    <br><small>Created: ${t.created_at || ''}${t.admin_replied_at ? ' Ã‚Â· Replied: ' + t.admin_replied_at : ''}</small>
+                    <strong>#${t.id}</strong> ${escapeHtml(t.subject || '')} - ${t.status || 'open'}
+                    <br><small>Created: ${t.created_at || ''}${t.admin_replied_at ? ' · Replied: ' + t.admin_replied_at : ''}</small>
                 </div>
             `;
         }
@@ -449,6 +450,7 @@ function showTablesHub() {
     const vPanel = document.getElementById('table-versions-panel');
     if (vPanel) vPanel.style.display = 'none';
     syncDataTableRoute('', false);
+    document.title = 'Data & Connectors - Automation Hub';
 }
 
 function toggleTableVersionsPanel() {
@@ -480,7 +482,7 @@ async function loadTableVersions() {
         }
         listEl.innerHTML = versions.map(v => `
             <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid #e5e7eb;">
-                <span>Version #${v.version_number} Ã¢â‚¬â€ ${escapeHtml(v.created_at || '')}</span>
+                <span>Version #${v.version_number} - ${escapeHtml(v.created_at || '')}</span>
                 <button class="btn" style="padding:4px 10px;" onclick="restoreTableVersion(${v.id})">Restore</button>
             </div>
         `).join('');
@@ -543,12 +545,22 @@ function syncDataTableRoute(tableId, replace = false) {
 
 function updateCurrentTableHeading(tableId) {
     const titleEl = document.getElementById('current-table-title');
+    const subtitleEl = document.getElementById('current-table-subtitle');
+    const tableIdEl = document.getElementById('current-table-id-label');
     const tableMeta = (state.tables || []).find(item => item.id === tableId);
     const title = tableMeta?.title || tableId || 'Data table';
     state.currentTableTitle = title;
     if (titleEl) {
         titleEl.textContent = title;
     }
+    if (subtitleEl) {
+        const permission = tableMeta?.permission ? String(tableMeta.permission).replaceAll('_', ' ') : 'owner';
+        subtitleEl.textContent = `Table owner: ${tableMeta?.owner_username || tableMeta?.owner || 'you'} · Access: ${permission}`;
+    }
+    if (tableIdEl) {
+        tableIdEl.textContent = `Table ID: ${tableId || '-'}`;
+    }
+    document.title = `${title} - Data & Connectors`;
 }
 
 // Database connectors (Excel sync to SQL Server)
@@ -572,8 +584,7 @@ async function loadDbConnectors() {
         } else {
             state.dbConnectors = data.connectors;
         }
-        // In user UI Ã™ÂÃ™â€šÃ˜Â· Ã˜Â§Ã˜Â³Ã™â€¦ ÃšÂ©Ã˜Â§Ã™â€ ÃšÂ©Ã˜ÂªÃ™Ë†Ã˜Â± Ã˜Â±Ã˜Â§ Ã™â€ Ã˜Â´Ã˜Â§Ã™â€  Ã˜Â¨Ã˜Â¯Ã™â€¡Ã˜Å’ Ã™â€ Ã™â€¡ Ã™â€ Ã˜Â§Ã™â€¦ Ã˜Â¬Ã˜Â¯Ã™Ë†Ã™â€ž/Ã˜Â§Ã˜Â³ÃšÂ©Ã›Å’Ã™â€¦Ã˜Â§Ã›Å’ Ã™ÂÃ™â€ Ã›Å’
-        select.innerHTML = '<option value="">Ã¢â‚¬â€ Select connector Ã¢â‚¬â€</option>' +
+        select.innerHTML = '<option value="">Select connector</option>' +
             state.dbConnectors.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
         state.dbSyncFilename = null;
         state.dbSyncSheets = [];
@@ -611,7 +622,7 @@ async function handleDbSyncUpload(evt) {
         state.dbSyncSheets = [];
         return;
     }
-    statusEl.textContent = 'UploadingÃ¢â‚¬Â¦';
+    statusEl.textContent = 'Uploading...';
     statusEl.className = 'status-box info';
     try {
         const formData = new FormData();
@@ -690,7 +701,7 @@ async function loadDbConnectorPreview() {
     }
 
     previewPanel.style.display = 'block';
-    previewStatus.textContent = 'Loading preview (read-only)Ã¢â‚¬Â¦';
+    previewStatus.textContent = 'Loading preview (read-only)...';
     previewStatus.className = 'status-box info';
     previewGrid.innerHTML = '';
 
@@ -797,7 +808,7 @@ async function runDbSync() {
         statusEl.className = 'status-box error';
         return;
     }
-    statusEl.textContent = 'SyncingÃ¢â‚¬Â¦';
+    statusEl.textContent = 'Syncing...';
     statusEl.className = 'status-box info';
     try {
         const res = await fetch('/api/db-connectors/sync', {
@@ -905,13 +916,13 @@ function renderSpreadsheetGrid(columns, rows, opts = {}) {
         columns: sheetColumns.map(col => ({
             type: 'text',
             title: col.title,
-            width: col.width || (isMobile ? 124 : 180),
+            width: col.width || (isMobile ? 120 : 160),
             align: 'left'
         })),
-        minDimensions: [Math.max(sheetColumns.length, 3), Math.max((matrix || []).length, DATA_DEFAULT_ROWS)],
+        minDimensions: [Math.max(sheetColumns.length, DATA_DEFAULT_COLUMNS), Math.max((matrix || []).length, DATA_DEFAULT_ROWS)],
         tableOverflow: true,
         tableWidth: '100%',
-        tableHeight: isMobile ? '52vh' : '62vh',
+        tableHeight: isMobile ? '56vh' : '68vh',
         editable: !(opts.readOnly),
         allowInsertRow: !opts.readOnly,
         allowDeleteRow: !opts.readOnly,
@@ -1076,6 +1087,45 @@ function createDataGridAdapter(instance) {
                 }
             };
         },
+        getSelectedRows() {
+            try {
+                return typeof instance.getSelectedRows === 'function' ? (instance.getSelectedRows(true) || []) : [];
+            } catch (err) {
+                return [];
+            }
+        },
+        getSelectedRanges() {
+            try {
+                const selection = typeof instance.getSelected === 'function' ? instance.getSelected() : null;
+                return selection ? [selection] : [];
+            } catch (err) {
+                return [];
+            }
+        },
+        getHistoryUndoSize() {
+            try {
+                return Array.isArray(instance.history?.undo) ? instance.history.undo.length : 0;
+            } catch (err) {
+                return 0;
+            }
+        },
+        getHistoryRedoSize() {
+            try {
+                return Array.isArray(instance.history?.redo) ? instance.history.redo.length : 0;
+            } catch (err) {
+                return 0;
+            }
+        },
+        undo() {
+            if (typeof instance.undo === 'function') {
+                instance.undo();
+            }
+        },
+        redo() {
+            if (typeof instance.redo === 'function') {
+                instance.redo();
+            }
+        },
         redraw() {}
     };
 }
@@ -1100,7 +1150,7 @@ function handleDataGridChanged() {
     if (state.dataGridAutoSaveTimer) {
         clearTimeout(state.dataGridAutoSaveTimer);
     }
-    showStatus('data-grid-status', 'Saving changesâ€¦', 'info');
+    showStatus('data-grid-status', 'Saving changes...', 'info');
     state.dataGridAutoSaveTimer = setTimeout(() => {
         saveDataGrid(true);
     }, 1000);
@@ -1287,7 +1337,7 @@ async function submitCurrentTableForReview() {
         return;
     }
     try {
-        showStatus('data-grid-status', 'Submitting for reviewÃ¢â‚¬Â¦', 'info');
+        showStatus('data-grid-status', 'Submitting for review...', 'info');
         const res = await fetch(`/api/data/tables/${encodeURIComponent(tableId)}/submit-review`, {
             method: 'POST',
             credentials: 'include',
@@ -1308,14 +1358,16 @@ async function submitCurrentTableForReview() {
 
 function deleteSelectedRows() {
     if (!state.dataGridInitialized || !state.dataGrid) return;
-    const rows = getDataGridRowsSnapshot();
-    if (!rows.length) {
-        showStatus('data-grid-status', 'No rows available.', 'error');
+    const selectedRows = typeof state.dataGrid.getSelectedRows === 'function'
+        ? state.dataGrid.getSelectedRows()
+        : [];
+    if (!selectedRows.length) {
+        showStatus('data-grid-status', 'Select one or more row numbers first.', 'error');
         return;
     }
-    replaceGridRows(rows.slice(0, Math.max(0, rows.length - 1)));
+    state.dataGrid.deleteRow(selectedRows);
     handleDataGridChanged();
-    showStatus('data-grid-status', '1 row deleted.', 'success');
+    showStatus('data-grid-status', `${selectedRows.length} row${selectedRows.length === 1 ? '' : 's'} deleted.`, 'success');
 }
 
 function searchDataGrid(query) {
@@ -1501,7 +1553,7 @@ function createNewDataTable() {
     input.className = 'form-control';
     input.style.cssText = 'padding:10px 12px; border-radius:10px;';
     const help = document.createElement('div');
-    help.textContent = 'Press Enter to create â€¢ Esc to cancel';
+    help.textContent = 'Press Enter to create · Esc to cancel';
     help.style.cssText = 'margin-top:8px; color:#6b7280; font-size:0.85rem;';
     card.appendChild(title);
     card.appendChild(input);
@@ -1711,7 +1763,7 @@ async function handleDataUpload(event) {
             // Display column info
             const columnsInfo = document.getElementById('data-columns-info');
             columnsInfo.innerHTML = `
-                <strong>Ã¢Å“â€œ Data file loaded successfully!</strong><br>
+                <strong>Data file loaded successfully.</strong><br>
                 Found ${result.columns.length} columns, ${result.row_count} rows
             `;
             columnsInfo.style.display = 'block';
@@ -1813,12 +1865,12 @@ function renderLayersInfo() {
     }
     const textLayerCount = state.layers.filter(layer => layer.is_text_layer).length;
     layersInfo.innerHTML = `
-        <strong>Ã¢Å“â€œ PSD file loaded successfully!</strong><br>
+        <strong>PSD file loaded successfully.</strong><br>
         Found ${state.layers.length} layers. Text layers: ${textLayerCount}
     `;
     layersInfo.style.display = 'block';
     if (browser) browser.style.display = 'block';
-    if (summary) summary.textContent = `${state.layers.length} total layers Ã‚Â· ${textLayerCount} text layers`;
+    if (summary) summary.textContent = `${state.layers.length} total layers · ${textLayerCount} text layers`;
     renderCreativeLayerList();
     renderPsdLayerEditor();
     loadPsdCanvasPreview();
@@ -1920,7 +1972,7 @@ function renderPsdLayerEditor() {
         row.innerHTML = `
             <div style="display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap;">
                 <div><strong>${escapeHtml(layer.name || 'Unnamed layer')}</strong>
-                    <span style="color:#6b7280; margin-left:8px;">${layer.is_text_layer ? 'Text' : 'Image'} Ã‚Â· ${escapeHtml(bbox)}</span>
+                    <span style="color:#6b7280; margin-left:8px;">${layer.is_text_layer ? 'Text' : 'Image'} · ${escapeHtml(bbox)}</span>
                 </div>
                 <label><input type="checkbox" ${override.enabled ? 'checked' : ''}
                     onchange="updateLayerOverride(${JSON.stringify(layer.name)}, 'enabled', this.checked)"> Apply override</label>
@@ -2220,7 +2272,7 @@ function createMappingRow(layerName = '', columnName = '', index = null) {
     // Remove button
     const removeBtn = document.createElement('button');
     removeBtn.className = 'btn';
-    removeBtn.textContent = 'Ã¢Å“â€¢';
+    removeBtn.textContent = '×';
     removeBtn.style.background = '#dc3545';
     removeBtn.style.color = 'white';
     removeBtn.onclick = () => removeMappingRow(idx);
@@ -2356,7 +2408,7 @@ async function loadCreativeTemplates() {
         }
         const category = catFilter && catFilter.value ? catFilter.value : '';
         const templates = category ? allTemplates.filter(t => (t.category || '') === category) : allTemplates;
-        sel.innerHTML = '<option value="">Ã¢â‚¬â€ Upload new or select template Ã¢â‚¬â€</option>' +
+        sel.innerHTML = '<option value="">Upload new or select template</option>' +
             templates.map(t => `<option value="${t.id}" data-file-path="${escapeHtml(t.file_path)}">${escapeHtml(t.name)}${t.category ? ' (' + escapeHtml(t.category) + ')' : ''}</option>`).join('');
     } catch (e) {
         console.warn('Load templates failed', e);
@@ -2873,7 +2925,7 @@ function addCCColumnInput(existingValue = '') {
     const removeBtn = document.createElement('button');
     removeBtn.type = 'button';
     removeBtn.className = 'btn';
-    removeBtn.textContent = 'Ãƒâ€”';
+    removeBtn.textContent = '×';
     removeBtn.style.padding = '6px 12px';
     removeBtn.style.background = '#fee2e2';
     removeBtn.style.color = '#dc2626';
@@ -3282,24 +3334,27 @@ function renderTablesHub(filterText = '') {
     }
 
     items.forEach((t, idx) => {
+        const permissionLabel = String(t.permission || 'owner')
+            .replaceAll('_', ' ')
+            .replace(/\b\w/g, (char) => char.toUpperCase());
         const row = document.createElement('div');
         row.className = 'ux-card';
-        row.style.cssText = 'display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 14px;';
+        row.style.cssText = 'display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px 18px; flex-wrap:wrap;';
         if (idx === 0) row.style.borderTop = 'none';
 
         const left = document.createElement('div');
-        left.style.cssText = 'display:flex; flex-direction:column; gap:2px;';
-        left.innerHTML = `<div style="font-weight:800; color:#111827;">${t.title || t.id}</div>
-<div style="color:#6b7280; font-size:0.85rem;">ID: ${t.id} Ã¢â‚¬Â¢ Access: ${t.permission}</div>`;
+        left.style.cssText = 'display:flex; flex-direction:column; gap:6px; min-width:240px; flex:1 1 260px;';
+        left.innerHTML = `<div style="font-weight:800; color:var(--text-primary); font-size:1rem;">${escapeHtml(t.title || t.id)}</div>
+<div style="color:var(--text-secondary); font-size:0.88rem;">ID: ${escapeHtml(t.id)} · Access: ${escapeHtml(permissionLabel)} · Owner: ${escapeHtml(t.owner_username || t.owner || '-')}</div>`;
 
         const actions = document.createElement('div');
-        actions.style.cssText = 'display:flex; gap:8px; align-items:center;';
+        actions.style.cssText = 'display:flex; gap:8px; align-items:center; flex-wrap:wrap;';
 
         const starBtn = document.createElement('button');
         starBtn.className = 'btn';
         starBtn.style.cssText = 'padding:6px 10px; font-size:1.1rem; background:transparent; border:none; cursor:pointer;';
         starBtn.title = t.starred ? 'Unstar' : 'Star';
-        starBtn.textContent = t.starred ? 'Ã¢Ëœâ€¦' : 'Ã¢Ëœâ€ ';
+        starBtn.textContent = t.starred ? '★' : '☆';
         starBtn.style.color = t.starred ? '#f59e0b' : '#9ca3af';
         starBtn.onclick = async (e) => {
             e.stopPropagation();
@@ -3330,7 +3385,7 @@ function renderTablesHub(filterText = '') {
         delBtn.textContent = 'Delete';
         delBtn.style.background = '#fee2e2';
         delBtn.onclick = () => deleteDataTable(t.id);
-        delBtn.disabled = t.id === 'default' || !['owner', 'admin'].includes(t.permission);
+        delBtn.disabled = t.id === 'default' || !['owner', 'admin'].includes(String(t.permission || ''));
 
         actions.appendChild(starBtn);
         actions.appendChild(openBtn);
@@ -3442,7 +3497,7 @@ function openSharePanel(tableId) {
     const userSel = document.createElement('select');
     userSel.className = 'form-control';
     userSel.style.cssText = 'max-width:220px; padding:10px 12px;';
-    userSel.innerHTML = `<option value="">Select userÃ¢â‚¬Â¦</option>` + (state.users || []).map(u => `<option value="${u.username}">${u.username}</option>`).join('');
+    userSel.innerHTML = `<option value="">Select user...</option>` + (state.users || []).map(u => `<option value="${u.username}">${u.username}</option>`).join('');
 
     const permSel = document.createElement('select');
     permSel.className = 'form-control';
@@ -3602,7 +3657,7 @@ async function submitTicket() {
 }
 
 function formatBytes(n) {
-    if (n == null || n === undefined) return 'Ã¢â‚¬â€';
+    if (n == null || n === undefined) return '-';
     if (n < 1024) return n + ' B';
     if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
     return (n / (1024 * 1024)).toFixed(1) + ' MB';
@@ -3660,7 +3715,7 @@ async function loadGallery() {
                 </div>
                 <div style="padding: 12px; flex: 1;">
                     <div style="font-weight: 600; color: #111827; margin-bottom: 4px; word-break: break-all;">${escapeHtml(f.display_name || f.job_id || 'File')}</div>
-                    <div style="font-size: 0.85rem; color: #6b7280;">${formatBytes(f.file_size)} Ã‚Â· ${formatDate(f.created_at)}</div>
+                    <div style="font-size: 0.85rem; color: #6b7280;">${formatBytes(f.file_size)} · ${formatDate(f.created_at)}</div>
                     <a href="/api/gallery/download/${f.id}" download="${escapeHtml((f.display_name || f.job_id || 'file') + '.zip')}" class="btn" style="margin-top: 10px; display: inline-block; text-align: center; padding: 8px 12px; font-size: 0.9rem;">Download</a>
                 </div>
             </div>
@@ -3741,7 +3796,7 @@ function renderUserTicketsBoard(ticketsList) {
                 </div>
                 ${t.assigned_admin ? `
                     <div style="font-size:0.75rem; color:#374151; margin-top:8px; font-weight:600; display:flex; align-items:center; gap:4px;">
-                        <span>Ã°Å¸â€˜Â¤</span> <span>${escapeHtml(t.assigned_admin)}</span>
+                        <span>Assigned to</span> <span>${escapeHtml(t.assigned_admin)}</span>
                     </div>
                 ` : ''}
             `;
@@ -3942,7 +3997,7 @@ async function loadNotifications() {
                     <span class="header-badge" style="display:inline-grid;">${feedbackCount}</span>
                 </div>
                 <div style="font-size:0.85rem; color:var(--text-secondary); margin-top:4px;">
-                    ${feedbackCount} ticket${feedbackCount === 1 ? '' : 's'} Ã‚Â· ${evaluatorCount} evaluator${evaluatorCount === 1 ? '' : 's'}
+                    ${feedbackCount} ticket${feedbackCount === 1 ? '' : 's'} · ${evaluatorCount} evaluator${evaluatorCount === 1 ? '' : 's'}
                 </div>
             </a>
         ` : '';
@@ -4252,7 +4307,7 @@ async function load2FAStatus() {
     const disableEl = document.getElementById('2fa-disable');
     const msgEl = document.getElementById('2fa-message');
     if (!statusEl) return;
-    statusEl.textContent = 'LoadingÃ¢â‚¬Â¦';
+    statusEl.textContent = 'Loading...';
     setupEl.style.display = 'none';
     disableEl.style.display = 'none';
     msgEl.style.display = 'none';
@@ -4360,3 +4415,4 @@ async function disable2FA() {
         msgEl.style.display = 'block';
     }
 }
+
