@@ -156,43 +156,50 @@ class PSDProcessor:
         self, draw: ImageDraw.ImageDraw, text: str, font, max_width: int
     ) -> List[str]:
         """Wrap text to fit inside a maximum width, including very long words."""
-        value = (text or "").strip()
-        if not value:
+        raw_value = text or ""
+        if not raw_value.strip():
             return [""]
-
-        tokens = value.split()
-        if not tokens:
-            return [value]
-
         lines: List[str] = []
-        current = ""
-        for token in tokens:
-            trial = f"{current} {token}".strip() if current else token
-            if self._text_width(draw, trial, font) <= max_width:
-                current = trial
+        for paragraph in raw_value.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+            value = paragraph.strip()
+            if not value:
+                lines.append("")
                 continue
+
+            tokens = value.split()
+            if not tokens:
+                lines.append(value)
+                continue
+
+            current = ""
+            for token in tokens:
+                trial = f"{current} {token}".strip() if current else token
+                if self._text_width(draw, trial, font) <= max_width:
+                    current = trial
+                    continue
+
+                if current:
+                    lines.append(current)
+                    current = ""
+
+                if self._text_width(draw, token, font) <= max_width:
+                    current = token
+                    continue
+
+                chunk = ""
+                for char in token:
+                    trial_chunk = f"{chunk}{char}"
+                    if chunk and self._text_width(draw, trial_chunk, font) > max_width:
+                        lines.append(chunk)
+                        chunk = char
+                    else:
+                        chunk = trial_chunk
+                current = chunk
 
             if current:
                 lines.append(current)
-                current = ""
 
-            if self._text_width(draw, token, font) <= max_width:
-                current = token
-                continue
-
-            chunk = ""
-            for char in token:
-                trial_chunk = f"{chunk}{char}"
-                if chunk and self._text_width(draw, trial_chunk, font) > max_width:
-                    lines.append(chunk)
-                    chunk = char
-                else:
-                    chunk = trial_chunk
-            current = chunk
-
-        if current:
-            lines.append(current)
-        return lines or [value]
+        return lines or [""]
 
     def _measure_text_block(
         self, draw: ImageDraw.ImageDraw, lines: List[str], font, spacing: int
@@ -220,14 +227,14 @@ class PSDProcessor:
             "RGBA", (max(32, max_width), max(32, max_height)), (0, 0, 0, 0)
         )
         draw = ImageDraw.Draw(scratch)
-        start_size = max(12, int(preferred_size or 12), min(max_height, max_width))
-        start_size = min(start_size, max(max_width, max_height, 12))
+        start_size = max(8, int(preferred_size or 12))
+        start_size = min(start_size, max(8, min(max_height, max_width)))
 
         best = None
-        for size in range(start_size, 7, -1):
+        for size in range(start_size, 5, -1):
             font = self._load_font(font_size=size, font_path=font_path)
             lines = self._wrap_text_to_width(draw, text, font, max_width)
-            spacing = max(2, int(size * 0.25))
+            spacing = max(1, int(size * 0.18))
             text_width, text_height, line_heights = self._measure_text_block(
                 draw, lines, font, spacing
             )
@@ -254,6 +261,8 @@ class PSDProcessor:
         font_path: str | None = None,
         font_size: int = 12,
         color: tuple = (0, 0, 0),
+        align: str = "left",
+        vertical_align: str = "top",
     ) -> Image.Image:
         """Render text directly into a bounding box without flattening it into a thin raster strip."""
         img = base_image.copy()
@@ -279,7 +288,7 @@ class PSDProcessor:
         else:
             fill = tuple(color)
 
-        preferred_size = max(int(font_size or 12), min(content_height, 72))
+        preferred_size = max(8, int(font_size or 12))
         font, lines, spacing, line_heights, text_width, text_height = (
             self._fit_text_layout(
                 text,
@@ -292,12 +301,20 @@ class PSDProcessor:
 
         overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
         draw = ImageDraw.Draw(overlay)
-        current_y = top + padding_y + max(0, (content_height - text_height) // 2)
+        if vertical_align == "middle":
+            current_y = top + padding_y + max(0, (content_height - text_height) // 2)
+        elif vertical_align == "bottom":
+            current_y = top + padding_y + max(0, content_height - text_height)
+        else:
+            current_y = top + padding_y
+
         for line, line_height in zip(lines, line_heights):
             line_width = self._text_width(draw, line, font)
             x = left + padding_x
-            if line_width < content_width:
+            if align == "center" and line_width < content_width:
                 x += max(0, (content_width - line_width) // 2)
+            elif align == "right" and line_width < content_width:
+                x += max(0, content_width - line_width)
             draw.text((x, current_y), line, font=font, fill=fill)
             current_y += line_height + spacing
 
@@ -650,6 +667,8 @@ class PSDProcessor:
                             font_path=layer_font_path,
                             font_size=int(override.get("font_size") or font_size),
                             color=text_color,
+                            align="left",
+                            vertical_align="top",
                         )
                     else:
                         img = self.render_text_in_bbox(
@@ -664,6 +683,8 @@ class PSDProcessor:
                             font_path=layer_font_path,
                             font_size=int(override.get("font_size") or font_size),
                             color=text_color,
+                            align="left",
+                            vertical_align="top",
                         )
                 except Exception as e:
                     print(f"Error processing layer '{layer_name}': {str(e)}")
