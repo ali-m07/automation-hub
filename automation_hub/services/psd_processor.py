@@ -152,6 +152,12 @@ class PSDProcessor:
     def _normalize_font_token(self, value: str | None) -> str:
         return re.sub(r"[^a-z0-9]+", "", str(value or "").casefold())
 
+    def _normalize_engine_key(self, key: Any) -> str:
+        value = str(key)
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+            value = value[1:-1]
+        return value
+
     def _to_plain_engine_value(self, value: Any) -> Any:
         """Convert psd_tools engine-data containers into plain Python structures."""
         if isinstance(value, dict) or hasattr(value, "items"):
@@ -161,7 +167,7 @@ class PSDProcessor:
             except Exception:
                 iterator = []
             for key, item in iterator:
-                plain[str(key)] = self._to_plain_engine_value(item)
+                plain[self._normalize_engine_key(key)] = self._to_plain_engine_value(item)
             return plain
         if isinstance(value, (list, tuple)) or hasattr(value, "__iter__") and not isinstance(value, (str, bytes)):
             try:
