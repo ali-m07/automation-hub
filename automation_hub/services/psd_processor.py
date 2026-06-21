@@ -5,6 +5,7 @@ Moved from top-level psd_processor.py into automation_hub.services.
 
 import io
 import os
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
@@ -147,6 +148,102 @@ class PSDProcessor:
             except Exception:
                 continue
         return ImageFont.load_default()
+
+    def _normalize_font_token(self, value: str | None) -> str:
+        return re.sub(r"[^a-z0-9]+", "", str(value or "").casefold())
+
+    def _resolve_font_by_psd_name(self, psd_font_name: str | None) -> str | None:
+        """Try to match a PSD font family/postscript name to an uploaded font file."""
+        target = self._normalize_font_token(psd_font_name)
+        if not target:
+            return None
+
+        candidates: list[Path] = []
+        font_dir = get_font_dir()
+        if font_dir.exists():
+            for pattern in ("*.ttf", "*.otf", "*.ttc", "*.woff", "*.woff2", "**/*.ttf", "**/*.otf", "**/*.ttc", "**/*.woff", "**/*.woff2"):
+                candidates.extend(path for path in font_dir.glob(pattern) if path.is_file())
+
+        best_match: str | None = None
+        best_score = -1
+        for path in candidates:
+            tokens = {
+                self._normalize_font_token(path.stem),
+                self._normalize_font_token(path.name),
+            }
+            try:
+                font = ImageFont.truetype(str(path), 16)
+                family, style = font.getname()
+                tokens.add(self._normalize_font_token(family))
+                tokens.add(self._normalize_font_token(style))
+                tokens.add(self._normalize_font_token(f"{family}{style}"))
+            except Exception:
+                pass
+
+            score = 0
+            for token in tokens:
+                if not token:
+                    continue
+                if token == target:
+                    score = max(score, 100)
+                elif token in target or target in token:
+                    score = max(score, min(len(token), len(target)))
+
+            if score > best_score:
+                best_score = score
+                best_match = str(path)
+
+        return best_match if best_score > 0 else None
+
+    def _extract_psd_text_style(self, layer) -> dict[str, Any]:
+        """Extract font name, effective font size, and fill color from PSD text metadata."""
+        result: dict[str, Any] = {
+            "font_name": None,
+            "font_size": None,
+            "color": None,
+        }
+        try:
+            engine = getattr(layer, "engine_dict", None) or {}
+            resources = getattr(layer, "resource_dict", None) or {}
+            style_runs = (
+                engine.get("StyleRun", {}).get("RunArray", [])
+                if isinstance(engine, dict)
+                else []
+            )
+            if style_runs:
+                style_data = (
+                    style_runs[0]
+                    .get("StyleSheet", {})
+                    .get("StyleSheetData", {})
+                )
+                base_font_size = style_data.get("FontSize")
+                font_index = style_data.get("Font")
+                fill_color = style_data.get("FillColor", {}).get("Values")
+
+                transform = getattr(layer, "transform", None) or ()
+                scale_x = abs(float(transform[0])) if len(transform) > 0 else 1.0
+                scale_y = abs(float(transform[3])) if len(transform) > 3 else scale_x
+                effective_scale = max(scale_x, scale_y, 1.0)
+
+                if base_font_size:
+                    result["font_size"] = float(base_font_size) * effective_scale
+
+                if isinstance(fill_color, (list, tuple)) and len(fill_color) >= 4:
+                    result["color"] = tuple(
+                        int(max(0, min(255, round(float(channel) * 255))))
+                        for channel in fill_color[1:4]
+                    )
+
+                font_set = resources.get("FontSet", []) if isinstance(resources, dict) else []
+                if (
+                    isinstance(font_index, int)
+                    and 0 <= font_index < len(font_set)
+                    and isinstance(font_set[font_index], dict)
+                ):
+                    result["font_name"] = font_set[font_index].get("Name")
+        except Exception:
+            return result
+        return result
 
     def _text_width(self, draw: ImageDraw.ImageDraw, value: str, font) -> int:
         """Measure the rendered width for a single line of text."""
@@ -725,8 +822,15 @@ class PSDProcessor:
                             )
                         continue
 
+                    psd_style = self._extract_psd_text_style(layer)
                     layer_font_path = font_path
-                    font_size = self._estimate_font_size_from_bbox(
+                    if not layer_font_path:
+                        matched_psd_font = self._resolve_font_by_psd_name(
+                            psd_style.get("font_name")
+                        )
+                        if matched_psd_font:
+                            layer_font_path = matched_psd_font
+                    font_size = psd_style.get("font_size") or self._estimate_font_size_from_bbox(
                         bbox, font_path=layer_font_path
                     )
                     text_color = (0, 0, 0)
@@ -752,6 +856,9 @@ class PSDProcessor:
                                         )
                         except Exception:
                             pass
+
+                    if psd_style.get("color"):
+                        text_color = psd_style["color"]
 
                     if not font_size or int(font_size) <= 0:
                         font_size = self._estimate_font_size_from_bbox(
