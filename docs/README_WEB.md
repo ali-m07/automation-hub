@@ -5,7 +5,7 @@ A modern web application for processing Photoshop PSD files and sending bulk ema
 ## ✨ Features
 
 - ✅ **Web-based Interface** - Beautiful, modern UI accessible from any browser
-- ✅ **No Photoshop Required** - Uses `psd-tools` library to read PSD files without Photoshop
+- ✅ **No Photoshop Required** - Uses `psd-tools` for batch rendering and Photopea for browser-based PSD editing
 - ✅ **PSD to PNG/PSD Conversion** - Process PSD files and export to PNG or PSD format
 - ✅ **Bulk Processing** - Process multiple rows from Excel/CSV files
 - ✅ **Text Layer Replacement** - Automatically replace text in PSD layers
@@ -172,9 +172,9 @@ See `.github/workflows/` for pipeline configuration.
 
 ## ⚠️ Limitations
 
-1. **Text Layer Editing**: Direct text layer editing in PSD files is not fully supported. The app uses text overlay technique.
-2. **Complex PSD Files**: Very complex PSD files with advanced features may not be fully supported.
-3. **PSD Saving**: Saving modified PSD files may have limitations. PNG export is more reliable.
+1. **Batch Rendering Engine**: Automated export uses `psd-tools` plus Pillow, so some advanced Photoshop-only features are still flattened during batch rendering.
+2. **Complex PSD Files**: Very complex PSD files with advanced effects may render differently in the batch pipeline than in Photoshop or Photopea.
+3. **Direct PSD Editing**: Layer editing and PSD save-back are now handled through the embedded Photopea workflow inside Creative Studio.
 
 ## 🔍 Troubleshooting
 

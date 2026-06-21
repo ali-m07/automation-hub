@@ -7,7 +7,7 @@ Servexa is an internal automation platform built with FastAPI, Jinja2, and vanil
 - **Feedback 180**: nominate evaluators, enter required nomination reasons, manager approvals, and evaluation activity.
 - **Projects and Helpdesk**: project portals, personal requests, ticket boards, workflow configuration, and comments.
 - **Data and Connectors**: spreadsheet-style tables, sharing, permissions, imports, and SQL Server synchronization.
-- **Creative Studio**: PSD templates, layer inspection, data-driven rendering, previews, background jobs, and downloads.
+- **Creative Studio**: PSD templates, Photopea-backed layered editing, layer inspection, data-driven rendering, previews, background jobs, and downloads.
 - **Messaging**: SMTP configuration, bulk email campaigns, attachments, and delivery jobs.
 - **Process Designer**: roles, groups, workflows, and process access management.
 - **Administration**: users, module access, LDAP, notifications, upload limits, connectors, tickets, audit logs, webhooks, SMTP, and diagnostics.
@@ -43,6 +43,29 @@ Servexa supports:
 - Optional process-group creation from LDAP departments
 
 LDAP can be configured at `/admin/ldap`. Directory searches do not create local users.
+
+## Creative Studio Workflow
+
+Creative Studio now supports two complementary PSD paths:
+
+1. **Layer-aware batch rendering**
+   - Upload or save a PSD template
+   - Read the PSD layer tree
+   - Map named layers to Excel or CSV columns
+   - Override text or image layers before export
+   - Preview the first row, then generate the full batch
+
+2. **Direct PSD editing in the browser**
+   - Open the current PSD in the built-in Photopea workflow from `/creative`
+   - Edit layers directly inside the embedded editor
+   - Use `File -> Save` or `Ctrl+S` in Photopea
+   - Servexa receives the saved PSD back on the server and immediately makes it available for layer refresh, preview, and batch generation
+
+Notes:
+
+- Batch rendering still uses the local `psd-tools` + Pillow pipeline for deterministic exports.
+- Browser editing uses tokenized Photopea sessions, so the PSD can be loaded and saved back without exposing the file directly.
+- Image replacements can be sourced from uploaded assets, URLs, or file references stored in the data sheet.
 
 ## Architecture
 

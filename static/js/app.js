@@ -26,6 +26,8 @@ let state = {
     dbSyncSheets: [],
     creativeFonts: [],
     layerOverrides: {},
+    creativeEditorSession: null,
+    creativeEditorPollTimer: null,
     tickets: [],
     activeTicketId: null
 };
@@ -2147,6 +2149,100 @@ function filterCreativeLayers() {
     renderCreativeLayerList();
 }
 
+function updateCreativeEditorStatus(message, tone = 'info') {
+    const el = document.getElementById('creative-psd-editor-status');
+    if (!el) return;
+    el.textContent = message;
+    el.className = `status-box ${tone}`;
+}
+
+function closeCreativePsdEditor() {
+    const modal = document.getElementById('creative-psd-editor-modal');
+    const frame = document.getElementById('creative-psd-editor-frame');
+    if (state.creativeEditorPollTimer) {
+        clearInterval(state.creativeEditorPollTimer);
+        state.creativeEditorPollTimer = null;
+    }
+    if (frame) frame.src = 'about:blank';
+    if (modal) modal.style.display = 'none';
+}
+
+async function pollCreativeEditorSession() {
+    if (!state.creativeEditorSession?.token) return;
+    try {
+        const response = await fetch(`/api/creative/editor-session/${state.creativeEditorSession.token}`, {
+            credentials: 'include'
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+            throw new Error(data.detail || data.error || 'Editor session check failed');
+        }
+        const session = data.session || {};
+        const lastSavedAt = session.last_saved_at || null;
+        if (lastSavedAt && lastSavedAt !== state.creativeEditorSession.lastSavedAt) {
+            state.creativeEditorSession.lastSavedAt = lastSavedAt;
+            updateCreativeEditorStatus(
+                `Saved back to Servexa at ${new Date(lastSavedAt).toLocaleString()}. Refresh layers to pull the latest structure.`,
+                'success'
+            );
+            await readCreativeLayers();
+            await loadPsdCanvasPreview();
+            showToast('PSD saved back to Servexa.', 'success');
+        }
+    } catch (error) {
+        updateCreativeEditorStatus(error.message, 'error');
+    }
+}
+
+async function openCreativePsdEditor() {
+    if (!state.psdFileId) {
+        showStatus('process-status', 'Upload or select a PSD first', 'error');
+        return;
+    }
+    const modal = document.getElementById('creative-psd-editor-modal');
+    const frame = document.getElementById('creative-psd-editor-frame');
+    if (!modal || !frame) return;
+
+    updateCreativeEditorStatus('Preparing the PSD editor...', 'info');
+
+    const formData = new FormData();
+    formData.append('psd_file_id', state.psdFileId);
+    try {
+        const response = await fetch('/api/creative/editor-session', {
+            method: 'POST',
+            body: formData,
+            credentials: 'include'
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+            throw new Error(data.detail || data.error || 'Could not open the PSD editor');
+        }
+
+        state.creativeEditorSession = {
+            token: data.session_token,
+            lastSavedAt: null,
+            editorUrl: data.editor_url
+        };
+        modal.style.display = 'block';
+        frame.src = data.editor_url;
+        updateCreativeEditorStatus('Editor is ready. Use File > Save or Ctrl+S inside Photopea.', 'info');
+
+        if (state.creativeEditorPollTimer) {
+            clearInterval(state.creativeEditorPollTimer);
+        }
+        state.creativeEditorPollTimer = setInterval(pollCreativeEditorSession, 4000);
+    } catch (error) {
+        updateCreativeEditorStatus(error.message, 'error');
+        showStatus('process-status', error.message, 'error');
+    }
+}
+
+async function refreshCreativePsdAfterEditorSave() {
+    await readCreativeLayers();
+    await loadPsdCanvasPreview();
+    updateCreativeEditorStatus('PSD structure and preview refreshed from the latest saved file.', 'success');
+}
+
 async function readCreativeLayers() {
     if (!state.psdFileId) {
         showStatus('process-status', 'Upload or select a PSD first', 'error');
@@ -2224,6 +2320,10 @@ function refreshCreativeActionButtons() {
     const readLayersBtn = document.getElementById('read-layers-btn');
     if (readLayersBtn) {
         readLayersBtn.disabled = !state.psdFileId;
+    }
+    const editorBtn = document.getElementById('open-psd-editor-btn');
+    if (editorBtn) {
+        editorBtn.disabled = !state.psdFileId;
     }
 
     const processHint = document.getElementById('creative-process-hint');
@@ -2657,18 +2757,32 @@ async function runPreview() {
     }
     
     showStatus('process-status', 'Generating preview...', 'info');
-    document.getElementById('preview-area').style.display = 'none';
+    const previewContainer = document.getElementById('preview-container');
+    if (previewContainer) {
+        previewContainer.className = 'ux-empty';
+        previewContainer.innerHTML = 'Generating preview...';
+    }
     try {
         const res = await fetch('/api/preview', { method: 'POST', body: formData, credentials: 'include' });
         const data = await res.json();
         if (data.success && data.preview_url) {
-            document.getElementById('preview-image').src = data.preview_url;
-            document.getElementById('preview-area').style.display = 'block';
+            if (previewContainer) {
+                previewContainer.className = '';
+                previewContainer.innerHTML = `<img src="${escapeHtml(data.preview_url)}" alt="Creative preview" style="display:block; width:100%; border-radius:16px;">`;
+            }
             showStatus('process-status', 'Preview ready.', 'success');
         } else {
+            if (previewContainer) {
+                previewContainer.className = 'ux-empty';
+                previewContainer.textContent = data.detail || 'Preview failed';
+            }
             showStatus('process-status', data.detail || 'Preview failed', 'error');
         }
     } catch (e) {
+        if (previewContainer) {
+            previewContainer.className = 'ux-empty';
+            previewContainer.textContent = e.message;
+        }
         showStatus('process-status', 'Error: ' + e.message, 'error');
     }
 }
@@ -2728,7 +2842,7 @@ async function processFiles() {
         }
     }
     
-    const asyncCheck = document.getElementById('process-async');
+    const asyncCheck = document.getElementById('run-in-background');
     const useAsync = asyncCheck && asyncCheck.checked;
     const url = '/api/process' + (useAsync ? '?async=1' : '');
     showStatus('process-status', useAsync ? 'Queued. Waiting for result...' : 'Processing files... This may take a while.', 'info');

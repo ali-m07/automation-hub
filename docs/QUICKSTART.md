@@ -86,8 +86,8 @@ pip install -r requirements.txt
 ✅ **No Photoshop Required** - Works on any server  
 ✅ **Web-Based** - Access from anywhere  
 ✅ **Cross-Platform** - Windows, macOS, Linux  
-⚠️ **Limited PSD Editing** - Text overlay instead of direct editing  
-⚠️ **PSD Saving** - May save as PNG due to library limitations  
+✅ **Direct PSD Editing** - Open the template in the built-in Photopea workflow and save it back to Servexa  
+⚠️ **Batch PSD Rendering Limits** - Automated exports still use the local rendering pipeline for deterministic jobs  
 
 ## Next Steps
 

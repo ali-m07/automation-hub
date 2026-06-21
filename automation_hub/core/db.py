@@ -418,6 +418,18 @@ def init_database() -> None:
                 category TEXT
             )
             """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS creative_edit_sessions (
+                token TEXT PRIMARY KEY,
+                username TEXT NOT NULL,
+                source_path TEXT NOT NULL,
+                display_name TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                last_saved_at TEXT,
+                last_saved_formats_json TEXT
+            )
+            """)
         # Marketplace templates (public/shared templates)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS psd_market_templates (

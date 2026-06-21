@@ -8,12 +8,14 @@ import os
 import secrets
 import shutil
 import zipfile
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
+from urllib.parse import quote
 
 import pandas as pd
 from fastapi import File, Form, HTTPException, Query, Request, UploadFile
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from starlette.concurrency import run_in_threadpool
 
 from automation_hub.core import auth, db
@@ -115,6 +117,83 @@ def _resolve_psd_path(psd_file_id: str, username: Optional[str]) -> Path:
     if p_templates.is_file():
         return p_templates
     return UPLOAD_DIR / psd_file_id
+
+
+def _absolute_url(request: Request, path: str) -> str:
+    return f"{str(request.base_url).rstrip('/')}{path}"
+
+
+def _photopea_cors_headers() -> Dict[str, str]:
+    return {
+        "Access-Control-Allow-Origin": "https://www.photopea.com",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "*",
+    }
+
+
+def _public_asset_headers() -> Dict[str, str]:
+    return {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+        "Access-Control-Allow-Headers": "*",
+    }
+
+
+def _parse_photopea_save_payload(body: bytes) -> tuple[Dict[str, Any], List[Dict[str, Any]]]:
+    if len(body) < 2000:
+        raise ValueError("Photopea payload is incomplete.")
+    header_text = body[:2000].decode("utf-8", errors="ignore")
+    header_end = header_text.rfind("}")
+    if header_end == -1:
+        raise ValueError("Photopea payload header is invalid.")
+    payload = json.loads(header_text[: header_end + 1])
+    versions = payload.get("versions") or []
+    files: List[Dict[str, Any]] = []
+    for version in versions:
+        fmt = str(version.get("format") or "").split(":", 1)[0].lower()
+        start = 2000 + int(version.get("start") or 0)
+        size = int(version.get("size") or 0)
+        if not fmt or size <= 0:
+            continue
+        files.append(
+            {
+                "format": fmt,
+                "bytes": body[start : start + size],
+            }
+        )
+    if not files:
+        raise ValueError("No exported files were received from Photopea.")
+    return payload, files
+
+
+def _cleanup_expired_editor_sessions() -> None:
+    conn = _db()
+    try:
+        conn.execute(
+            "DELETE FROM creative_edit_sessions WHERE expires_at <= ?",
+            (datetime.now(timezone.utc).isoformat(),),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _get_editor_session(token: str) -> Optional[Dict[str, Any]]:
+    _cleanup_expired_editor_sessions()
+    conn = _db()
+    try:
+        row = conn.execute(
+            """
+            SELECT token, username, source_path, display_name, created_at, expires_at,
+                   last_saved_at, last_saved_formats_json
+            FROM creative_edit_sessions
+            WHERE token = ?
+            """,
+            (token,),
+        ).fetchone()
+        return db.row_to_dict(row)
+    finally:
+        conn.close()
 
 
 def _run_process_core(
@@ -475,6 +554,193 @@ async def creative_canvas_preview(request: Request, psd_file_id: str = Form(...)
             "success": True,
             "preview_url": f"/api/download-preview/{preview_id}/canvas.png",
         }
+    )
+
+
+@creative_router.post("/creative/editor-session")
+async def create_creative_editor_session(request: Request, psd_file_id: str = Form(...)):
+    """Create a tokenized Photopea session for editing a PSD and saving it back to Servexa."""
+    user = auth.get_current_user(request)
+    auth.require_module(request, "creative_psd", auth.get_current_user)
+    psd_path = _resolve_psd_path(psd_file_id, user["username"] if user else None)
+    if not psd_path.is_file():
+        raise HTTPException(status_code=404, detail="PSD file not found")
+
+    token = secrets.token_urlsafe(24)
+    now = datetime.now(timezone.utc)
+    expires_at = now + timedelta(hours=4)
+    display_name = psd_path.name
+    conn = _db()
+    try:
+        conn.execute(
+            """
+            INSERT INTO creative_edit_sessions (
+                token, username, source_path, display_name, created_at, expires_at,
+                last_saved_at, last_saved_formats_json
+            ) VALUES (?,?,?,?,?,?,?,?)
+            """,
+            (
+                token,
+                (user or {}).get("username") or "anonymous",
+                str(psd_path.resolve()),
+                display_name,
+                now.isoformat(),
+                expires_at.isoformat(),
+                None,
+                "[]",
+            ),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    source_url = _absolute_url(
+        request,
+        f"/api/creative/editor-source/{token}/{display_name}",
+    )
+    save_url = _absolute_url(request, f"/api/creative/editor-save/{token}")
+    config = {
+        "files": [source_url],
+        "server": {
+            "version": 1,
+            "url": save_url,
+            "formats": ["psd:true", "png"],
+        },
+        "environment": {
+            "theme": 1,
+        },
+    }
+    editor_url = (
+        "https://www.photopea.com#"
+        + quote(json.dumps(config, separators=(",", ":")), safe="")
+    )
+    return JSONResponse(
+        {
+            "success": True,
+            "session_token": token,
+            "editor_url": editor_url,
+            "source_url": source_url,
+            "save_url": save_url,
+            "display_name": display_name,
+            "expires_at": expires_at.isoformat(),
+        }
+    )
+
+
+@creative_router.get("/creative/editor-session/{token}")
+async def get_creative_editor_session_status(token: str, request: Request):
+    """Return the latest save status for a PSD editor session."""
+    user = auth.get_current_user(request)
+    auth.require_module(request, "creative_psd", auth.get_current_user)
+    session = _get_editor_session(token)
+    if not session:
+        raise HTTPException(status_code=404, detail="Editor session not found")
+    if user and session["username"] != user["username"] and user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Access denied")
+    return JSONResponse(
+        {
+            "success": True,
+            "session": {
+                "token": session["token"],
+                "display_name": session["display_name"],
+                "created_at": session["created_at"],
+                "expires_at": session["expires_at"],
+                "last_saved_at": session["last_saved_at"],
+                "last_saved_formats": json.loads(
+                    session.get("last_saved_formats_json") or "[]"
+                ),
+            },
+        }
+    )
+
+
+@creative_router.options("/creative/editor-source/{token}/{filename:path}")
+async def creative_editor_source_options(token: str, filename: str):
+    return Response(status_code=204, headers=_public_asset_headers())
+
+
+@creative_router.get("/creative/editor-source/{token}/{filename:path}")
+async def creative_editor_source(token: str, filename: str):
+    """Serve a PSD file to Photopea through a short-lived editor token."""
+    session = _get_editor_session(token)
+    if not session:
+        raise HTTPException(status_code=404, detail="Editor session not found")
+    source_path = Path(session["source_path"])
+    if not source_path.is_file():
+        raise HTTPException(status_code=404, detail="PSD source is missing")
+    return FileResponse(
+        path=str(source_path),
+        media_type="application/octet-stream",
+        filename=source_path.name,
+        headers=_public_asset_headers(),
+    )
+
+
+@creative_router.options("/creative/editor-save/{token}")
+async def creative_editor_save_options(token: str):
+    return Response(status_code=204, headers=_photopea_cors_headers())
+
+
+@creative_router.post("/creative/editor-save/{token}")
+async def creative_editor_save(token: str, request: Request):
+    """Receive Photopea save payload and write the PSD back to the original source path."""
+    session = _get_editor_session(token)
+    if not session:
+        raise HTTPException(status_code=404, detail="Editor session not found")
+
+    source_path = Path(session["source_path"])
+    if not source_path.parent.exists():
+        source_path.parent.mkdir(parents=True, exist_ok=True)
+
+    try:
+        payload, exported_files = _parse_photopea_save_payload(await request.body())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    saved_formats: List[str] = []
+    preview_png = None
+    for exported in exported_files:
+        fmt = exported["format"]
+        file_bytes = exported["bytes"]
+        if fmt == "psd":
+            source_path.write_bytes(file_bytes)
+            saved_formats.append("psd")
+        elif fmt == "png":
+            preview_png = source_path.with_suffix(".photopea-preview.png")
+            preview_png.write_bytes(file_bytes)
+            saved_formats.append("png")
+        else:
+            extra_path = source_path.with_suffix(f".photopea.{fmt}")
+            extra_path.write_bytes(file_bytes)
+            saved_formats.append(fmt)
+
+    now = db.utc_now_iso()
+    conn = _db()
+    try:
+        conn.execute(
+            """
+            UPDATE creative_edit_sessions
+            SET last_saved_at = ?, last_saved_formats_json = ?
+            WHERE token = ?
+            """,
+            (now, json.dumps(saved_formats), token),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    return JSONResponse(
+        {
+            "message": f"Saved {session['display_name']} back to Servexa.",
+            "newSource": _absolute_url(
+                request,
+                f"/api/creative/editor-source/{token}/{source_path.name}",
+            ),
+            "saved_formats": saved_formats,
+            "source": payload.get("source"),
+            "preview_file": preview_png.name if preview_png else None,
+        },
+        headers=_photopea_cors_headers(),
     )
 
 

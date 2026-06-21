@@ -50,6 +50,7 @@
             </div>
             <div class="ux-inline-actions">
                 <button id="read-layers-btn" class="btn" type="button" onclick="readCreativeLayers()">Read layers</button>
+                <button id="open-psd-editor-btn" class="btn" type="button" onclick="openCreativePsdEditor()">Open PSD editor</button>
                 <button id="save-as-template-btn" class="btn btn-primary" type="button" onclick="saveCurrentPsdAsTemplate()" style="display:none;">Save as template</button>
             </div>
             <span id="psd-layers-info" class="status-box" aria-live="polite" style="display:none;"></span>
@@ -228,6 +229,26 @@
         </div>
     </div>
     <div id="creative-jobs-list" class="ux-table-wrap"></div>
+</div>
+
+<div id="creative-psd-editor-modal" class="modal" style="display:none; position:fixed; inset:0; z-index:2600; background:rgba(15,23,42,0.58); backdrop-filter:blur(18px); padding:24px;">
+    <div class="card" style="height:100%; display:flex; flex-direction:column; gap:16px; margin:0; max-width:none;">
+        <div class="ux-section-title" style="margin-bottom:0;">
+            <div>
+                <h2>PSD editor</h2>
+                <p>Open the layered PSD in Photopea, edit it, then use File > Save or Ctrl+S to write the PSD back to Servexa.</p>
+            </div>
+            <div class="ux-inline-actions">
+                <span id="creative-psd-editor-status" class="status-box info">No save detected yet.</span>
+                <button class="btn" type="button" onclick="refreshCreativePsdAfterEditorSave()">Refresh layers</button>
+                <button class="btn" type="button" onclick="closeCreativePsdEditor()">Close</button>
+            </div>
+        </div>
+        <div class="ux-help" style="margin:0;">
+            <p>Recommended flow: edit named text or smart-object layers in the editor, save back to Servexa, then refresh layers here to continue the mapping and preview workflow.</p>
+        </div>
+        <iframe id="creative-psd-editor-frame" title="Photopea PSD editor" style="flex:1; width:100%; border:none; border-radius:18px; background:#fff;"></iframe>
+    </div>
 </div>
 {% endblock %}
 

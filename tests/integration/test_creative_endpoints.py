@@ -1,8 +1,11 @@
 """Integration tests for Creative (Photoshop/PSD) module endpoints."""
 
+import json
 import pytest
-from fastapi.testclient import TestClient
 from pathlib import Path
+from urllib.parse import urlparse
+
+from fastapi.testclient import TestClient
 from PIL import ImageFont
 
 
@@ -62,3 +65,61 @@ class TestCreativeEndpoints:
             files={"file": ("broken.ttf", b"not a font", "font/ttf")},
         )
         assert response.status_code == 400
+
+    def test_photopea_editor_session_roundtrip(
+        self, authenticated_client: TestClient, monkeypatch, tmp_path
+    ):
+        from automation_hub.routers import creative as creative_module
+
+        monkeypatch.setattr(creative_module, "UPLOAD_DIR", tmp_path)
+        source_file = tmp_path / "template_demo.psd"
+        source_file.write_bytes(b"original-psd")
+
+        session_response = authenticated_client.post(
+            "/api/creative/editor-session",
+            data={"psd_file_id": source_file.name},
+        )
+        assert session_response.status_code == 200
+        session_data = session_response.json()
+        assert session_data["success"] is True
+        assert "photopea.com#" in session_data["editor_url"]
+
+        source_path = urlparse(session_data["source_url"]).path
+        source_response = authenticated_client.get(source_path)
+        assert source_response.status_code == 200
+        assert source_response.content == b"original-psd"
+
+        saved_psd = b"updated-psd"
+        saved_png = b"preview-png"
+        header = json.dumps(
+            {
+                "source": session_data["source_url"],
+                "versions": [
+                    {"format": "psd:true", "start": 0, "size": len(saved_psd)},
+                    {
+                        "format": "png",
+                        "start": len(saved_psd),
+                        "size": len(saved_png),
+                    },
+                ],
+            }
+        ).encode("utf-8")
+        body = header.ljust(2000, b" ") + saved_psd + saved_png
+
+        save_path = urlparse(session_data["save_url"]).path
+        save_response = authenticated_client.post(
+            save_path,
+            content=body,
+            headers={"Origin": "https://www.photopea.com"},
+        )
+        assert save_response.status_code == 200
+        assert source_file.read_bytes() == saved_psd
+        assert source_file.with_suffix(".photopea-preview.png").read_bytes() == saved_png
+
+        status_response = authenticated_client.get(
+            f"/api/creative/editor-session/{session_data['session_token']}"
+        )
+        assert status_response.status_code == 200
+        status_data = status_response.json()["session"]
+        assert status_data["last_saved_at"]
+        assert "psd" in status_data["last_saved_formats"]
