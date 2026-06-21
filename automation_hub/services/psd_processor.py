@@ -215,6 +215,36 @@ class PSDProcessor:
         total_height = sum(heights) + spacing * max(0, len(lines) - 1)
         return (max(widths) if widths else 1, total_height, heights)
 
+    def _estimate_font_size_from_bbox(
+        self,
+        bbox: tuple[int, int, int, int] | None,
+        font_path: str | None = None,
+        sample_text: str = "Ag",
+    ) -> int:
+        """Estimate a readable font size from the source layer bbox when PSD metadata is missing."""
+        if not bbox:
+            return 18
+
+        left, top, right, bottom = [int(v) for v in bbox]
+        target_height = max(8, bottom - top)
+        scratch = Image.new("RGBA", (256, 256), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(scratch)
+
+        best_size = 18
+        best_delta = None
+        for size in range(8, 160):
+            font = self._load_font(font_size=size, font_path=font_path)
+            box = draw.textbbox((0, 0), sample_text, font=font)
+            measured_height = max(1, box[3] - box[1])
+            delta = abs(measured_height - target_height)
+            if best_delta is None or delta < best_delta:
+                best_delta = delta
+                best_size = size
+            if measured_height >= target_height:
+                break
+
+        return max(8, best_size)
+
     def _fit_text_layout(
         self,
         text: str,
@@ -695,9 +725,11 @@ class PSDProcessor:
                             )
                         continue
 
-                    font_size = 12
-                    text_color = (0, 0, 0)
                     layer_font_path = font_path
+                    font_size = self._estimate_font_size_from_bbox(
+                        bbox, font_path=layer_font_path
+                    )
+                    text_color = (0, 0, 0)
                     override_font = resolve_font(str(override.get("font_id") or ""))
                     if override_font:
                         layer_font_path = str(override_font)
@@ -720,6 +752,11 @@ class PSDProcessor:
                                         )
                         except Exception:
                             pass
+
+                    if not font_size or int(font_size) <= 0:
+                        font_size = self._estimate_font_size_from_bbox(
+                            bbox, font_path=layer_font_path
+                        )
 
                     if bbox:
                         img = self.render_text_in_bbox(
