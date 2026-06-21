@@ -222,6 +222,7 @@ class PSDProcessor:
         max_height: int,
         font_path: str | None,
         preferred_size: int,
+        preserve_size: bool = True,
     ):
         """Find a font size and wrapped lines that fit inside the target bounds."""
         scratch = Image.new(
@@ -229,6 +230,16 @@ class PSDProcessor:
         )
         draw = ImageDraw.Draw(scratch)
         start_size = max(8, int(preferred_size or 12))
+
+        if preserve_size:
+            font = self._load_font(font_size=start_size, font_path=font_path)
+            lines = self._wrap_text_to_width(draw, text, font, max_width)
+            spacing = max(1, int(start_size * 0.18))
+            text_width, text_height, line_heights = self._measure_text_block(
+                draw, lines, font, spacing
+            )
+            return font, lines, spacing, line_heights, text_width, text_height
+
         start_size = min(start_size, max(8, min(max_height, max_width)))
 
         best = None
@@ -265,6 +276,7 @@ class PSDProcessor:
         align: str = "left",
         vertical_align: str = "top",
         clear_existing: bool = True,
+        preserve_font_size: bool = True,
     ) -> Image.Image:
         """Render text directly into a bounding box without flattening it into a thin raster strip."""
         img = base_image.copy()
@@ -298,6 +310,7 @@ class PSDProcessor:
                 content_height,
                 font_path,
                 preferred_size,
+                preserve_size=preserve_font_size,
             )
         )
 
