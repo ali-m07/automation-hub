@@ -83,14 +83,15 @@ class PSDProcessor:
         return output_path
 
     def find_layer_by_name(self, psd: PSDImage, layer_name: str):
-        """Find a layer by name recursively."""
+        """Find a layer by exact full path or by leaf name recursively."""
 
-        def search_layers(layer_group, target_name):
+        def search_layers(layer_group, target_name, path: str = ""):
             for layer in layer_group:
-                if layer.name == target_name:
+                layer_path = f"{path}/{layer.name}" if path else layer.name
+                if layer_path == target_name or layer.name == target_name:
                     return layer
                 if hasattr(layer, "layers"):
-                    found = search_layers(layer.layers, target_name)
+                    found = search_layers(layer.layers, target_name, layer_path)
                     if found:
                         return found
             return None

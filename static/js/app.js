@@ -1853,6 +1853,16 @@ function showMappingSection() {
     renderCreativeLayerPicker();
 }
 
+function getCreativeLayerKey(layer) {
+    if (!layer) return '';
+    return layer.full_path || layer.name || '';
+}
+
+function getCreativeLayerLabel(layer, index = 0) {
+    if (!layer) return `Layer ${index + 1}`;
+    return layer.full_path || layer.name || `Layer ${index + 1}`;
+}
+
 function renderCreativeLayerPicker() {
     const pickerWrap = document.getElementById('creative-layer-picker');
     const picker = document.getElementById('creative-layer-picker-select');
@@ -1878,9 +1888,10 @@ function renderCreativeLayerPicker() {
 
     pickerWrap.style.display = 'block';
     picker.innerHTML = layers.map((layer, index) => {
-        const label = layer.name || `Layer ${index + 1}`;
+        const key = getCreativeLayerKey(layer);
+        const label = getCreativeLayerLabel(layer, index);
         const suffix = layer.is_text_layer ? ' (Text)' : '';
-        return `<option value="${escapeHtml(label)}">${escapeHtml(label + suffix)}</option>`;
+        return `<option value="${escapeHtml(key)}">${escapeHtml(label + suffix)}</option>`;
     }).join('');
     hint.textContent = state.dataFileId
         ? 'Select a layer name below or from the detected layers list, then map it to a column.'
@@ -1900,9 +1911,10 @@ function renderLayersInfo() {
     const datalist = document.getElementById('layer-names');
     if (datalist) {
         datalist.innerHTML = '';
-        (state.layers || []).forEach(layer => {
+        (state.layers || []).forEach((layer, index) => {
             const option = document.createElement('option');
-            option.value = layer.name;
+            option.value = getCreativeLayerKey(layer);
+            option.label = getCreativeLayerLabel(layer, index);
             datalist.appendChild(option);
         });
     }
@@ -1959,9 +1971,9 @@ async function loadPsdCanvasPreview() {
 }
 
 function getLayerOverride(layer) {
-    const name = layer.name || '';
-    if (!state.layerOverrides[name]) {
-        state.layerOverrides[name] = {
+    const key = getCreativeLayerKey(layer);
+    if (!state.layerOverrides[key]) {
+        state.layerOverrides[key] = {
             enabled: true,
             type: layer.is_text_layer ? 'text' : 'image',
             source: 'column',
@@ -1972,11 +1984,11 @@ function getLayerOverride(layer) {
             image_file_id: ''
         };
     }
-    return state.layerOverrides[name];
+    return state.layerOverrides[key];
 }
 
 function updateLayerOverride(layerName, field, value, rerender = true) {
-    const layer = (state.layers || []).find(item => item.name === layerName);
+    const layer = (state.layers || []).find(item => getCreativeLayerKey(item) === layerName);
     if (!layer) return;
     const override = getLayerOverride(layer);
     override[field] = value;
@@ -2014,7 +2026,9 @@ function renderPsdLayerEditor() {
     const layers = state.layers || [];
     card.style.display = layers.length ? 'block' : 'none';
     container.innerHTML = '';
-    layers.forEach(layer => {
+    layers.forEach((layer, index) => {
+        const layerKey = getCreativeLayerKey(layer);
+        const layerLabel = getCreativeLayerLabel(layer, index);
         const override = getLayerOverride(layer);
         const row = document.createElement('div');
         row.style.cssText = 'padding:14px; border:1px solid #e5e7eb; border-radius:10px; background:#fff; display:grid; gap:10px;';
@@ -2029,23 +2043,25 @@ function renderPsdLayerEditor() {
         const bbox = Array.isArray(layer.bbox) ? layer.bbox.join(', ') : 'No bounds';
         row.innerHTML = `
             <div style="display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap;">
-                <div><strong>${escapeHtml(layer.name || 'Unnamed layer')}</strong>
-                    <span style="color:#6b7280; margin-left:8px;">${layer.is_text_layer ? 'Text' : 'Image'} · ${escapeHtml(bbox)}</span>
+                <div>
+                    <strong>${escapeHtml(layerLabel || 'Unnamed layer')}</strong>
+                    <span style="color:#6b7280; margin-left:8px;">${layer.is_text_layer ? 'Text' : 'Image'} | ${escapeHtml(bbox)}</span>
+                    ${layer.full_path && layer.full_path !== layer.name ? `<div style="color:#94a3b8; font-size:12px; margin-top:4px;">${escapeHtml(layer.full_path)}</div>` : ''}
                 </div>
                 <label><input type="checkbox" ${override.enabled ? 'checked' : ''}
-                    onchange="updateLayerOverride(${JSON.stringify(layer.name)}, 'enabled', this.checked)"> Apply override</label>
+                    onchange="updateLayerOverride(${JSON.stringify(layerKey)}, 'enabled', this.checked)"> Apply override</label>
             </div>
             <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px;">
-                <select class="form-control" onchange="updateLayerOverride(${JSON.stringify(layer.name)}, 'source', this.value)">
+                <select class="form-control" onchange="updateLayerOverride(${JSON.stringify(layerKey)}, 'source', this.value)">
                     <option value="column"${override.source === 'column' ? ' selected' : ''}>Data column</option>
                     ${layer.is_text_layer ? `<option value="constant"${override.source === 'constant' ? ' selected' : ''}>Fixed text</option>` : ''}
                     <option value="image"${override.source === 'image' ? ' selected' : ''}>Uploaded image</option>
                 </select>
-                ${override.source === 'column' ? `<select class="form-control" onchange="updateLayerOverride(${JSON.stringify(layer.name)}, 'column', this.value)">${columnOptions}</select>` : ''}
-                ${override.source === 'constant' ? `<input class="form-control" value="${escapeHtml(override.value || layer.text || '')}" placeholder="Replacement text" oninput="updateLayerOverride(${JSON.stringify(layer.name)}, 'value', this.value, false)">` : ''}
-                ${override.source === 'image' ? `<input class="form-control" type="file" accept=".png,.jpg,.jpeg,.webp" onchange="uploadLayerReplacement(${JSON.stringify(layer.name)}, this)">` : ''}
-                ${layer.is_text_layer ? `<select class="form-control" onchange="updateLayerOverride(${JSON.stringify(layer.name)}, 'font_id', this.value)">${fontOptions}</select>
-                    <input class="form-control" type="number" min="8" max="300" value="${override.font_size || ''}" placeholder="Auto font size" onchange="updateLayerOverride(${JSON.stringify(layer.name)}, 'font_size', parseInt(this.value || 0))">` : ''}
+                ${override.source === 'column' ? `<select class="form-control" onchange="updateLayerOverride(${JSON.stringify(layerKey)}, 'column', this.value)">${columnOptions}</select>` : ''}
+                ${override.source === 'constant' ? `<input class="form-control" value="${escapeHtml(override.value || layer.text || '')}" placeholder="Replacement text" oninput="updateLayerOverride(${JSON.stringify(layerKey)}, 'value', this.value, false)">` : ''}
+                ${override.source === 'image' ? `<input class="form-control" type="file" accept=".png,.jpg,.jpeg,.webp" onchange="uploadLayerReplacement(${JSON.stringify(layerKey)}, this)">` : ''}
+                ${layer.is_text_layer ? `<select class="form-control" onchange="updateLayerOverride(${JSON.stringify(layerKey)}, 'font_id', this.value)">${fontOptions}</select>
+                    <input class="form-control" type="number" min="8" max="300" value="${override.font_size || ''}" placeholder="Auto font size" onchange="updateLayerOverride(${JSON.stringify(layerKey)}, 'font_size', parseInt(this.value || 0))">` : ''}
             </div>
         `;
         container.appendChild(row);
@@ -2068,7 +2084,7 @@ function getFilteredCreativeLayers() {
     const query = search ? search.value.trim().toLowerCase() : '';
     return (state.layers || []).filter(layer => {
         if (!query) return true;
-        return (layer.name || '').toLowerCase().includes(query);
+        return getCreativeLayerLabel(layer).toLowerCase().includes(query);
     });
 }
 
@@ -2091,6 +2107,8 @@ function renderCreativeLayerList() {
     }
 
     filteredLayers.forEach((layer, index) => {
+        const layerKey = getCreativeLayerKey(layer);
+        const layerLabel = getCreativeLayerLabel(layer, index);
         const row = document.createElement('div');
         row.style.cssText = 'display:flex; gap:10px; align-items:center; justify-content:space-between; padding:10px 12px; border:1px solid #e5e7eb; border-radius:10px; background:#fff;';
 
@@ -2104,9 +2122,9 @@ function renderCreativeLayerList() {
         nameBtn.type = 'button';
         nameBtn.className = 'btn';
         nameBtn.style.cssText = 'padding:0; border:none; background:none; color:#111827; font-weight:700; cursor:pointer; text-align:left;';
-        nameBtn.textContent = layer.name || `Layer ${index + 1}`;
+        nameBtn.textContent = layerLabel;
         nameBtn.title = 'Use this layer in mapping';
-        nameBtn.onclick = () => applyLayerNameToMapping(layer.name || '');
+        nameBtn.onclick = () => applyLayerNameToMapping(layerKey);
 
         const badge = document.createElement('span');
         badge.style.cssText = `display:inline-flex; align-items:center; padding:3px 8px; border-radius:999px; font-size:0.75rem; font-weight:700; ${layer.is_text_layer ? 'background:#dcfce7; color:#166534;' : 'background:#e5e7eb; color:#374151;'}`;
@@ -2129,13 +2147,13 @@ function renderCreativeLayerList() {
         copyBtn.type = 'button';
         copyBtn.className = 'btn';
         copyBtn.textContent = 'Copy';
-        copyBtn.onclick = () => copyCreativeLayerName(layer.name || '');
+        copyBtn.onclick = () => copyCreativeLayerName(layerKey);
 
         const useBtn = document.createElement('button');
         useBtn.type = 'button';
         useBtn.className = 'btn btn-primary';
         useBtn.textContent = 'Use in mapping';
-        useBtn.onclick = () => applyLayerNameToMapping(layer.name || '');
+        useBtn.onclick = () => applyLayerNameToMapping(layerKey);
 
         actions.appendChild(copyBtn);
         actions.appendChild(useBtn);
@@ -4585,4 +4603,6 @@ async function disable2FA() {
         msgEl.style.display = 'block';
     }
 }
+
+
 
