@@ -201,6 +201,7 @@ class PSDProcessor:
             "font_name": None,
             "font_size": None,
             "color": None,
+            "text_box": None,
         }
         try:
             engine = getattr(layer, "engine_dict", None) or {}
@@ -241,6 +242,39 @@ class PSDProcessor:
                     and isinstance(font_set[font_index], dict)
                 ):
                     result["font_name"] = font_set[font_index].get("Name")
+
+                rendered = engine.get("Rendered", {}) if isinstance(engine, dict) else {}
+                children = (
+                    rendered.get("Shapes", {}).get("Children", [])
+                    if isinstance(rendered, dict)
+                    else []
+                )
+                if children:
+                    photoshop_box = (
+                        children[0]
+                        .get("Cookie", {})
+                        .get("Photoshop", {})
+                        .get("BoxBounds")
+                    )
+                    if (
+                        isinstance(photoshop_box, (list, tuple))
+                        and len(photoshop_box) == 4
+                        and len(transform) >= 6
+                    ):
+                        a, b, c, d, tx, ty = [float(value) for value in transform[:6]]
+                        x0, y0, x1, y1 = [float(value) for value in photoshop_box]
+                        points = [
+                            (a * x + c * y + tx, b * x + d * y + ty)
+                            for x, y in ((x0, y0), (x1, y0), (x0, y1), (x1, y1))
+                        ]
+                        xs = [point[0] for point in points]
+                        ys = [point[1] for point in points]
+                        result["text_box"] = (
+                            int(min(xs)),
+                            int(min(ys)),
+                            int(max(xs)),
+                            int(max(ys)),
+                        )
         except Exception:
             return result
         return result
@@ -823,6 +857,7 @@ class PSDProcessor:
                         continue
 
                     psd_style = self._extract_psd_text_style(layer)
+                    text_bbox = psd_style.get("text_box") or bbox
                     layer_font_path = font_path
                     if not layer_font_path:
                         matched_psd_font = self._resolve_font_by_psd_name(
@@ -831,7 +866,7 @@ class PSDProcessor:
                         if matched_psd_font:
                             layer_font_path = matched_psd_font
                     font_size = psd_style.get("font_size") or self._estimate_font_size_from_bbox(
-                        bbox, font_path=layer_font_path
+                        text_bbox, font_path=layer_font_path
                     )
                     text_color = (0, 0, 0)
                     override_font = resolve_font(str(override.get("font_id") or ""))
@@ -862,14 +897,14 @@ class PSDProcessor:
 
                     if not font_size or int(font_size) <= 0:
                         font_size = self._estimate_font_size_from_bbox(
-                            bbox, font_path=layer_font_path
+                            text_bbox, font_path=layer_font_path
                         )
 
-                    if bbox:
+                    if text_bbox:
                         img = self.render_text_in_bbox(
                             img,
                             cell_value,
-                            bbox,
+                            text_bbox,
                             font_path=layer_font_path,
                             font_size=int(override.get("font_size") or font_size),
                             color=text_color,
