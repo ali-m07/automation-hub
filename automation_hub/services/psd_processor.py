@@ -152,6 +152,24 @@ class PSDProcessor:
     def _normalize_font_token(self, value: str | None) -> str:
         return re.sub(r"[^a-z0-9]+", "", str(value or "").casefold())
 
+    def _to_plain_engine_value(self, value: Any) -> Any:
+        """Convert psd_tools engine-data containers into plain Python structures."""
+        if isinstance(value, dict) or hasattr(value, "items"):
+            plain: dict[str, Any] = {}
+            try:
+                iterator = value.items()
+            except Exception:
+                iterator = []
+            for key, item in iterator:
+                plain[str(key)] = self._to_plain_engine_value(item)
+            return plain
+        if isinstance(value, (list, tuple)) or hasattr(value, "__iter__") and not isinstance(value, (str, bytes)):
+            try:
+                return [self._to_plain_engine_value(item) for item in value]
+            except Exception:
+                return value
+        return value
+
     def _resolve_font_by_psd_name(self, psd_font_name: str | None) -> str | None:
         """Try to match a PSD font family/postscript name to an uploaded font file."""
         target = self._normalize_font_token(psd_font_name)
@@ -206,8 +224,8 @@ class PSDProcessor:
             "tracking": None,
         }
         try:
-            engine = getattr(layer, "engine_dict", None) or {}
-            resources = getattr(layer, "resource_dict", None) or {}
+            engine = self._to_plain_engine_value(getattr(layer, "engine_dict", None) or {})
+            resources = self._to_plain_engine_value(getattr(layer, "resource_dict", None) or {})
             style_runs = (
                 engine.get("StyleRun", {}).get("RunArray", [])
                 if isinstance(engine, dict)
