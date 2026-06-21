@@ -202,6 +202,8 @@ class PSDProcessor:
             "font_size": None,
             "color": None,
             "text_box": None,
+            "leading": None,
+            "tracking": None,
         }
         try:
             engine = getattr(layer, "engine_dict", None) or {}
@@ -220,6 +222,8 @@ class PSDProcessor:
                 base_font_size = style_data.get("FontSize")
                 font_index = style_data.get("Font")
                 fill_color = style_data.get("FillColor", {}).get("Values")
+                leading = style_data.get("Leading")
+                tracking = style_data.get("Tracking")
 
                 transform = getattr(layer, "transform", None) or ()
                 scale_x = abs(float(transform[0])) if len(transform) > 0 else 1.0
@@ -228,6 +232,10 @@ class PSDProcessor:
 
                 if base_font_size:
                     result["font_size"] = float(base_font_size) * effective_scale
+                if leading:
+                    result["leading"] = float(leading) * effective_scale
+                if tracking is not None:
+                    result["tracking"] = tracking
 
                 if isinstance(fill_color, (list, tuple)) and len(fill_color) >= 4:
                     result["color"] = tuple(
@@ -437,7 +445,8 @@ class PSDProcessor:
         align: str = "left",
         vertical_align: str = "top",
         clear_existing: bool = True,
-        preserve_font_size: bool = True,
+        preserve_font_size: bool = False,
+        line_spacing: int | None = None,
     ) -> Image.Image:
         """Render text directly into a bounding box without flattening it into a thin raster strip."""
         img = base_image.copy()
@@ -448,13 +457,8 @@ class PSDProcessor:
         width = max(1, right - left)
         height = max(1, bottom - top)
 
-        min_height = max(int(font_size * 1.8), 28)
-        if height < min_height:
-            height = min_height
-            bottom = top + height
-
-        padding_x = 6
-        padding_y = 4
+        padding_x = 0
+        padding_y = 0
         content_width = max(1, width - (padding_x * 2))
         content_height = max(1, height - (padding_y * 2))
 
@@ -474,6 +478,13 @@ class PSDProcessor:
                 preserve_size=preserve_font_size,
             )
         )
+        if line_spacing is not None:
+            spacing = max(0, int(line_spacing))
+            scratch = Image.new("RGBA", (max(32, content_width), max(32, content_height)), (0, 0, 0, 0))
+            scratch_draw = ImageDraw.Draw(scratch)
+            text_width, text_height, line_heights = self._measure_text_block(
+                scratch_draw, lines, font, spacing
+            )
 
         if clear_existing:
             img = self._clear_text_bbox(img, (left, top, right, bottom))
@@ -900,6 +911,13 @@ class PSDProcessor:
                             text_bbox, font_path=layer_font_path
                         )
 
+                    line_spacing = None
+                    if psd_style.get("leading") and font_size:
+                        line_spacing = max(
+                            0,
+                            int(round(float(psd_style["leading"]) - float(font_size))),
+                        )
+
                     if text_bbox:
                         img = self.render_text_in_bbox(
                             img,
@@ -910,6 +928,8 @@ class PSDProcessor:
                             color=text_color,
                             align="left",
                             vertical_align="top",
+                            preserve_font_size=False,
+                            line_spacing=line_spacing,
                         )
                     else:
                         img = self.render_text_in_bbox(
@@ -926,6 +946,8 @@ class PSDProcessor:
                             color=text_color,
                             align="left",
                             vertical_align="top",
+                            preserve_font_size=False,
+                            line_spacing=line_spacing,
                         )
                 except Exception as e:
                     print(f"Error processing layer '{layer_name}': {str(e)}")
