@@ -264,6 +264,7 @@ class PSDProcessor:
         color: tuple = (0, 0, 0),
         align: str = "left",
         vertical_align: str = "top",
+        clear_existing: bool = True,
     ) -> Image.Image:
         """Render text directly into a bounding box without flattening it into a thin raster strip."""
         img = base_image.copy()
@@ -300,6 +301,9 @@ class PSDProcessor:
             )
         )
 
+        if clear_existing:
+            img = self._clear_text_bbox(img, (left, top, right, bottom))
+
         overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
         draw = ImageDraw.Draw(overlay)
         if vertical_align == "middle":
@@ -320,6 +324,50 @@ class PSDProcessor:
             current_y += line_height + spacing
 
         img.alpha_composite(overlay)
+        return img
+
+    def _clear_text_bbox(
+        self,
+        base_image: Image.Image,
+        bbox: tuple[int, int, int, int],
+        bleed: int = 4,
+        sample_band: int = 8,
+    ) -> Image.Image:
+        """Clear an existing text region by filling it with the median nearby background color."""
+        img = base_image.copy()
+        if img.mode != "RGBA":
+            img = img.convert("RGBA")
+
+        left, top, right, bottom = [int(v) for v in bbox]
+        left = max(0, left - bleed)
+        top = max(0, top - bleed)
+        right = min(img.width, right + bleed)
+        bottom = min(img.height, bottom + bleed)
+
+        samples: list[np.ndarray] = []
+
+        def add_region(x0: int, y0: int, x1: int, y1: int) -> None:
+            if x1 <= x0 or y1 <= y0:
+                return
+            region = np.array(img.crop((x0, y0, x1, y1)).convert("RGBA"))
+            if region.size:
+                samples.append(region.reshape(-1, 4))
+
+        add_region(left, max(0, top - sample_band), right, top)
+        add_region(left, bottom, right, min(img.height, bottom + sample_band))
+        add_region(max(0, left - sample_band), top, left, bottom)
+        add_region(right, top, min(img.width, right + sample_band), bottom)
+
+        if samples:
+            pixels = np.concatenate(samples, axis=0)
+            fill = tuple(int(v) for v in np.median(pixels, axis=0))
+        else:
+            fill = (255, 255, 255, 255)
+
+        clear_overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        clear_draw = ImageDraw.Draw(clear_overlay)
+        clear_draw.rectangle((left, top, right, bottom), fill=fill)
+        img.alpha_composite(clear_overlay)
         return img
 
     def _normalize_cell_value(self, value: Any) -> str:
