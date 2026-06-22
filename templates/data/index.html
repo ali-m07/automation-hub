@@ -13,7 +13,7 @@
     <div>
         <div class="hero-eyebrow">Data workspace</div>
         <h1>Data & Connectors</h1>
-        <p>Work in a familiar spreadsheet flow, keep table access clear, and move clean data into the rest of the platform.</p>
+        <p>Create tables, edit data, and connect approved sources.</p>
     </div>
     <div class="hero-actions">
         <button class="btn btn-primary" type="button" onclick="createNewDataTable()">New data table</button>
@@ -26,61 +26,17 @@
     <a class="project-switcher-link" href="/process-designer">Process Designer</a>
 </nav>
 
-<section class="ux-grid" style="margin-bottom: 18px;">
-    <div class="ux-card">
-        <div class="ux-card-title"><span class="ux-icon">1</span> Create a table</div>
-        <p>Start a blank sheet for operational lists, trackers, and lightweight structured data.</p>
-    </div>
-    <div class="ux-card">
-        <div class="ux-card-title"><span class="ux-icon">2</span> Edit like a sheet</div>
-        <p>Paste from Excel, update rows, rename columns, and work in a spreadsheet-style grid.</p>
-    </div>
-    <div class="ux-card">
-        <div class="ux-card-title"><span class="ux-icon">3</span> Move data safely</div>
-        <p>Export files, connect approved databases, or send shared tables for admin review.</p>
-    </div>
-</section>
-
-<section class="ux-steps" aria-label="Data workflow">
-    <div class="ux-step"><strong>1. Create or open</strong><span>Start a blank table or continue a recent one.</span></div>
-    <div class="ux-step"><strong>2. Edit and validate</strong><span>Use grid editing, paste from Excel, and add rows or columns.</span></div>
-    <div class="ux-step"><strong>3. Export or review</strong><span>Download Excel/JSON or submit the table for admin review.</span></div>
-</section>
-
 <div class="card data-workspace-shell">
     <div id="tables-hub">
         <div class="ux-section-title">
             <div>
                 <h2>Your data tables</h2>
-                <p>Open a recent table, start a blank sheet, or manage shared datasets with clear permissions.</p>
             </div>
-        </div>
-
-        <div class="ux-help" style="margin-bottom:16px;">
-            <p>If you are here to build something new, start with <strong>Blank table</strong>. If you need synced or governed data, use <strong>External Database</strong> or <strong>Process Designer</strong> from the workspace navigation above.</p>
         </div>
 
         <div class="ux-toolbar data-hub-toolbar" style="margin-bottom:16px;">
             <input type="text" id="tables-search" class="form-control" placeholder="Search table name..." oninput="filterTablesList()" aria-label="Search tables">
             <button class="btn btn-primary" type="button" onclick="createNewDataTable()">Blank table</button>
-        </div>
-
-        <div class="ux-grid">
-            <div class="ux-card">
-                <div class="ux-card-title"><span class="ux-icon">+</span> Start from scratch</div>
-                <p>Best for quick lists, manual data entry, and small operational trackers.</p>
-                <div id="tables-start-row" style="margin-top:14px;">
-                    <button class="btn btn-primary" type="button" onclick="createNewDataTable()">Create table</button>
-                </div>
-            </div>
-            <div class="ux-card">
-                <div class="ux-card-title"><span class="ux-icon">XL</span> Import friendly</div>
-                <p>Paste rows from Excel, then export the same data as Excel or JSON when you are done.</p>
-            </div>
-            <div class="ux-card">
-                <div class="ux-card-title"><span class="ux-icon">OK</span> Review ready</div>
-                <p>Submit important tables for review so admins can approve shared datasets.</p>
-            </div>
         </div>
 
         <div style="margin-top:22px;">

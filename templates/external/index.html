@@ -9,7 +9,7 @@
     <div>
         <div class="hero-eyebrow">Connected data</div>
         <h1>External database</h1>
-        <p>Use approved database connectors to browse reference data or sync Excel sheets into SQL Server.</p>
+        <p>Browse connector data or sync Excel into approved targets.</p>
     </div>
 </section>
 
@@ -19,26 +19,10 @@
     <a class="project-switcher-link" href="/process-designer">Process Designer</a>
 </nav>
 
-<section class="ux-grid" style="margin-bottom:18px;">
-    <div class="ux-card">
-        <div class="ux-card-title"><span class="ux-icon">DB</span> Browse safely</div>
-        <p>Preview connector rows without changing production data. Search before exporting CSV.</p>
-    </div>
-    <div class="ux-card">
-        <div class="ux-card-title"><span class="ux-icon">XL</span> Sync from Excel</div>
-        <p>Upload a controlled sheet, choose the worksheet, and push it through the configured connector.</p>
-    </div>
-    <div class="ux-card">
-        <div class="ux-card-title"><span class="ux-icon">OK</span> Admin governed</div>
-        <p>Connectors are available only when admins grant module access and configure the destination.</p>
-    </div>
-</section>
-
 <div class="card">
     <div class="ux-section-title">
         <div>
             <h2>Connector workspace</h2>
-            <p>Select a connector, then choose whether you want to browse data or sync a sheet.</p>
         </div>
     </div>
 
@@ -59,7 +43,6 @@
             <div class="ux-section-title">
                 <div>
                     <h3>Browse connector data</h3>
-                    <p>Search live rows and export a CSV when you need a copy.</p>
                 </div>
             </div>
             <div class="ux-toolbar" style="margin-bottom:14px;">
@@ -74,7 +57,6 @@
             <div class="ux-section-title">
                 <div>
                     <h3>Sync Excel to connector</h3>
-                    <p>Upload the approved file, pick a sheet, then start the sync.</p>
                 </div>
             </div>
             <div class="ux-grid-2">
@@ -90,9 +72,6 @@
                     </div>
                     <button id="db-sync-run-btn" type="button" class="btn btn-success" onclick="runDbSync()" disabled>Start sync</button>
                     <span id="db-sync-status" class="status-box" aria-live="polite" style="margin-left:8px;"></span>
-                </div>
-                <div class="ux-help">
-                    <p><strong>Before syncing:</strong> confirm column names, remove empty header rows, and make sure the connector owner expects this update.</p>
                 </div>
             </div>
         </div>
