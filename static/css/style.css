@@ -224,10 +224,7 @@ body::after {
 }
 
 .sidebar-link-note {
-    color: var(--text-secondary);
-    font-size: 0.76rem;
-    font-weight: 500;
-    line-height: 1.35;
+    display: none;
 }
 
 .sidebar-link.active .sidebar-link-note {
@@ -235,10 +232,7 @@ body::after {
 }
 
 .sidebar-project-link {
-    align-items: flex-start;
-    min-height: 58px;
-    padding-top: 10px;
-    padding-bottom: 10px;
+    min-height: 40px;
 }
 
 .sidebar-context-back {
@@ -257,8 +251,8 @@ body::after {
 }
 
 .sidebar-context-card {
-    margin: 0 4px 12px;
-    padding: 12px 12px 13px;
+    margin: 0 4px 10px;
+    padding: 10px 12px;
     border: 1px solid var(--border-color);
     border-radius: 14px;
     background: color-mix(in srgb, var(--surface-muted) 84%, transparent);
@@ -273,10 +267,7 @@ body::after {
 }
 
 .sidebar-context-note {
-    margin-top: 5px;
-    color: var(--text-secondary);
-    font-size: 0.78rem;
-    line-height: 1.45;
+    display: none;
 }
 
 .sidebar-project-submenu {
@@ -2359,13 +2350,13 @@ td, [data-theme="dark"] td { background: color-mix(in srgb, var(--surface-raised
 
 .ux-steps {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 12px;
-    margin: 18px 0;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px;
+    margin: 0 0 18px;
 }
 
 .ux-step {
-    padding: 14px;
+    padding: 12px 14px;
     border: 1px solid var(--border-color);
     border-radius: 16px;
     background: color-mix(in srgb, var(--surface-raised) 80%, transparent);
@@ -2379,7 +2370,7 @@ td, [data-theme="dark"] td { background: color-mix(in srgb, var(--surface-raised
 
 .ux-step span {
     color: var(--text-secondary);
-    font-size: .9rem;
+    font-size: .84rem;
 }
 
 .ux-upload {
