@@ -751,13 +751,19 @@
 {% endblock %}
 
 {% block content %}
-    <div class="feedback-nomination-page">
-        <div class="page-header">
-            <div>
-                <h1 class="page-title">Nominate Evaluators</h1>
-                <p class="page-subtitle">Select people who will evaluate your performance</p>
-            </div>
-            <div class="page-actions">
+<div class="feedback-nomination-page">
+    <nav class="project-switcher" aria-label="Feedback workspace navigation">
+        <a class="project-switcher-link active" href="/feedback/nominate">Nominate Evaluators</a>
+        <a class="project-switcher-link" href="/feedback/my-evaluations">My Evaluations</a>
+        <a class="project-switcher-link" href="/feedback/nomination-approvals">Team Feedback</a>
+    </nav>
+
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Nominate Evaluators</h1>
+            <p class="page-subtitle">Select people who will evaluate your performance</p>
+        </div>
+        <div class="page-actions">
                 <a class="excel-action" href="/api/feedback/evaluator-nomination/template.xlsx">
                     <i class="fas fa-file-arrow-down"></i> Excel template
                 </a>

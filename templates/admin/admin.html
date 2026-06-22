@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Console | Automation Hub</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=20260615-pastel-glass">
-    <script src="/static/js/app.js?v=20260615-pastel-glass"></script>
+    <link rel="stylesheet" href="/static/css/style.css?v=20260622-project-nav">
+    <script src="/static/js/app.js?v=20260622-project-nav"></script>
     <style>
         /* Kanban board styles */
         .kanban-board {
@@ -512,8 +512,8 @@
             <div class="card" style="padding: 0;">
                 <div style="display: flex; height: calc(100vh - 200px); min-height: 600px;">
                     <!-- Left sidebar: User list (Jira-style) -->
-                    <div style="width: 320px; border-right: 1px solid #e5e7eb; overflow-y: auto; background: #fafafa;">
-                        <div style="padding: 16px; border-bottom: 1px solid #e5e7eb; background: #fff;">
+                    <div style="width: 320px; border-right: 1px solid var(--border-color); overflow-y: auto; background: var(--surface-muted);">
+                        <div style="padding: 16px; border-bottom: 1px solid var(--border-color); background: var(--surface-raised);">
                             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
                                 <h3 style="margin: 0; font-size: 1.1rem;">Users</h3>
                                 <button class="btn btn-primary" type="button" onclick="showCreateUserPanel()" style="padding: 6px 12px; font-size: 0.9rem;">+ New</button>
@@ -525,11 +525,11 @@
                     </div>
                     
                     <!-- Right panel: User details / Create form -->
-                    <div style="flex: 1; overflow-y: auto; background: #fff;">
+                    <div style="flex: 1; overflow-y: auto; background: var(--surface-raised);">
                         <div id="user-detail-panel" style="padding: 24px;">
-                            <div style="text-align: center; color: #9ca3af; padding: 60px 20px;">
-                                <div style="font-size: 3rem; margin-bottom: 12px;">👤</div>
-                                <div style="font-weight: 600; color: #6b7280;">Select a user from the list</div>
+                            <div style="text-align: center; color: var(--text-secondary); padding: 60px 20px;">
+                                <div style="font-size: 1.8rem; margin-bottom: 12px; font-weight: 700; color: var(--text-primary);">User</div>
+                                <div style="font-weight: 600; color: var(--text-primary);">Select a user from the list</div>
                                 <div style="font-size: 0.9rem; margin-top: 8px;">or create a new user</div>
                             </div>
                         </div>
@@ -887,7 +887,7 @@
 
         <div id="admin-audit" class="tab-content">
             <div class="card" style="padding: 0;">
-                <div style="padding: 24px; border-bottom: 1px solid #e5e7eb;">
+                <div style="padding: 24px; border-bottom: 1px solid var(--border-color);">
                     <h2 style="margin: 0;">Audit log</h2>
                     <p style="margin: 8px 0 0; color: #6b7280; font-size: 0.9rem;">Recent actions: login, logout, signup, user/ticket changes. Filter by user, action, date range.</p>
                 </div>
@@ -1058,7 +1058,7 @@
             let html = '';
             if (pending.length > 0) {
                 html += `<div style="position: sticky; top: 0; z-index: 2; padding: 10px 12px; font-size: 0.75rem; font-weight: 800; color: #dc2626; text-transform: uppercase; letter-spacing: 0.5px; background:#fafafa; border-bottom:1px solid #e5e7eb;">Requests (${pending.length})</div>`;
-                html += `<div style="padding: 8px 12px; display: flex; gap: 8px; align-items: center; background: #fff; border-bottom: 1px solid #e5e7eb;">
+                html += `<div style="padding: 8px 12px; display: flex; gap: 8px; align-items: center; background: var(--surface-raised); border-bottom: 1px solid var(--border-color);">
                     <button type="button" class="btn btn-success" style="padding: 4px 10px; font-size: 0.85rem;" onclick="bulkApproveSelected(event)">Approve selected</button>
                     <button type="button" class="btn" style="padding: 4px 10px; font-size: 0.85rem; background: #fee2e2; color: #dc2626;" onclick="bulkRejectSelected(event)">Reject selected</button>
                 </div>`;
@@ -1131,7 +1131,7 @@
             const isPending = user.status === 'pending';
             
             let html = `
-                <div style="border-bottom: 1px solid #e5e7eb; padding-bottom: 20px; margin-bottom: 24px;">
+                <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 20px; margin-bottom: 24px;">
                     <div style="display: flex; align-items: center; justify-content: space-between;">
                         <div>
                             <h2 style="margin: 0 0 8px 0; font-size: 1.5rem;">${user.first_name || ''} ${user.last_name || ''}</h2>
@@ -1148,7 +1148,7 @@
                     </div>
                 </div>
 
-                <div style="margin-bottom: 24px; padding: 16px; border: 1px solid #e5e7eb; border-radius: 12px; background: #fafafa;">
+                <div style="margin-bottom: 24px; padding: 16px; border: 1px solid #e5e7eb; border-radius: 12px; background: var(--surface-muted);">
                     <h3 style="margin: 0 0 14px 0; font-size: 1.05rem;">User details</h3>
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                         <div class="form-group" style="margin:0;">
@@ -1213,7 +1213,7 @@
                     <button class="btn btn-success" onclick="adminSaveModules('${user.username}')" ${user.role === 'admin' ? 'disabled style="opacity: 0.5;"' : ''}>Save Access Changes</button>
                 </div>
 
-                <div style="margin-top: 24px; padding: 16px; border: 1px solid #e5e7eb; border-radius: 12px; background: #fafafa;">
+                <div style="margin-top: 24px; padding: 16px; border: 1px solid #e5e7eb; border-radius: 12px; background: var(--surface-muted);">
                     <h3 style="margin: 0 0 12px 0; font-size: 1.05rem;">Recent logins</h3>
                     <div id="user-login-log" style="font-size: 0.9rem; color: #4b5563;">Loading...</div>
                 </div>
@@ -1328,7 +1328,7 @@
                 setAdminStatus(`${data.rejected || 0} user(s) rejected.`, 'success');
                 AdminState.selectedUser = null;
                 await adminLoadUsers();
-                document.getElementById('user-detail-panel').innerHTML = '<div style="text-align: center; color: #9ca3af; padding: 60px 20px;"><div style="font-size: 3rem; margin-bottom: 12px;">👤</div><div style="font-weight: 600; color: #6b7280;">Select a user from the list</div></div>';
+                document.getElementById('user-detail-panel').innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 60px 20px;"><div style="font-size: 1.8rem; margin-bottom: 12px; font-weight: 700; color: var(--text-primary);">User</div><div style="font-weight: 600; color: var(--text-primary);">Select a user from the list</div></div>';
             } catch (e) {
                 setAdminStatus('Bulk reject failed: ' + (e.message || e), 'error');
             }
@@ -1384,7 +1384,7 @@
             renderUserList();
             
             panel.innerHTML = `
-                <div style="border-bottom: 1px solid #e5e7eb; padding-bottom: 20px; margin-bottom: 24px;">
+                <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 20px; margin-bottom: 24px;">
                     <h2 style="margin: 0; font-size: 1.5rem;">Create New User</h2>
                 </div>
                 
@@ -1423,7 +1423,7 @@
                     
                     <div style="display: flex; gap: 8px;">
                         <button class="btn btn-success" type="submit">Create User</button>
-                        <button class="btn" type="button" onclick="AdminState.selectedUser = null; renderUserList(); document.getElementById('user-detail-panel').innerHTML = '<div style=\\'text-align: center; color: #9ca3af; padding: 60px 20px;\\'><div style=\\'font-size: 3rem; margin-bottom: 12px;\\'>👤</div><div style=\\'font-weight: 600; color: #6b7280;\\'>Select a user from the list</div></div>';">Cancel</button>
+                        <button class="btn" type="button" onclick="AdminState.selectedUser = null; renderUserList(); document.getElementById('user-detail-panel').innerHTML = '<div style=\\'text-align: center; color: var(--text-secondary); padding: 60px 20px;\\'><div style=\\'font-size: 3rem; margin-bottom: 12px;\\'>👤</div><div style=\\'font-weight: 600; color: #6b7280;\\'>Select a user from the list</div></div>';">Cancel</button>
                     </div>
                 </form>
             `;
@@ -1475,7 +1475,7 @@
                 }
                 AdminState.selectedUser = null;
                 await adminLoadUsers();
-                document.getElementById('user-detail-panel').innerHTML = '<div style="text-align: center; color: #9ca3af; padding: 60px 20px;"><div style="font-size: 3rem; margin-bottom: 12px;">👤</div><div style="font-weight: 600; color: #6b7280;">Select a user from the list</div></div>';
+                document.getElementById('user-detail-panel').innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 60px 20px;"><div style="font-size: 1.8rem; margin-bottom: 12px; font-weight: 700; color: var(--text-primary);">User</div><div style="font-weight: 600; color: var(--text-primary);">Select a user from the list</div></div>';
                 setAdminStatus(`User ${username} deleted.`, 'success');
             } catch (e) {
                 setAdminStatus(String(e.message || e), 'error');
@@ -1555,7 +1555,7 @@
                 setAdminStatus(`User ${username} deleted.`, 'success');
                 AdminState.selectedUser = null;
                 await adminLoadUsers();
-                document.getElementById('user-detail-panel').innerHTML = '<div style="text-align: center; color: #9ca3af; padding: 60px 20px;"><div style="font-size: 3rem; margin-bottom: 12px;">👤</div><div style="font-weight: 600; color: #6b7280;">Select a user from the list</div></div>';
+                document.getElementById('user-detail-panel').innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 60px 20px;"><div style="font-size: 1.8rem; margin-bottom: 12px; font-weight: 700; color: var(--text-primary);">User</div><div style="font-weight: 600; color: var(--text-primary);">Select a user from the list</div></div>';
             } catch (e) {
                 setAdminStatus(String(e.message || e), 'error');
             }
@@ -2867,4 +2867,6 @@
     </script>
 </body>
 </html>
+
+
 

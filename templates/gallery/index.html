@@ -5,10 +5,21 @@
 {% block subtitle %}Browse and download processed creative outputs{% endblock %}
 
 {% block content %}
-<header>
-    <h1>File Repository</h1>
-    <p class="subtitle">Processed outputs (PSD/PNG) from Creative Studio are stored here.</p>
-</header>
+<section class="page-hero">
+    <div>
+        <div class="hero-eyebrow">Creative automation</div>
+        <h1>File Repository</h1>
+        <p>Browse and download generated PSD, PNG, JPG, and PDF outputs from Creative Studio.</p>
+    </div>
+    <div class="hero-actions">
+        <a class="btn" href="/creative">Back to creative studio</a>
+    </div>
+</section>
+
+<nav class="project-switcher" aria-label="Creative suite navigation">
+    <a class="project-switcher-link" href="/creative">Creative Studio</a>
+    <a class="project-switcher-link active" href="/gallery">Generated Files</a>
+</nav>
 
 <div class="card">
     <h2>File Repository</h2>
@@ -22,7 +33,7 @@
         <button type="button" class="btn" onclick="loadGallery()">Apply filter</button>
     </div>
     <div id="gallery-list" style="margin-top: 8px; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px;">
-        <div id="gallery-empty" style="display: none; grid-column: 1 / -1; text-align: center; padding: 32px; color: #6b7280; background: #f9fafb; border-radius: 12px;">
+        <div id="gallery-empty" class="ux-empty" style="display: none; grid-column: 1 / -1; padding: 32px; border-radius: 12px;">
             No files yet. Run a job in Creative Studio to see outputs here.
         </div>
         <div id="gallery-loading" style="grid-column: 1 / -1; text-align: center; padding: 24px; color: #6b7280;">Loading...</div>

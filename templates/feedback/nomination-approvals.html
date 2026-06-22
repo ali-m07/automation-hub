@@ -1010,11 +1010,72 @@
             from { transform: translateX(100%); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
         }
+
+        .feedback-approvals-page .page-title,
+        .feedback-approvals-page .manager-person-name,
+        .feedback-approvals-page .evaluator-name,
+        .feedback-approvals-page .request-status {
+            color: var(--text-primary);
+        }
+
+        .feedback-approvals-page .page-subtitle,
+        .feedback-approvals-page .manager-person-email,
+        .feedback-approvals-page .manager-org,
+        .feedback-approvals-page .evaluator-meta,
+        .feedback-approvals-page .evaluator-reason,
+        .feedback-approvals-page .review-empty,
+        .feedback-approvals-page .empty-state,
+        .feedback-approvals-page .picker-user-summary,
+        .feedback-approvals-page .picker-reason,
+        .feedback-approvals-page .evaluator-picker-help {
+            color: var(--text-secondary);
+        }
+
+        .feedback-approvals-page .card,
+        .feedback-approvals-page .btn-outline,
+        .feedback-approvals-page .tab.active,
+        .feedback-approvals-page .filter-select,
+        .feedback-approvals-page .search-box input,
+        .feedback-approvals-page .manager-inbox-row,
+        .feedback-approvals-page .evaluator-picker-email,
+        .feedback-approvals-page .modal-overlay .modal,
+        .feedback-approvals-page .request-card,
+        .feedback-approvals-page .reject-btn,
+        .feedback-approvals-page .review-tabs,
+        .feedback-approvals-page .rejection-input {
+            background: var(--surface-raised);
+            color: var(--text-primary);
+            border-color: var(--border-color);
+        }
+
+        .feedback-approvals-page .tabs,
+        .feedback-approvals-page .manager-evaluator-count,
+        .feedback-approvals-page .request-header,
+        .feedback-approvals-page .request-footer,
+        .feedback-approvals-page .evaluator-row.pending,
+        .feedback-approvals-page .review-tab,
+        .feedback-approvals-page .picker-user.selected,
+        .feedback-approvals-page .modal-overlay .modal-body {
+            background: var(--surface-muted) !important;
+            border-color: var(--border-color);
+        }
+
+        .feedback-approvals-page .review-tab.active,
+        .feedback-approvals-page .picker-user.selected {
+            color: var(--on-accent-soft);
+            background: var(--accent-soft) !important;
+        }
     </style>
 {% endblock %}
 
 {% block content %}
     <div class="feedback-approvals-page">
+        <nav class="project-switcher" aria-label="Feedback workspace navigation">
+            <a class="project-switcher-link" href="/feedback/nominate">Nominate Evaluators</a>
+            <a class="project-switcher-link" href="/feedback/my-evaluations">My Evaluations</a>
+            <a class="project-switcher-link active" href="/feedback/nomination-approvals">Team Feedback</a>
+        </nav>
+
         <div class="page-header">
             <div>
                 <h1 class="page-title">Evaluator Nomination Requests</h1>
