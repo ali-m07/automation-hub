@@ -10,6 +10,8 @@ services:
     volumes:
     - ../uploads:/app/uploads
     - ../outputs:/app/outputs
+    - ../gallery:/app/gallery
+    - ../templates_psd:/app/templates_psd
     - hub-data:/app/data
     - font-data:/app/fonts
     environment:
@@ -123,6 +125,8 @@ services:
     volumes:
     - ../uploads:/app/uploads
     - ../outputs:/app/outputs
+    - ../gallery:/app/gallery
+    - ../templates_psd:/app/templates_psd
     - hub-data:/app/data
     - font-data:/app/fonts
 volumes:
