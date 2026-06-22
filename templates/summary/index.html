@@ -5,6 +5,13 @@
 {% block subtitle %}Overview of your workspace{% endblock %}
 
 {% block content %}
+{% set user_modules = user.modules or [] if user else [] %}
+{% set can_view_feedback = user and (user.role == 'admin' or 'feedback_180' in user_modules or 'feedback_180_admin' in user_modules or 'feedback_hrbp' in user_modules or 'feedback' in user_modules) %}
+{% set can_view_ticketing = user and (user.role == 'admin' or 'ticketing' in user_modules or 'ticketing_admin' in user_modules) %}
+{% set can_view_data = user and (user.role == 'admin' or 'data_tables_manual' in user_modules) %}
+{% set can_view_creative = user and (user.role == 'admin' or 'creative_psd' in user_modules) %}
+{% set can_view_messaging = user and (user.role == 'admin' or 'messaging_send' in user_modules) %}
+
 <section class="page-hero">
     <div>
         <div class="hero-eyebrow">Workspace</div>
@@ -14,18 +21,36 @@
 </section>
 
 <section class="ux-grid" style="margin-bottom: 18px;">
-    <a class="ux-card" href="/feedback/nominate" style="text-decoration:none;">
+    {% if can_view_feedback %}
+    <a class="ux-card" href="/feedback" style="text-decoration:none;">
         <div class="ux-card-title"><span class="ux-icon">+</span> Start feedback nomination</div>
-        <p>Create a clean evaluator list, add reasons, and send it to your manager.</p>
+        <p>Open the feedback workspace to nominate evaluators, review your list, and follow approvals.</p>
     </a>
+    {% endif %}
+    {% if can_view_ticketing %}
     <a class="ux-card" href="/projects" style="text-decoration:none;">
         <div class="ux-card-title"><span class="ux-icon">?</span> Request support</div>
         <p>Open or follow helpdesk requests when your module access allows it.</p>
     </a>
+    {% endif %}
+    {% if can_view_data %}
     <a class="ux-card" href="/data" style="text-decoration:none;">
         <div class="ux-card-title"><span class="ux-icon">#</span> Work with data</div>
         <p>Create tables, edit rows, and export structured data without leaving Servexa.</p>
     </a>
+    {% endif %}
+    {% if can_view_creative %}
+    <a class="ux-card" href="/creative" style="text-decoration:none;">
+        <div class="ux-card-title"><span class="ux-icon">PS</span> Creative outputs</div>
+        <p>Generate PSD-based assets and download created files from the repository.</p>
+    </a>
+    {% endif %}
+    {% if can_view_messaging %}
+    <a class="ux-card" href="/messaging" style="text-decoration:none;">
+        <div class="ux-card-title"><span class="ux-icon">@</span> Send campaigns</div>
+        <p>Prepare reusable HTML templates and send controlled email campaigns.</p>
+    </a>
+    {% endif %}
 </section>
 
 <div class="card">

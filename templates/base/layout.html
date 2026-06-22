@@ -58,7 +58,7 @@
         <div class="sidebar-section">
             <div class="sidebar-title">Projects</div>
             {% if can_view_feedback %}
-            <a href="{% if nomination_closed %}/feedback/my-evaluations{% else %}/feedback/nominate{% endif %}" class="sidebar-link sidebar-project-link{% if feedback_is_active %} active{% endif %}">
+            <a href="/feedback" class="sidebar-link sidebar-project-link{% if feedback_is_active %} active{% endif %}">
                 <span class="sidebar-link-copy">
                     <span class="sidebar-link-label">Feedback Workspace</span>
                     <span class="sidebar-link-note">Nominate, review, and follow evaluation workflows.</span>
