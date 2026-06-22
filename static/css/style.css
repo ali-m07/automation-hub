@@ -241,6 +241,48 @@ body::after {
     padding-bottom: 10px;
 }
 
+.sidebar-context-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 10px 12px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.84rem;
+    font-weight: 700;
+}
+
+.sidebar-context-back:hover {
+    color: var(--text-primary);
+}
+
+.sidebar-context-card {
+    margin: 0 4px 12px;
+    padding: 12px 12px 13px;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--surface-muted) 84%, transparent);
+    box-shadow: var(--shadow-sm);
+}
+
+.sidebar-context-name {
+    color: var(--text-primary);
+    font-size: 0.96rem;
+    font-weight: 800;
+    line-height: 1.25;
+}
+
+.sidebar-context-note {
+    margin-top: 5px;
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    line-height: 1.45;
+}
+
+.sidebar-project-submenu {
+    margin: 0 4px;
+}
+
 .sidebar-link:hover {
     background: var(--bg-tertiary);
     border-color: var(--border-color);

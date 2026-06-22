@@ -24,6 +24,8 @@
     {% set messaging_is_active = request.url.path.startswith('/messaging') %}
     {% set support_is_active = request.url.path.startswith('/support') %}
     {% set nomination_closed = feedback_nomination_closed|default(false) %}
+    {% set is_project_context = feedback_is_active or projects_is_active or creative_is_active or data_is_active or messaging_is_active or support_is_active %}
+    {% set current_ticket_board_key = request.path_params.get('project_key') if request.path_params else None %}
 
     <div id="sidebar-overlay" class="sidebar-overlay" onclick="closeSidebar()" style="display:none;"></div>
     <aside id="app-sidebar" class="app-sidebar" aria-label="Main menu">
@@ -55,6 +57,7 @@
             </a>
         </div>
 
+        {% if not is_project_context %}
         <div class="sidebar-section">
             <div class="sidebar-title">Projects</div>
             {% if can_view_feedback %}
@@ -104,6 +107,78 @@
                 </span>
             </a>
         </div>
+        {% else %}
+        <div class="sidebar-section">
+            <div class="sidebar-title">Project Space</div>
+            <a href="/summary" class="sidebar-context-back">&larr; Back to workspace</a>
+
+            {% if feedback_is_active %}
+            <div class="sidebar-context-card">
+                <div class="sidebar-context-name">Feedback Workspace</div>
+                <div class="sidebar-context-note">Stay inside the full feedback flow from one focused menu.</div>
+            </div>
+            <div class="sidebar-submenu sidebar-project-submenu">
+                <a href="/feedback" class="sidebar-link sidebar-sublink{% if request.url.path == '/feedback' %} active{% endif %}">Workspace Overview</a>
+                <a href="/feedback/nominate" class="sidebar-link sidebar-sublink{% if request.url.path == '/feedback/nominate' %} active{% endif %}">Nominate Evaluators</a>
+                <a href="/feedback/my-evaluations" class="sidebar-link sidebar-sublink{% if request.url.path == '/feedback/my-evaluations' %} active{% endif %}">My Evaluations</a>
+                <a href="/feedback/nomination-approvals" class="sidebar-link sidebar-sublink{% if request.url.path == '/feedback/nomination-approvals' %} active{% endif %}">Team Feedback</a>
+            </div>
+            {% elif creative_is_active %}
+            <div class="sidebar-context-card">
+                <div class="sidebar-context-name">Creative Suite</div>
+                <div class="sidebar-context-note">Create PSD-based assets and open generated files from the same project space.</div>
+            </div>
+            <div class="sidebar-submenu sidebar-project-submenu">
+                <a href="/creative" class="sidebar-link sidebar-sublink{% if request.url.path == '/creative' %} active{% endif %}">Creative Studio</a>
+                <a href="/gallery" class="sidebar-link sidebar-sublink{% if request.url.path == '/gallery' %} active{% endif %}">Generated Files</a>
+            </div>
+            {% elif data_is_active %}
+            <div class="sidebar-context-card">
+                <div class="sidebar-context-name">Data Workspace</div>
+                <div class="sidebar-context-note">Tables, connectors, and workflow structure belong together here.</div>
+            </div>
+            <div class="sidebar-submenu sidebar-project-submenu">
+                <a href="/data" class="sidebar-link sidebar-sublink{% if request.url.path == '/data' %} active{% endif %}">Data Tables</a>
+                <a href="/external-db" class="sidebar-link sidebar-sublink{% if request.url.path == '/external-db' %} active{% endif %}">External Database</a>
+                <a href="/process-designer" class="sidebar-link sidebar-sublink{% if request.url.path == '/process-designer' %} active{% endif %}">Process Designer</a>
+            </div>
+            {% elif projects_is_active %}
+            <div class="sidebar-context-card">
+                <div class="sidebar-context-name">Help Center</div>
+                <div class="sidebar-context-note">Requests, boards, and project settings live inside one support space.</div>
+            </div>
+            <div class="sidebar-submenu sidebar-project-submenu">
+                <a href="/projects" class="sidebar-link sidebar-sublink{% if request.url.path == '/projects' %} active{% endif %}">Workspace Overview</a>
+                <a href="/projects/my-requests" class="sidebar-link sidebar-sublink{% if request.url.path == '/projects/my-requests' %} active{% endif %}">My Requests</a>
+                {% if current_ticket_board_key %}
+                <a href="/projects/{{ current_ticket_board_key }}" class="sidebar-link sidebar-sublink active">Current Board</a>
+                {% endif %}
+                {% if user and (user.role == 'admin' or 'ticketing_admin' in user_modules) %}
+                <a href="/projects/admin" class="sidebar-link sidebar-sublink{% if request.url.path.startswith('/projects/admin') %} active{% endif %}">Project Settings</a>
+                {% endif %}
+            </div>
+            {% elif messaging_is_active %}
+            <div class="sidebar-context-card">
+                <div class="sidebar-context-name">Messaging</div>
+                <div class="sidebar-context-note">Build templates, manage recipients, and send campaigns from one focused space.</div>
+            </div>
+            <div class="sidebar-submenu sidebar-project-submenu">
+                <a href="/messaging" class="sidebar-link sidebar-sublink{% if request.url.path == '/messaging' %} active{% endif %}">Campaign Workspace</a>
+            </div>
+            {% elif support_is_active %}
+            <div class="sidebar-context-card">
+                <div class="sidebar-context-name">Support Center</div>
+                <div class="sidebar-context-note">Track personal tickets and ask the platform team for help from one place.</div>
+            </div>
+            <div class="sidebar-submenu sidebar-project-submenu">
+                <a href="/support" class="sidebar-link sidebar-sublink{% if request.url.path == '/support' %} active{% endif %}">Support Board</a>
+                {% if can_view_ticketing %}
+                <a href="/projects" class="sidebar-link sidebar-sublink">Help Center</a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
 
         {% if has_management_links %}
         <div class="sidebar-section">
