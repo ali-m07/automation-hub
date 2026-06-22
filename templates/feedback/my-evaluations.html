@@ -111,7 +111,9 @@
 
 {% block content %}
 <nav class="project-switcher" aria-label="Feedback workspace navigation">
+    {% if not feedback_nomination_closed or user.role == 'admin' %}
     <a class="project-switcher-link" href="/feedback/nominate">Nominate Evaluators</a>
+    {% endif %}
     <a class="project-switcher-link active" href="/feedback/my-evaluations">My Evaluations</a>
     <a class="project-switcher-link" href="/feedback/nomination-approvals">Team Feedback</a>
 </nav>

@@ -118,7 +118,7 @@ def _register_gallery_asset(
     if target_path.resolve() != source_path.resolve():
         shutil.copy2(source_path, target_path)
 
-    rel_file = f"{safe_user}/{target_path.name}"
+    rel_file = f"{safe_user}/{target_path.relative_to(user_gallery).as_posix()}"
     rel_thumb = None
     if thumb_path and thumb_path.exists():
         rel_thumb = f"{safe_user}/{thumb_path.relative_to(user_gallery).as_posix()}"

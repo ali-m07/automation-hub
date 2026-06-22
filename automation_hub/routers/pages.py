@@ -272,21 +272,20 @@ async def evaluator_nomination_page(request: Request):
         and "feedback_hrbp" not in modules
     ):
         return RedirectResponse(url="/summary", status_code=302)
-    from automation_hub.projects.ticketing.router import _deadline_state
-
-    if _deadline_state()["is_closed"]:
-        return RedirectResponse(url="/feedback/my-evaluations", status_code=302)
-
     templates = _get_templates(request)
     if not templates:
         return JSONResponse({"error": "Templates not available"}, status_code=500)
+    from automation_hub.projects.ticketing.router import _deadline_state
+
+    nomination_window = _deadline_state()
     return templates.TemplateResponse(
         request=request,
         name="feedback/nominate.html",
         context={
             "request": request,
             "user": user,
-            "feedback_nomination_closed": _deadline_state()["is_closed"],
+            "feedback_nomination_closed": nomination_window["is_closed"],
+            "nomination_window": nomination_window,
         },
     )
 

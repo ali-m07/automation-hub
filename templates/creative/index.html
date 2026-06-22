@@ -9,20 +9,20 @@
     <div>
         <div class="hero-eyebrow">Creative automation</div>
         <h1>Creative Studio</h1>
-        <p>Upload PSD, connect Excel, preview, generate.</p>
+        <p>Upload PSD, connect data, preview, generate.</p>
     </div>
 </section>
 
 <nav class="project-switcher" aria-label="Creative suite navigation">
     <a class="project-switcher-link active" href="/creative">Creative Studio</a>
-    <a class="project-switcher-link" href="/gallery">Generated Files</a>
+    <a class="project-switcher-link" href="/gallery">Files</a>
 </nav>
 
 <div class="card">
     <div class="ux-section-title">
         <div>
             <h2>Source files</h2>
-            <p>Start with the creative template and the data file that drives personalization.</p>
+            <p>Pick the PSD and the data file.</p>
         </div>
     </div>
 
@@ -44,7 +44,7 @@
             <div class="form-group">
                 <label for="psd-file">Upload PSD</label>
                 <input type="file" id="psd-file" class="form-control" accept=".psd" onchange="handlePSDUpload(event)">
-                <div id="psd-file-name" style="margin-top:8px; color:var(--text-secondary);">Choose a layered PSD template to start.</div>
+                <div id="psd-file-name" style="margin-top:8px; color:var(--text-secondary);">Choose a PSD file.</div>
             </div>
             <div class="ux-inline-actions">
                 <button id="read-layers-btn" class="btn" type="button" onclick="readCreativeLayers()">Read layers</button>
@@ -59,10 +59,10 @@
             <div class="form-group">
                 <label for="data-file">Excel data file</label>
                 <input type="file" id="data-file" class="form-control" accept=".xlsx,.xls,.csv" onchange="handleDataUpload(event)">
-                <div id="data-file-name" style="margin-top:8px; color:var(--text-secondary);">Upload an Excel or CSV file with one output per row.</div>
+                <div id="data-file-name" style="margin-top:8px; color:var(--text-secondary);">One row becomes one output.</div>
             </div>
             <div class="ux-help">
-                <p>Use one row per output. Column names should be clear, such as first_name, title, image_file, or discount_code.</p>
+                <p>Use clear columns like `first_name`, `title`, or `image_file`.</p>
             </div>
             <span id="data-columns-info" class="status-box" aria-live="polite" style="display:none;"></span>
         </div>
@@ -73,7 +73,7 @@
     <div class="ux-section-title">
         <div>
             <h2>PSD layers</h2>
-            <p>Review editable layers before mapping. Select layers that should receive data.</p>
+            <p>Choose the layers that should receive data.</p>
         </div>
     </div>
     <div class="ux-grid-2">
@@ -99,7 +99,7 @@
     <div class="ux-section-title">
         <div>
             <h2>Rendering font</h2>
-            <p>Optional: upload a brand font to keep generated text consistent with the design system.</p>
+            <p>Optional brand font for generated text.</p>
         </div>
     </div>
     <div class="ux-toolbar">
@@ -116,7 +116,7 @@
     <div class="ux-section-title">
         <div>
             <h2>Layer mapping</h2>
-            <p>Choose which Excel column should replace each PSD layer.</p>
+            <p>Match PSD layers to data columns.</p>
         </div>
     </div>
     <datalist id="layer-names"></datalist>
@@ -124,11 +124,11 @@
         <select id="creative-layer-picker-select" class="form-control"></select>
         <button class="btn" type="button" onclick="addSelectedCreativeLayer()">Use selected layer</button>
     </div>
-    <p id="creative-mapping-hint" style="color:var(--text-secondary); margin-bottom:12px;">Upload a PSD to load layer names.</p>
+    <p id="creative-mapping-hint" style="color:var(--text-secondary); margin-bottom:12px;">Load a PSD to see layer names.</p>
     <div id="layer-mapping-container"></div>
     <button class="btn" type="button" style="margin-top:12px;" onclick="addMappingRow()">Add mapping row</button>
     <div class="ux-help" style="margin-top:14px;">
-        <p>Keep mappings explicit. If a layer should stay unchanged, leave it unmapped.</p>
+        <p>Leave a layer empty if it should stay unchanged.</p>
     </div>
 </div>
 
@@ -136,7 +136,7 @@
     <div class="ux-section-title">
         <div>
             <h2>Output naming</h2>
-            <p>Build predictable file names from static text and Excel variables.</p>
+            <p>Build the output filename.</p>
         </div>
     </div>
     <div class="field-grid">
@@ -152,7 +152,7 @@
     <div class="ux-section-title">
         <div>
             <h2>Preview and generate</h2>
-            <p>Preview the first row before starting the full batch.</p>
+            <p>Preview the first row, then run the batch.</p>
         </div>
     </div>
     <div class="ux-grid-2">
@@ -164,6 +164,7 @@
                         <option value="png">PNG</option>
                         <option value="jpg">JPG</option>
                         <option value="pdf">PDF</option>
+                        <option value="both">PNG + PSD fallback image</option>
                     </select>
                 </div>
                 <div class="form-group">

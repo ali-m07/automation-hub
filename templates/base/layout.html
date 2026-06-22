@@ -24,6 +24,7 @@
     {% set messaging_is_active = request.url.path.startswith('/messaging') %}
     {% set support_is_active = request.url.path.startswith('/support') %}
     {% set nomination_closed = feedback_nomination_closed|default(false) %}
+    {% set show_nomination_entry = (not nomination_closed) or (user and user.role == 'admin') %}
     {% set is_project_context = feedback_is_active or projects_is_active or creative_is_active or data_is_active or messaging_is_active or support_is_active %}
     {% set current_ticket_board_key = request.path_params.get('project_key') if request.path_params else None %}
 
@@ -119,18 +120,19 @@
             </div>
             <div class="sidebar-submenu sidebar-project-submenu">
                 <a href="/feedback" class="sidebar-link sidebar-sublink{% if request.url.path == '/feedback' %} active{% endif %}">Workspace Overview</a>
+                {% if show_nomination_entry %}
                 <a href="/feedback/nominate" class="sidebar-link sidebar-sublink{% if request.url.path == '/feedback/nominate' %} active{% endif %}">Nominate Evaluators</a>
+                {% endif %}
                 <a href="/feedback/my-evaluations" class="sidebar-link sidebar-sublink{% if request.url.path == '/feedback/my-evaluations' %} active{% endif %}">My Evaluations</a>
                 <a href="/feedback/nomination-approvals" class="sidebar-link sidebar-sublink{% if request.url.path == '/feedback/nomination-approvals' %} active{% endif %}">Team Feedback</a>
             </div>
             {% elif creative_is_active %}
             <div class="sidebar-context-card">
                 <div class="sidebar-context-name">Creative Suite</div>
-                <div class="sidebar-context-note">Create PSD-based assets and open generated files from the same project space.</div>
             </div>
             <div class="sidebar-submenu sidebar-project-submenu">
                 <a href="/creative" class="sidebar-link sidebar-sublink{% if request.url.path == '/creative' %} active{% endif %}">Creative Studio</a>
-                <a href="/gallery" class="sidebar-link sidebar-sublink{% if request.url.path == '/gallery' %} active{% endif %}">Generated Files</a>
+                <a href="/gallery" class="sidebar-link sidebar-sublink{% if request.url.path == '/gallery' %} active{% endif %}">Files</a>
             </div>
             {% elif data_is_active %}
             <div class="sidebar-context-card">
