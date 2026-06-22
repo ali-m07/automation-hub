@@ -223,8 +223,13 @@
     <div class="ux-section-title">
         <div>
             <h2>Job history</h2>
-            <p>Track recent generation jobs and download completed outputs. All generated PSD and image files are also available in the File Repository for end users.</p>
+            <p>Recent generation jobs and downloads.</p>
         </div>
+        {% if user and user.role == 'admin' %}
+        <div class="ux-inline-actions">
+            <button class="btn" type="button" onclick="clearCreativeJobCache()">Clear job cache</button>
+        </div>
+        {% endif %}
     </div>
     <div id="creative-jobs-list" class="ux-table-wrap"></div>
 </div>

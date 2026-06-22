@@ -97,6 +97,54 @@ def _gallery_create_placeholder_thumbnail(thumb_path: Path) -> None:
         pass
 
 
+def _register_gallery_asset(
+    username: str,
+    source_path: Path,
+    *,
+    display_name: str,
+    job_id: str,
+    thumb_path: Optional[Path] = None,
+) -> None:
+    safe_user = _gallery_safe_username(username)
+    user_gallery = GALLERY_DIR / safe_user
+    user_gallery.mkdir(parents=True, exist_ok=True)
+
+    if source_path.suffix.lower() == ".zip":
+        target_path = user_gallery / source_path.name
+    else:
+        target_dir = user_gallery / job_id
+        target_dir.mkdir(parents=True, exist_ok=True)
+        target_path = target_dir / source_path.name
+    if target_path.resolve() != source_path.resolve():
+        shutil.copy2(source_path, target_path)
+
+    rel_file = f"{safe_user}/{target_path.name}"
+    rel_thumb = None
+    if thumb_path and thumb_path.exists():
+        rel_thumb = f"{safe_user}/{thumb_path.relative_to(user_gallery).as_posix()}"
+
+    conn = _db()
+    try:
+        conn.execute(
+            """
+            INSERT INTO gallery_files (username, file_path, thumbnail_path, display_name, file_size, created_at, job_id)
+            VALUES (?,?,?,?,?,?,?)
+            """,
+            (
+                username,
+                rel_file,
+                rel_thumb,
+                display_name,
+                target_path.stat().st_size if target_path.exists() else None,
+                db.utc_now_iso(),
+                job_id,
+            ),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 # Directories (same as app.py)
 UPLOAD_DIR = Path("uploads")
 OUTPUT_DIR = Path("outputs")
@@ -258,38 +306,38 @@ def _run_process_core(
             for file in files:
                 file_path = Path(root) / file
                 zipf.write(file_path, file_path.relative_to(job_output_dir))
-    shutil.rmtree(job_output_dir, ignore_errors=True)
     if username:
         try:
             safe_user = _gallery_safe_username(username)
             user_gallery = GALLERY_DIR / safe_user
             user_gallery.mkdir(parents=True, exist_ok=True)
-            dest_zip = user_gallery / f"{job_id}.zip"
-            shutil.copy2(zip_path, dest_zip)
-            file_size = dest_zip.stat().st_size
             thumbs_dir = user_gallery / "thumbs"
             thumbs_dir.mkdir(exist_ok=True)
             thumb_path = thumbs_dir / f"{job_id}.png"
             _gallery_create_placeholder_thumbnail(thumb_path)
-            rel_file = f"{safe_user}/{job_id}.zip"
-            rel_thumb = (
-                f"{safe_user}/thumbs/{job_id}.png" if thumb_path.exists() else None
+            _register_gallery_asset(
+                username,
+                zip_path,
+                display_name=f"{job_id}.zip",
+                job_id=job_id,
+                thumb_path=thumb_path,
             )
-            now = db.utc_now_iso()
-            conn = _db()
-            try:
-                conn.execute(
-                    """
-                    INSERT INTO gallery_files (username, file_path, thumbnail_path, display_name, file_size, created_at, job_id)
-                    VALUES (?,?,?,?,?,?,?)
-                    """,
-                    (username, rel_file, rel_thumb, job_id, file_size, now, job_id),
-                )
-                conn.commit()
-            finally:
-                conn.close()
+            for result in results:
+                if not result.get("success"):
+                    continue
+                for generated_path in (result.get("files") or {}).values():
+                    asset_path = Path(generated_path)
+                    if asset_path.is_file():
+                        _register_gallery_asset(
+                            username,
+                            asset_path,
+                            display_name=asset_path.name,
+                            job_id=job_id,
+                            thumb_path=thumb_path,
+                        )
         except Exception:
             pass
+    shutil.rmtree(job_output_dir, ignore_errors=True)
     return (job_id, results, str(zip_path))
 
 
@@ -1063,7 +1111,7 @@ async def preview_process(request: Request):
 
 @creative_router.get("/creative/jobs")
 async def list_creative_jobs(request: Request):
-    """List Creative job history for current user (job_queue + zip link from result)."""
+    """List Creative job history. Admins can view all users."""
     user = auth.get_current_user(request)
     if not user:
         return JSONResponse(
@@ -1072,14 +1120,25 @@ async def list_creative_jobs(request: Request):
     auth.require_module(request, "creative_psd", auth.get_current_user)
     conn = _db()
     try:
-        rows = conn.execute(
-            """
-            SELECT id, username, status, payload_json, result_json, created_at, updated_at
-            FROM job_queue WHERE username = ?
-            ORDER BY created_at DESC LIMIT 100
-            """,
-            (user["username"],),
-        ).fetchall()
+        if user.get("role") == "admin":
+            rows = conn.execute(
+                """
+                SELECT id, username, status, payload_json, result_json, created_at, updated_at
+                FROM job_queue
+                WHERE job_type = 'creative_psd'
+                ORDER BY created_at DESC LIMIT 200
+                """
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """
+                SELECT id, username, status, payload_json, result_json, created_at, updated_at
+                FROM job_queue
+                WHERE username = ? AND job_type = 'creative_psd'
+                ORDER BY created_at DESC LIMIT 100
+                """,
+                (user["username"],),
+            ).fetchall()
     finally:
         conn.close()
     jobs = []
@@ -1096,7 +1155,7 @@ async def list_creative_jobs(request: Request):
                 result = json.loads(r["result_json"])
             except Exception:
                 pass
-        row_count = len(payload.get("layer_mapping") or [])
+        row_count = len((result or {}).get("results") or [])
         zip_link = None
         if result and result.get("zip_file"):
             zip_link = result.get("zip_file")
@@ -1105,6 +1164,7 @@ async def list_creative_jobs(request: Request):
         jobs.append(
             {
                 "job_id": r["id"],
+                "owner": r["username"],
                 "status": r["status"],
                 "created_at": r["created_at"],
                 "updated_at": r["updated_at"],
@@ -1112,7 +1172,64 @@ async def list_creative_jobs(request: Request):
                 "zip_link": zip_link,
             }
         )
-    return JSONResponse({"success": True, "jobs": jobs})
+    return JSONResponse(
+        {"success": True, "jobs": jobs, "is_admin": user.get("role") == "admin"}
+    )
+
+
+@creative_router.delete("/creative/jobs/cache")
+async def clear_creative_job_cache(request: Request):
+    """Admin-only: remove creative job history and cached ZIP entries."""
+    user = auth.get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    conn = _db()
+    zip_paths: List[str] = []
+    deleted_jobs = 0
+    deleted_zip_entries = 0
+    try:
+        rows = conn.execute(
+            """
+            SELECT file_path
+            FROM gallery_files
+            WHERE LOWER(file_path) LIKE '%.zip'
+            """
+        ).fetchall()
+        zip_paths = [row["file_path"] for row in rows if row.get("file_path")]
+        deleted_zip_entries = conn.execute(
+            "DELETE FROM gallery_files WHERE LOWER(file_path) LIKE '%.zip'"
+        ).rowcount or 0
+        deleted_jobs = conn.execute(
+            "DELETE FROM job_queue WHERE job_type = 'creative_psd'"
+        ).rowcount or 0
+        conn.commit()
+    finally:
+        conn.close()
+
+    for rel_path in zip_paths:
+        try:
+            gallery_path = GALLERY_DIR / rel_path
+            if gallery_path.is_file():
+                gallery_path.unlink()
+        except Exception:
+            pass
+
+    for zip_file in OUTPUT_DIR.glob("job_*.zip"):
+        try:
+            zip_file.unlink()
+        except Exception:
+            pass
+
+    return JSONResponse(
+        {
+            "success": True,
+            "deleted_jobs": deleted_jobs,
+            "deleted_zip_entries": deleted_zip_entries,
+        }
+    )
 
 
 @creative_router.get("/download-preview/{job_id}/{filename}")

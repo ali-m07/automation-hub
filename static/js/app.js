@@ -2604,10 +2604,12 @@ async function loadCreativeJobs() {
             listEl.innerHTML = '<p style="color:#6b7280;">No Creative jobs yet.</p>';
             return;
         }
-        listEl.innerHTML = '<table class="form-control" style="width:100%; border-collapse:collapse;"><thead><tr style="border-bottom:1px solid #e5e7eb;"><th style="text-align:left; padding:8px;">Job</th><th style="text-align:left; padding:8px;">Status</th><th style="text-align:left; padding:8px;">Date</th><th style="text-align:left; padding:8px;">Rows</th><th></th></tr></thead><tbody>' +
+        const ownerColumn = data.is_admin ? '<th style="text-align:left; padding:8px;">Owner</th>' : '';
+        listEl.innerHTML = '<table class="form-control" style="width:100%; border-collapse:collapse;"><thead><tr style="border-bottom:1px solid #e5e7eb;"><th style="text-align:left; padding:8px;">Job</th>' + ownerColumn + '<th style="text-align:left; padding:8px;">Status</th><th style="text-align:left; padding:8px;">Date</th><th style="text-align:left; padding:8px;">Rows</th><th></th></tr></thead><tbody>' +
             jobs.map(j => `
                 <tr style="border-bottom:1px solid #e5e7eb;">
                     <td style="padding:8px;">#${j.job_id}</td>
+                    ${data.is_admin ? `<td style="padding:8px;">${escapeHtml(j.owner || '')}</td>` : ''}
                     <td style="padding:8px;">${escapeHtml(j.status)}</td>
                     <td style="padding:8px;">${escapeHtml(j.created_at || '')}</td>
                     <td style="padding:8px;">${j.row_count || 0}</td>
@@ -2616,6 +2618,25 @@ async function loadCreativeJobs() {
             `).join('') + '</tbody></table>';
     } catch (e) {
         listEl.innerHTML = '<p style="color:#ef4444;">Error loading job history.</p>';
+    }
+}
+
+async function clearCreativeJobCache() {
+    const confirmed = window.confirm('Clear creative job history and cached ZIP downloads for all users? Generated files in the File Repository will remain.');
+    if (!confirmed) return;
+    try {
+        const res = await fetch('/api/creative/jobs/cache', {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+            throw new Error(data.detail || data.error || 'Failed to clear job cache');
+        }
+        showToast(`Cleared ${data.deleted_jobs || 0} jobs and ${data.deleted_zip_entries || 0} ZIP entries.`, 'success');
+        await loadCreativeJobs();
+    } catch (error) {
+        showToast(error.message || 'Failed to clear job cache.', 'error');
     }
 }
 
