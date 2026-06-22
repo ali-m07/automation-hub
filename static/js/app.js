@@ -2031,7 +2031,7 @@ function renderPsdLayerEditor() {
         const layerLabel = getCreativeLayerLabel(layer, index);
         const override = getLayerOverride(layer);
         const row = document.createElement('div');
-        row.style.cssText = 'padding:14px; border:1px solid #e5e7eb; border-radius:10px; background:#fff; display:grid; gap:10px;';
+        row.style.cssText = 'padding:14px; border:1px solid var(--border-color); border-radius:14px; background:color-mix(in srgb, var(--surface-raised) 92%, transparent); display:grid; gap:10px;';
         const fontOptions = '<option value="">Global/default font</option>' +
             (state.creativeFonts || []).map(font =>
                 `<option value="${escapeHtml(font.id)}"${override.font_id === font.id ? ' selected' : ''}>${escapeHtml(font.family + ' - ' + font.style)}</option>`
@@ -2045,10 +2045,10 @@ function renderPsdLayerEditor() {
             <div style="display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap;">
                 <div>
                     <strong>${escapeHtml(layerLabel || 'Unnamed layer')}</strong>
-                    <span style="color:#6b7280; margin-left:8px;">${layer.is_text_layer ? 'Text' : 'Image'} | ${escapeHtml(bbox)}</span>
-                    ${layer.full_path && layer.full_path !== layer.name ? `<div style="color:#94a3b8; font-size:12px; margin-top:4px;">${escapeHtml(layer.full_path)}</div>` : ''}
+                    <span style="color:var(--text-secondary); margin-left:8px;">${layer.is_text_layer ? 'Text' : 'Image'} | ${escapeHtml(bbox)}</span>
+                    ${layer.full_path && layer.full_path !== layer.name ? `<div style="color:var(--text-secondary); font-size:12px; margin-top:4px;">${escapeHtml(layer.full_path)}</div>` : ''}
                 </div>
-                <label><input type="checkbox" ${override.enabled ? 'checked' : ''}
+                <label style="display:flex; align-items:center; gap:8px; color:var(--text-secondary); font-weight:600;"><input type="checkbox" ${override.enabled ? 'checked' : ''}
                     onchange="updateLayerOverride(${JSON.stringify(layerKey)}, 'enabled', this.checked)"> Apply override</label>
             </div>
             <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px;">
@@ -2100,7 +2100,7 @@ function renderCreativeLayerList() {
 
     if (filteredLayers.length === 0) {
         const empty = document.createElement('div');
-        empty.style.cssText = 'padding: 12px; border: 1px dashed #d1d5db; border-radius: 10px; color: #6b7280;';
+        empty.style.cssText = 'padding:12px; border:1px dashed var(--border-color); border-radius:12px; color:var(--text-secondary); background:color-mix(in srgb, var(--surface-muted) 72%, transparent);';
         empty.textContent = 'No layers match your search.';
         list.appendChild(empty);
         return;
@@ -2110,7 +2110,7 @@ function renderCreativeLayerList() {
         const layerKey = getCreativeLayerKey(layer);
         const layerLabel = getCreativeLayerLabel(layer, index);
         const row = document.createElement('div');
-        row.style.cssText = 'display:flex; gap:10px; align-items:center; justify-content:space-between; padding:10px 12px; border:1px solid #e5e7eb; border-radius:10px; background:#fff;';
+        row.style.cssText = 'display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap; padding:12px; border:1px solid var(--border-color); border-radius:14px; background:color-mix(in srgb, var(--surface-raised) 92%, transparent);';
 
         const meta = document.createElement('div');
         meta.style.cssText = 'min-width:0; flex:1;';
@@ -2121,20 +2121,20 @@ function renderCreativeLayerList() {
         const nameBtn = document.createElement('button');
         nameBtn.type = 'button';
         nameBtn.className = 'btn';
-        nameBtn.style.cssText = 'padding:0; border:none; background:none; color:#111827; font-weight:700; cursor:pointer; text-align:left;';
+        nameBtn.style.cssText = 'padding:0; border:none; background:none; color:var(--text-primary); font-weight:700; cursor:pointer; text-align:left;';
         nameBtn.textContent = layerLabel;
         nameBtn.title = 'Use this layer in mapping';
         nameBtn.onclick = () => applyLayerNameToMapping(layerKey);
 
         const badge = document.createElement('span');
-        badge.style.cssText = `display:inline-flex; align-items:center; padding:3px 8px; border-radius:999px; font-size:0.75rem; font-weight:700; ${layer.is_text_layer ? 'background:#dcfce7; color:#166534;' : 'background:#e5e7eb; color:#374151;'}`;
+        badge.style.cssText = `display:inline-flex; align-items:center; padding:3px 8px; border-radius:999px; font-size:0.75rem; font-weight:700; ${layer.is_text_layer ? 'background:color-mix(in srgb, var(--success-soft) 90%, transparent); color:var(--success);' : 'background:color-mix(in srgb, var(--surface-muted) 88%, transparent); color:var(--text-secondary);'}`;
         badge.textContent = layer.is_text_layer ? 'Text layer' : 'Layer';
 
         top.appendChild(nameBtn);
         top.appendChild(badge);
 
         const sub = document.createElement('div');
-        sub.style.cssText = 'margin-top:4px; color:#6b7280; font-size:0.86rem;';
+        sub.style.cssText = 'margin-top:4px; color:var(--text-secondary); font-size:0.86rem;';
         sub.textContent = 'Click name or Use to fill mapping, or Copy to clipboard.';
 
         meta.appendChild(top);

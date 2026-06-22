@@ -2521,3 +2521,89 @@ td, [data-theme="dark"] td { background: color-mix(in srgb, var(--surface-raised
         padding: 10px;
     }
 }
+
+/* Final responsive and dark-mode cleanup for Creative Studio */
+@media (max-width: 640px) {
+    .top-nav {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 10px;
+        align-items: stretch;
+    }
+
+    .top-nav-left {
+        min-width: 0;
+        align-items: flex-start;
+    }
+
+    .top-nav-left > div:last-child {
+        min-width: 0;
+    }
+
+    .top-nav-title {
+        font-size: .95rem;
+    }
+
+    .top-nav-right {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        width: 100%;
+        gap: 8px;
+        align-items: stretch;
+    }
+
+    .top-nav-right > * {
+        min-width: 0;
+    }
+
+    .top-nav-right .top-nav-link {
+        grid-column: 1 / -1;
+    }
+
+    .top-nav-right .notifications-wrap,
+    .top-nav-right .notifications-wrap .header-action,
+    .top-nav-right .header-action,
+    .top-nav-right .theme-toggle,
+    .top-nav-right .header-logout {
+        width: 100%;
+    }
+
+    .top-nav-right .notifications-wrap {
+        display: flex;
+    }
+
+    .top-nav-right .header-action,
+    .top-nav-right .theme-toggle {
+        justify-content: center;
+        font-size: .8rem;
+    }
+
+    .header-logout {
+        display: inline-flex !important;
+        justify-content: center;
+    }
+
+    .ux-section-title {
+        align-items: flex-start;
+    }
+
+    .ux-grid-2 {
+        grid-template-columns: 1fr;
+    }
+
+    #psd-layer-editor-list > div,
+    #psd-layers-list > div {
+        padding: 12px !important;
+    }
+
+    #psd-layer-editor-list > div > div:first-child,
+    #psd-layers-list > div {
+        gap: 10px !important;
+    }
+
+    #psd-layer-editor-list select,
+    #psd-layer-editor-list input,
+    #psd-layers-list .btn {
+        width: 100%;
+    }
+}
