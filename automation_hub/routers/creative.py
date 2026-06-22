@@ -7,6 +7,7 @@ import json
 import os
 import secrets
 import shutil
+import traceback
 import zipfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -143,6 +144,42 @@ def _register_gallery_asset(
         conn.commit()
     finally:
         conn.close()
+
+
+def _register_creative_job_assets(
+    username: str,
+    job_id: str,
+    zip_path: Path,
+    results: List[Dict[str, Any]],
+) -> bool:
+    safe_user = _gallery_safe_username(username)
+    user_gallery = GALLERY_DIR / safe_user
+    user_gallery.mkdir(parents=True, exist_ok=True)
+    thumbs_dir = user_gallery / "thumbs"
+    thumbs_dir.mkdir(exist_ok=True)
+    thumb_path = thumbs_dir / f"{job_id}.png"
+    _gallery_create_placeholder_thumbnail(thumb_path)
+    _register_gallery_asset(
+        username,
+        zip_path,
+        display_name=f"{job_id}.zip",
+        job_id=job_id,
+        thumb_path=thumb_path,
+    )
+    for result in results:
+        if not result.get("success"):
+            continue
+        for generated_path in (result.get("files") or {}).values():
+            asset_path = Path(generated_path)
+            if asset_path.is_file():
+                _register_gallery_asset(
+                    username,
+                    asset_path,
+                    display_name=asset_path.name,
+                    job_id=job_id,
+                    thumb_path=thumb_path,
+                )
+    return True
 
 
 # Directories (same as app.py)
@@ -306,38 +343,21 @@ def _run_process_core(
             for file in files:
                 file_path = Path(root) / file
                 zipf.write(file_path, file_path.relative_to(job_output_dir))
+    registration_ok = True
     if username:
         try:
-            safe_user = _gallery_safe_username(username)
-            user_gallery = GALLERY_DIR / safe_user
-            user_gallery.mkdir(parents=True, exist_ok=True)
-            thumbs_dir = user_gallery / "thumbs"
-            thumbs_dir.mkdir(exist_ok=True)
-            thumb_path = thumbs_dir / f"{job_id}.png"
-            _gallery_create_placeholder_thumbnail(thumb_path)
-            _register_gallery_asset(
-                username,
-                zip_path,
-                display_name=f"{job_id}.zip",
+            registration_ok = _register_creative_job_assets(
+                username=username,
                 job_id=job_id,
-                thumb_path=thumb_path,
+                zip_path=zip_path,
+                results=results,
             )
-            for result in results:
-                if not result.get("success"):
-                    continue
-                for generated_path in (result.get("files") or {}).values():
-                    asset_path = Path(generated_path)
-                    if asset_path.is_file():
-                        _register_gallery_asset(
-                            username,
-                            asset_path,
-                            display_name=asset_path.name,
-                            job_id=job_id,
-                            thumb_path=thumb_path,
-                        )
-        except Exception:
-            pass
-    shutil.rmtree(job_output_dir, ignore_errors=True)
+        except Exception as exc:
+            registration_ok = False
+            print(f"[creative] Failed to register gallery assets for {job_id}: {exc}")
+            traceback.print_exc()
+    if registration_ok:
+        shutil.rmtree(job_output_dir, ignore_errors=True)
     return (job_id, results, str(zip_path))
 
 
