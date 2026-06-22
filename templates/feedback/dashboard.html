@@ -6,7 +6,9 @@
 {% block content %}
 <nav class="project-switcher" aria-label="Feedback workspace navigation">
     <a class="project-switcher-link active" href="/feedback">Workspace Overview</a>
+    {% if not feedback_nomination_closed or user.role == 'admin' %}
     <a class="project-switcher-link" href="/feedback/nominate">Nominate Evaluators</a>
+    {% endif %}
     <a class="project-switcher-link" href="/feedback/my-evaluations">My Evaluations</a>
     <a class="project-switcher-link" href="/feedback/nomination-approvals">Team Feedback</a>
 </nav>
@@ -18,11 +20,13 @@
 </header>
 
 <div class="performance-grid">
+    {% if not feedback_nomination_closed or user.role == 'admin' %}
     <a class="performance-card" href="/feedback/nominate">
         <span class="performance-status">Start</span>
         <strong>Nominate Evaluators</strong>
         <small>Select colleagues who can provide useful feedback about your work.</small>
     </a>
+    {% endif %}
     <a class="performance-card" href="/feedback/my-evaluations">
         <span class="performance-status">Personal</span>
         <strong>My Evaluations</strong>

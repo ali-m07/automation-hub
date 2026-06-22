@@ -51,6 +51,47 @@ def safe_row_get(row, key, default=None):
     return default
 
 
+def _repair_gallery_file_paths(conn: sqlite3.Connection) -> None:
+    """Repair older creative gallery rows that lost their job subdirectory."""
+    gallery_root = Path("gallery")
+    if not gallery_root.exists():
+        return
+
+    try:
+        rows = conn.execute(
+            """
+            SELECT id, username, file_path, job_id
+            FROM gallery_files
+            WHERE job_id IS NOT NULL AND LOWER(file_path) NOT LIKE '%.zip'
+            """
+        ).fetchall()
+    except Exception:
+        return
+
+    for row in rows:
+        file_id = safe_row_get(row, "id")
+        username = str(safe_row_get(row, "username") or "").strip()
+        file_path = str(safe_row_get(row, "file_path") or "").strip()
+        job_id = str(safe_row_get(row, "job_id") or "").strip()
+        if not file_id or not username or not file_path or not job_id:
+            continue
+
+        current_path = gallery_root / file_path
+        if current_path.is_file():
+            continue
+
+        filename = Path(file_path).name
+        repaired_rel = f"{username}/{job_id}/{filename}"
+        repaired_path = gallery_root / repaired_rel
+        if not repaired_path.is_file():
+            continue
+
+        conn.execute(
+            "UPDATE gallery_files SET file_path = ? WHERE id = ?",
+            (repaired_rel, file_id),
+        )
+
+
 def get_db_file() -> Path:
     data_dir = Path(os.getenv("APP_DATA_DIR", ".")).resolve()
     data_dir.mkdir(parents=True, exist_ok=True)
@@ -408,6 +449,7 @@ def init_database() -> None:
                 job_id TEXT
             )
             """)
+        _repair_gallery_file_paths(conn)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS psd_templates (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -753,7 +753,11 @@
 {% block content %}
 <div class="feedback-nomination-page">
     <nav class="project-switcher" aria-label="Feedback workspace navigation">
+        {% if not feedback_nomination_closed or user.role == 'admin' %}
         <a class="project-switcher-link active" href="/feedback/nominate">Nominate Evaluators</a>
+        {% else %}
+        <span class="project-switcher-link active" aria-current="page">Nominate Evaluators</span>
+        {% endif %}
         <a class="project-switcher-link" href="/feedback/my-evaluations">My Evaluations</a>
         <a class="project-switcher-link" href="/feedback/nomination-approvals">Team Feedback</a>
     </nav>
@@ -763,6 +767,7 @@
             <h1 class="page-title">Nominate Evaluators</h1>
             <p class="page-subtitle">Select people who will evaluate your performance</p>
         </div>
+        {% if not feedback_nomination_closed %}
         <div class="page-actions">
                 <a class="excel-action" href="/api/feedback/evaluator-nomination/template.xlsx">
                     <i class="fas fa-file-arrow-down"></i> Excel template
@@ -776,6 +781,7 @@
                     Add Evaluator
                 </button>
             </div>
+        {% endif %}
         </div>
 
         <!-- Current nomination status -->
@@ -794,6 +800,13 @@
                 </div>
             </div>
             <div id="evaluatorsList" class="evaluators-list">
+                {% if feedback_nomination_closed %}
+                <div class="empty-state" id="emptyState" tabindex="-1" aria-live="polite">
+                    <i class="fas fa-lock"></i>
+                    <h3>Nomination window closed</h3>
+                    <p>Your submitted evaluator list stays visible here, but editing is disabled after the deadline.</p>
+                </div>
+                {% else %}
                 <div class="empty-state" id="emptyState" role="button" tabindex="0"
                      onclick="openUserPicker()"
                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openUserPicker(); }"
@@ -803,6 +816,7 @@
                     <p>Tap anywhere here to search and add someone who will evaluate your performance.</p>
                     <span class="empty-state-hint"><i class="fas fa-plus"></i> Add evaluator</span>
                 </div>
+                {% endif %}
             </div>
         </div>
 
@@ -820,7 +834,7 @@
                 </div>
             </div>
 
-            <div class="submit-section">
+            <div class="submit-section"{% if feedback_nomination_closed %} style="display:none;"{% endif %}>
                 <button class="btn btn-success" onclick="submitNomination()" id="submitBtn" disabled>
                     <i class="fas fa-paper-plane"></i>
                     Submit for Manager Approval
@@ -1082,7 +1096,7 @@
             }
 
             if (emptyState) emptyState.style.display = 'none';
-            if (submitBtn) submitBtn.disabled = false;
+            if (submitBtn) submitBtn.disabled = nominationWindowClosed ? true : false;
             if (!visibleEvaluators.length) {
                 container.innerHTML = '<div class="no-results">No selected evaluators match your search.</div>';
                 return;
@@ -1102,11 +1116,14 @@
                                 <span class="evaluator-mobile-label">Reason</span>
                                 <textarea rows="1" aria-label="Reason for nominating ${eval.email}"
                                     placeholder="Add reason..."
+                                    ${nominationWindowClosed ? 'readonly' : ''}
                                     oninput="updateReason('${eval.email}', this.value); autoResizeReason(this)">${escapeHtml(eval.reason || '')}</textarea>
                             </div>
+                            ${nominationWindowClosed ? '<span></span>' : `
                             <button class="delete-btn" onclick="removeEvaluator('${eval.email}')" title="Remove">
                                 <i class="fas fa-times"></i>
                             </button>
+                            `}
                         </div>
                     `).join('')}
                 </div>
