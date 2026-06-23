@@ -1,35 +1,86 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login | Servexa</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/style.css?v=20260623-auth-refresh">
 </head>
-<body>
-    <div class="container fade-in">
-        <header>
-            <h1>Servexa</h1>
-            <p class="subtitle">Sign in to manage data connectors, evaluation pipelines, creative modules (Photoshop, etc.), and messaging from a single workspace.</p>
-        </header>
+<body class="auth-body">
+    <canvas id="ambient-network" class="ambient-network" aria-hidden="true"></canvas>
 
-        <div class="card slide-up">
-            <h2>Sign in</h2>
+    <main class="auth-shell fade-in">
+        <section class="auth-hero-panel slide-up">
+            <div class="auth-brand">
+                <div class="auth-brand-mark"></div>
+                <div class="auth-brand-copy">
+                    <div class="auth-brand-name">Servexa</div>
+                    <p class="auth-brand-tag">Operations, feedback, data, creative, and messaging in one workspace.</p>
+                </div>
+            </div>
+
+            <div class="auth-hero-content">
+                <div class="auth-eyebrow">Secure workspace</div>
+                <h1 class="auth-hero-title">Sign in with clarity, not clutter.</h1>
+                <p class="auth-hero-subtitle">
+                    Access evaluation workflows, creative generation, data tables, and internal operations from a single professional workspace.
+                </p>
+
+                <div class="auth-feature-grid">
+                    <div class="auth-feature">
+                        <strong>Feedback workflows</strong>
+                        <span>Nominate evaluators, review requests, and follow approvals cleanly.</span>
+                    </div>
+                    <div class="auth-feature">
+                        <strong>Creative automation</strong>
+                        <span>Connect PSD templates to spreadsheet rows and generate files in bulk.</span>
+                    </div>
+                    <div class="auth-feature">
+                        <strong>Data workspace</strong>
+                        <span>Work in spreadsheet view with versions, exports, and connected sources.</span>
+                    </div>
+                    <div class="auth-feature">
+                        <strong>Secure access</strong>
+                        <span>LDAP, password auth, and optional two-factor verification when enabled.</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="auth-hero-footer">
+                <div class="auth-pill">Admin and project access</div>
+                <div class="auth-pill">Responsive workspace</div>
+                <div class="auth-pill">Professional internal portal</div>
+            </div>
+        </section>
+
+        <section class="auth-form-panel slide-up">
+            <div class="auth-panel-header">
+                {% if step_2fa %}
+                <h2 class="auth-panel-title">Verify your identity</h2>
+                <p class="auth-panel-subtitle">Enter the 6-digit code from your authenticator app to complete sign-in.</p>
+                {% else %}
+                <h2 class="auth-panel-title">Welcome back</h2>
+                <p class="auth-panel-subtitle">Use your account credentials to enter the Servexa workspace.</p>
+                {% endif %}
+            </div>
+
             {% if step_2fa %}
-            <p style="color:#6b7280; margin-bottom: 12px;">Enter the 6-digit code from your authenticator app.</p>
-            <form method="post" action="/login-2fa" class="form-vertical">
+            <form method="post" action="/login-2fa" class="auth-form-stack">
                 <div class="form-group">
                     <label for="totp-code">Authentication code</label>
                     <input type="text" id="totp-code" name="code" class="form-control" placeholder="000000" maxlength="8" pattern="[0-9\s]*" autocomplete="one-time-code" required>
                 </div>
-                <button class="btn btn-success btn-large" type="submit">Verify and sign in</button>
+                <button class="btn btn-success auth-main-cta" type="submit">Verify and sign in</button>
+                <a class="auth-link" href="/login">← Back to sign in</a>
             </form>
-            <p style="margin-top: 12px; font-size: 0.9rem;"><a href="/login" style="color: #3b82f6;">← Back to sign in</a></p>
-            {% if request.query_params.get("error") == "bad_code" %}
-            <div class="status-box error" style="margin-top: 15px;">Invalid code. Try again.</div>
-            {% endif %}
+
+            <div class="auth-status-stack">
+                {% if request.query_params.get("error") == "bad_code" %}
+                <div class="status-box error">Invalid code. Try again.</div>
+                {% endif %}
+            </div>
             {% else %}
-            <form method="post" action="/login" class="form-vertical">
+            <form method="post" action="/login" class="auth-form-stack">
                 <div class="form-group">
                     <label for="username">Username or email</label>
                     <input type="text" id="username" name="username" class="form-control" placeholder="name@company.com" required autocomplete="username">
@@ -39,165 +90,295 @@
                     <input type="password" id="password" name="password" class="form-control" placeholder="Enter your password" required>
                 </div>
                 {% if ldap_enabled %}
-                <p style="color:#6b7280; font-size:0.85rem;">Your Active Directory credentials are accepted here.</p>
+                <div class="auth-note">Your Active Directory credentials are accepted here.</div>
                 {% endif %}
-                <button class="btn btn-success btn-large" type="submit">Sign in to platform</button>
-                <div style="margin-top: 12px; text-align: center;">
-                    <a href="#" onclick="showForgotPassword(); return false;" style="font-size: 0.9rem; color: #3b82f6;">Forgot password?</a>
+                <button class="btn btn-success auth-main-cta" type="submit">Sign in to Servexa</button>
+                <div class="auth-inline-row">
+                    <a class="auth-link" href="#" onclick="showForgotPassword(); return false;">Forgot password?</a>
                 </div>
             </form>
+
             {% if oidc_enabled %}
-            <div style="margin:16px 0; text-align:center; color:#6b7280;">or</div>
-            <a class="btn btn-primary btn-large" style="display:block; text-align:center;" href="/auth/oidc/login">
+            <div class="auth-divider">or continue with</div>
+            <a class="btn btn-primary auth-main-cta" style="display:flex;" href="/auth/oidc/login">
                 Sign in with {{ oidc_provider_name }}
             </a>
             {% endif %}
             {% endif %}
-            <div id="forgot-password-form" style="display: none; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-                <h3 style="margin-bottom: 12px;">Reset password</h3>
-                <p style="color: #6b7280; font-size: 0.9rem; margin-bottom: 12px;">Enter your email and we will send you a link to set a new password.</p>
-                <input type="email" id="forgot-email" class="form-control" placeholder="name@company.com" style="margin-bottom: 12px;">
-                <button type="button" class="btn btn-primary" onclick="submitForgotPassword()">Send reset link</button>
-                <button type="button" class="btn" onclick="hideForgotPassword()" style="margin-left: 8px;">Cancel</button>
-                <div id="forgot-status" class="status-box" style="margin-top: 12px;"></div>
+
+            <div id="forgot-password-form" class="auth-toggle-card" style="display:none;">
+                <h3>Reset password</h3>
+                <p class="auth-note" style="margin-bottom:12px;">Enter your email and we will send you a reset link.</p>
+                <input type="email" id="forgot-email" class="form-control" placeholder="name@company.com" style="margin-bottom:12px;">
+                <div class="auth-inline-row">
+                    <button type="button" class="btn btn-primary" onclick="submitForgotPassword()">Send reset link</button>
+                    <button type="button" class="btn" onclick="hideForgotPassword()">Cancel</button>
+                </div>
+                <div id="forgot-status" class="status-box" style="margin-top:12px;"></div>
             </div>
-            {% if request.query_params.get("error") == "invalid" %}
-            <div class="status-box error" style="margin-top: 15px;">
-                Invalid username or password.
+
+            <div class="auth-status-stack">
+                {% if request.query_params.get("error") == "invalid" %}
+                <div class="status-box error">Invalid username or password.</div>
+                {% endif %}
+                {% if request.query_params.get("error") == "pending" %}
+                <div class="status-box error">Your account is pending approval. Please wait for activation.</div>
+                {% endif %}
+                {% if request.query_params.get("error") == "2fa_unavailable" %}
+                <div class="status-box error">Two-factor authentication is not available on this server.</div>
+                {% endif %}
+                {% if msg == "reset_ok" %}
+                <div class="status-box success">Admin password was reset successfully.</div>
+                {% endif %}
+                {% if msg == "reset_try_again" %}
+                <div class="status-box success">Password was reset. Try signing in again.</div>
+                {% endif %}
             </div>
-            {% endif %}
-            {% if request.query_params.get("error") == "pending" %}
-            <div class="status-box error" style="margin-top: 15px;">
-                Your account is pending approval. Please wait for admin to activate your account.
-            </div>
-            {% endif %}
-            {% if request.query_params.get("error") == "2fa_unavailable" %}
-            <div class="status-box error" style="margin-top: 15px;">
-                Two-factor authentication is not available on this server.
-            </div>
-            {% endif %}
-            {% if msg == "reset_ok" %}
-            <div class="status-box success" style="margin-top: 15px;">
-                Admin password was reset successfully.
-            </div>
-            {% endif %}
-            {% if msg == "reset_try_again" %}
-            <div class="status-box success" style="margin-top: 15px;">
-                Admin password was reset. Try signing in again.
-            </div>
-            {% endif %}
-            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-                <p style="text-align: center; color: #6b7280; margin-bottom: 12px;">Don't have an account?</p>
-                <button class="btn btn-primary" type="button" onclick="showSignupForm()" style="width: 100%;">Sign up</button>
-            </div>
-            <div id="signup-form" style="display: none; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-                <h3 style="margin-bottom: 15px;">Create account</h3>
-                <form id="signup-form-element" onsubmit="handleSignup(event)">
-                    <div class="form-group">
-                        <label for="signup-email">Email</label>
-                        <input type="email" id="signup-email" name="email" class="form-control" placeholder="name@company.com" required>
+
+            <div class="auth-toggle-box">
+                <div class="auth-inline-row" style="margin-bottom:12px;">
+                    <strong>Need an account?</strong>
+                    <button class="btn btn-primary" type="button" onclick="showSignupForm()">Create account</button>
+                </div>
+
+                <div id="signup-form" class="auth-toggle-card" style="display:none;">
+                    <h3>Create account</h3>
+                    <form id="signup-form-element" class="auth-form-stack" onsubmit="handleSignup(event)">
+                        <div class="form-group">
+                            <label for="signup-email">Email</label>
+                            <input type="email" id="signup-email" name="email" class="form-control" placeholder="name@company.com" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="signup-first-name">First name</label>
+                            <input type="text" id="signup-first-name" name="first_name" class="form-control" placeholder="First name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="signup-last-name">Last name</label>
+                            <input type="text" id="signup-last-name" name="last_name" class="form-control" placeholder="Last name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="signup-password">Password</label>
+                            <input type="password" id="signup-password" name="password" class="form-control" placeholder="12+ chars, Aa1!, no spaces" required>
+                        </div>
+                        <button class="btn btn-success auth-main-cta" type="submit">Submit sign up</button>
+                        <button class="btn" type="button" onclick="hideSignupForm()">Cancel</button>
+                    </form>
+                    <div id="signup-status" class="status-box" style="margin-top:12px;"></div>
+                    <div class="auth-note" style="margin-top:10px;">
+                        Password policy: <strong>12+</strong> chars, at least <strong>1 uppercase</strong>, <strong>1 lowercase</strong>, <strong>1 digit</strong>, <strong>1 symbol</strong>, and <strong>no spaces</strong>.
                     </div>
-                    <div class="form-group">
-                        <label for="signup-first-name">First name</label>
-                        <input type="text" id="signup-first-name" name="first_name" class="form-control" placeholder="First name" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="signup-last-name">Last name</label>
-                        <input type="text" id="signup-last-name" name="last_name" class="form-control" placeholder="Last name" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="signup-password">Password</label>
-                        <input type="password" id="signup-password" name="password" class="form-control" placeholder="12+ chars, Aa1! (no spaces)" required>
-                    </div>
-                    <button class="btn btn-success btn-large" type="submit" style="width: 100%;">Sign up</button>
-                    <button class="btn" type="button" onclick="hideSignupForm()" style="width: 100%; margin-top: 8px;">Cancel</button>
-                </form>
-                <div id="signup-status" class="status-box" style="margin-top: 12px;"></div>
-                <div style="margin-top:8px; color:#6b7280; font-size:0.85rem; line-height:1.5;">
-                    Password policy: <strong>12+</strong> chars, at least <strong>1 uppercase</strong>, <strong>1 lowercase</strong>, <strong>1 digit</strong>, <strong>1 symbol</strong>, and <strong>no spaces</strong>.
                 </div>
             </div>
-            <script>
-                function showSignupForm() {
-                    document.getElementById('signup-form').style.display = 'block';
+        </section>
+    </main>
+
+    <script>
+        function initAmbientNetwork() {
+            const canvas = document.getElementById("ambient-network");
+            if (!canvas) return;
+
+            const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+            if (reducedMotion) {
+                canvas.style.display = "none";
+                return;
+            }
+
+            const ctx = canvas.getContext("2d");
+            if (!ctx) return;
+
+            let raf = null;
+            let width = 0;
+            let height = 0;
+            let dpr = 1;
+            let nodes = [];
+            const pointer = { x: -9999, y: -9999, active: false, radius: 180 };
+
+            function styles() {
+                const root = getComputedStyle(document.documentElement);
+                return {
+                    line: root.getPropertyValue("--accent").trim() || "#8f86dc",
+                    dot: root.getPropertyValue("--mint").trim() || "#a9e4d4",
+                    glow: root.getPropertyValue("--blue").trim() || "#a9d8f5"
+                };
+            }
+
+            function rgba(hex, alpha) {
+                const clean = hex.replace("#", "").trim();
+                if (clean.length !== 6) return `rgba(143,134,220,${alpha})`;
+                const int = parseInt(clean, 16);
+                return `rgba(${(int >> 16) & 255}, ${(int >> 8) & 255}, ${int & 255}, ${alpha})`;
+            }
+
+            function resize() {
+                dpr = Math.min(window.devicePixelRatio || 1, 1.6);
+                width = window.innerWidth;
+                height = window.innerHeight;
+                canvas.width = Math.floor(width * dpr);
+                canvas.height = Math.floor(height * dpr);
+                canvas.style.width = width + "px";
+                canvas.style.height = height + "px";
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                nodes = Array.from({ length: width < 700 ? 24 : 42 }, () => ({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    vx: (Math.random() - .5) * .28,
+                    vy: (Math.random() - .5) * .28,
+                    r: Math.random() * 2 + 1.3
+                }));
+            }
+
+            function draw() {
+                const palette = styles();
+                ctx.clearRect(0, 0, width, height);
+
+                for (const node of nodes) {
+                    node.x += node.vx;
+                    node.y += node.vy;
+                    if (node.x < -20 || node.x > width + 20) node.vx *= -1;
+                    if (node.y < -20 || node.y > height + 20) node.vy *= -1;
                 }
-                function hideSignupForm() {
-                    document.getElementById('signup-form').style.display = 'none';
-                    document.getElementById('signup-status').textContent = '';
-                    document.getElementById('signup-status').className = 'status-box';
-                }
-                function showForgotPassword() {
-                    document.getElementById('forgot-password-form').style.display = 'block';
-                }
-                function hideForgotPassword() {
-                    document.getElementById('forgot-password-form').style.display = 'none';
-                    document.getElementById('forgot-status').textContent = '';
-                }
-                async function submitForgotPassword() {
-                    const email = document.getElementById('forgot-email').value.trim();
-                    const statusEl = document.getElementById('forgot-status');
-                    if (!email) {
-                        statusEl.textContent = 'Enter your email';
-                        statusEl.className = 'status-box error';
-                        return;
-                    }
-                    statusEl.textContent = 'Sending...';
-                    statusEl.className = 'status-box info';
-                    try {
-                        const res = await fetch('/api/forgot-password', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ email }),
-                        });
-                        const data = await res.json();
-                        if (data.success) {
-                            statusEl.textContent = data.message || 'Check your email for the reset link.';
-                            statusEl.className = 'status-box success';
-                        } else {
-                            statusEl.textContent = data.error || 'Failed';
-                            statusEl.className = 'status-box error';
+
+                for (let i = 0; i < nodes.length; i++) {
+                    for (let j = i + 1; j < nodes.length; j++) {
+                        const a = nodes[i];
+                        const b = nodes[j];
+                        const distance = Math.hypot(a.x - b.x, a.y - b.y);
+                        if (distance > 210) continue;
+                        let alpha = 0.14 - (distance / 210) * 0.11;
+                        if (pointer.active) {
+                            const pa = Math.hypot(pointer.x - a.x, pointer.y - a.y);
+                            const pb = Math.hypot(pointer.x - b.x, pointer.y - b.y);
+                            if (pa < pointer.radius || pb < pointer.radius) alpha += 0.14;
                         }
-                    } catch (e) {
-                        statusEl.textContent = 'Error: ' + e.message;
-                        statusEl.className = 'status-box error';
+                        ctx.beginPath();
+                        ctx.moveTo(a.x, a.y);
+                        ctx.lineTo(b.x, b.y);
+                        ctx.strokeStyle = rgba(palette.line, Math.max(alpha, 0.025));
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
                     }
                 }
-                async function handleSignup(event) {
-                    event.preventDefault();
-                    const statusEl = document.getElementById('signup-status');
-                    const form = event.target;
-                    const email = form.querySelector('#signup-email').value.trim();
-                    const first_name = form.querySelector('#signup-first-name').value.trim();
-                    const last_name = form.querySelector('#signup-last-name').value.trim();
-                    const password = form.querySelector('#signup-password').value;
-                    
-                    statusEl.textContent = 'Creating account...';
-                    statusEl.className = 'status-box info';
-                    
-                    try {
-                        const res = await fetch('/api/signup', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ username: email, password, first_name, last_name }),
-                        });
-                        const data = await res.json();
-                        if (data.success) {
-                            statusEl.textContent = data.message || 'Account created! Please wait for admin approval.';
-                            statusEl.className = 'status-box success';
-                            form.reset();
-                            setTimeout(() => hideSignupForm(), 3000);
-                        } else {
-                            statusEl.textContent = data.error || 'Failed to create account';
-                            statusEl.className = 'status-box error';
-                        }
-                    } catch (e) {
-                        statusEl.textContent = 'Error: ' + e.message;
-                        statusEl.className = 'status-box error';
+
+                for (const node of nodes) {
+                    let alpha = 0.42;
+                    let radius = node.r;
+                    if (pointer.active && Math.hypot(pointer.x - node.x, pointer.y - node.y) < pointer.radius) {
+                        alpha = 0.9;
+                        radius += 1.4;
                     }
+                    ctx.beginPath();
+                    ctx.arc(node.x, node.y, radius, 0, Math.PI * 2);
+                    ctx.fillStyle = rgba(palette.dot, alpha);
+                    ctx.shadowBlur = 16;
+                    ctx.shadowColor = rgba(palette.glow, 0.25);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
                 }
-            </script>
-        </div>
-    </div>
+
+                raf = requestAnimationFrame(draw);
+            }
+
+            resize();
+            draw();
+
+            window.addEventListener("resize", resize);
+            window.addEventListener("pointermove", (event) => {
+                pointer.x = event.clientX;
+                pointer.y = event.clientY;
+                pointer.active = true;
+            }, { passive: true });
+            window.addEventListener("pointerleave", () => {
+                pointer.active = false;
+            });
+            document.addEventListener("visibilitychange", () => {
+                if (document.hidden && raf) {
+                    cancelAnimationFrame(raf);
+                    raf = null;
+                } else if (!document.hidden && !raf) {
+                    draw();
+                }
+            });
+        }
+
+        function showSignupForm() {
+            document.getElementById('signup-form').style.display = 'block';
+        }
+        function hideSignupForm() {
+            document.getElementById('signup-form').style.display = 'none';
+            document.getElementById('signup-status').textContent = '';
+            document.getElementById('signup-status').className = 'status-box';
+        }
+        function showForgotPassword() {
+            document.getElementById('forgot-password-form').style.display = 'block';
+        }
+        function hideForgotPassword() {
+            document.getElementById('forgot-password-form').style.display = 'none';
+            document.getElementById('forgot-status').textContent = '';
+        }
+        async function submitForgotPassword() {
+            const email = document.getElementById('forgot-email').value.trim();
+            const statusEl = document.getElementById('forgot-status');
+            if (!email) {
+                statusEl.textContent = 'Enter your email';
+                statusEl.className = 'status-box error';
+                return;
+            }
+            statusEl.textContent = 'Sending...';
+            statusEl.className = 'status-box info';
+            try {
+                const res = await fetch('/api/forgot-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email }),
+                });
+                const data = await res.json();
+                if (data.success) {
+                    statusEl.textContent = data.message || 'Check your email for the reset link.';
+                    statusEl.className = 'status-box success';
+                } else {
+                    statusEl.textContent = data.error || 'Failed';
+                    statusEl.className = 'status-box error';
+                }
+            } catch (e) {
+                statusEl.textContent = 'Error: ' + e.message;
+                statusEl.className = 'status-box error';
+            }
+        }
+        async function handleSignup(event) {
+            event.preventDefault();
+            const statusEl = document.getElementById('signup-status');
+            const form = event.target;
+            const email = form.querySelector('#signup-email').value.trim();
+            const first_name = form.querySelector('#signup-first-name').value.trim();
+            const last_name = form.querySelector('#signup-last-name').value.trim();
+            const password = form.querySelector('#signup-password').value;
+
+            statusEl.textContent = 'Creating account...';
+            statusEl.className = 'status-box info';
+
+            try {
+                const res = await fetch('/api/signup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: email, password, first_name, last_name }),
+                });
+                const data = await res.json();
+                if (data.success) {
+                    statusEl.textContent = data.message || 'Account created. Please wait for admin approval.';
+                    statusEl.className = 'status-box success';
+                    form.reset();
+                    setTimeout(() => hideSignupForm(), 3000);
+                } else {
+                    statusEl.textContent = data.error || 'Failed to create account';
+                    statusEl.className = 'status-box error';
+                }
+            } catch (e) {
+                statusEl.textContent = 'Error: ' + e.message;
+                statusEl.className = 'status-box error';
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", initAmbientNetwork);
+    </script>
 </body>
 </html>
-
