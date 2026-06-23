@@ -16,48 +16,48 @@
     <div>
         <div class="hero-eyebrow">Workspace</div>
         <h1>Summary</h1>
-        <p>See the health of your workspace, recent activity, and the next places that need attention.</p>
+        <p>Your main shortcuts, live counts, and recent work.</p>
     </div>
 </section>
 
-<section class="ux-grid" style="margin-bottom: 18px;">
+<section class="summary-quick-grid">
     {% if can_view_feedback %}
-    <a class="ux-card" href="/feedback" style="text-decoration:none;">
-        <div class="ux-card-title"><span class="ux-icon">+</span> Start feedback nomination</div>
-        <p>Open the feedback workspace to nominate evaluators, review your list, and follow approvals.</p>
+    <a class="summary-quick-card" href="/feedback">
+        <div class="ux-card-title"><span class="ux-icon">+</span> Feedback</div>
+        <p>Nominate and follow reviews.</p>
     </a>
     {% endif %}
     {% if can_view_ticketing %}
-    <a class="ux-card" href="/projects" style="text-decoration:none;">
-        <div class="ux-card-title"><span class="ux-icon">?</span> Request support</div>
-        <p>Open or follow helpdesk requests when your module access allows it.</p>
+    <a class="summary-quick-card" href="/projects">
+        <div class="ux-card-title"><span class="ux-icon">?</span> Help Center</div>
+        <p>Create or track requests.</p>
     </a>
     {% endif %}
     {% if can_view_data %}
-    <a class="ux-card" href="/data" style="text-decoration:none;">
-        <div class="ux-card-title"><span class="ux-icon">#</span> Work with data</div>
-        <p>Create tables, edit rows, and export structured data without leaving Servexa.</p>
+    <a class="summary-quick-card" href="/data">
+        <div class="ux-card-title"><span class="ux-icon">#</span> Data</div>
+        <p>Tables, rows, and exports.</p>
     </a>
     {% endif %}
     {% if can_view_creative %}
-    <a class="ux-card" href="/creative" style="text-decoration:none;">
-        <div class="ux-card-title"><span class="ux-icon">PS</span> Creative outputs</div>
-        <p>Generate PSD-based assets and download created files from the repository.</p>
+    <a class="summary-quick-card" href="/creative">
+        <div class="ux-card-title"><span class="ux-icon">PS</span> Creative</div>
+        <p>Generate files from PSDs.</p>
     </a>
     {% endif %}
     {% if can_view_messaging %}
-    <a class="ux-card" href="/messaging" style="text-decoration:none;">
-        <div class="ux-card-title"><span class="ux-icon">@</span> Send campaigns</div>
-        <p>Prepare reusable HTML templates and send controlled email campaigns.</p>
+    <a class="summary-quick-card" href="/messaging">
+        <div class="ux-card-title"><span class="ux-icon">@</span> Messaging</div>
+        <p>Templates and campaign sends.</p>
     </a>
     {% endif %}
 </section>
 
-<div class="card">
+<div class="card summary-shell">
     <div class="ux-section-title">
         <div>
             <h2>Workspace at a glance</h2>
-            <p>Live counts and the latest work items across enabled modules.</p>
+            <p>Live counts and the latest work.</p>
         </div>
     </div>
     <div id="summary-cards" class="ux-grid"></div>

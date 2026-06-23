@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Servexa{% endblock %}</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=20260622-creative-mobile-fix">
+    <link rel="stylesheet" href="/static/css/style.css?v=20260623-questionland-shell">
     {% block extra_css %}{% endblock %}
 </head>
 <body class="sidebar-shell">
@@ -53,7 +53,7 @@
             <a href="/summary" class="sidebar-link{% if request.url.path.startswith('/summary') %} active{% endif %}">
                 <span class="sidebar-link-copy">
                     <span class="sidebar-link-label">Summary</span>
-                    <span class="sidebar-link-note">Start here when you want the big picture.</span>
+                    <span class="sidebar-link-note">Overview and recent activity.</span>
                 </span>
             </a>
         </div>
@@ -64,8 +64,8 @@
             {% if can_view_feedback %}
             <a href="/feedback" class="sidebar-link sidebar-project-link{% if feedback_is_active %} active{% endif %}">
                 <span class="sidebar-link-copy">
-                    <span class="sidebar-link-label">Feedback Workspace</span>
-                    <span class="sidebar-link-note">Nominate, review, and follow evaluation workflows.</span>
+                    <span class="sidebar-link-label">Feedback</span>
+                    <span class="sidebar-link-note">Nominate, review, and approvals.</span>
                 </span>
             </a>
             {% endif %}
@@ -73,23 +73,23 @@
             <a href="/projects" class="sidebar-link sidebar-project-link{% if projects_is_active %} active{% endif %}">
                 <span class="sidebar-link-copy">
                     <span class="sidebar-link-label">Help Center</span>
-                    <span class="sidebar-link-note">Open project boards, create requests, and follow tickets.</span>
+                    <span class="sidebar-link-note">Requests and ticket boards.</span>
                 </span>
             </a>
             {% endif %}
             {% if can_view_creative %}
             <a href="/creative" class="sidebar-link sidebar-project-link{% if creative_is_active %} active{% endif %}">
                 <span class="sidebar-link-copy">
-                    <span class="sidebar-link-label">Creative Suite</span>
-                    <span class="sidebar-link-note">Generate PSD outputs and access created files in one flow.</span>
+                    <span class="sidebar-link-label">Creative</span>
+                    <span class="sidebar-link-note">PSD automation and files.</span>
                 </span>
             </a>
             {% endif %}
             {% if can_view_data %}
             <a href="/data" class="sidebar-link sidebar-project-link{% if data_is_active %} active{% endif %}">
                 <span class="sidebar-link-copy">
-                    <span class="sidebar-link-label">Data Workspace</span>
-                    <span class="sidebar-link-note">Manage tables, connected data, and operational datasets.</span>
+                    <span class="sidebar-link-label">Data</span>
+                    <span class="sidebar-link-note">Tables and connected sources.</span>
                 </span>
             </a>
             {% endif %}
@@ -97,14 +97,14 @@
             <a href="/messaging" class="sidebar-link sidebar-project-link{% if messaging_is_active %} active{% endif %}">
                 <span class="sidebar-link-copy">
                     <span class="sidebar-link-label">Messaging</span>
-                    <span class="sidebar-link-note">Prepare HTML campaigns and send controlled batches.</span>
+                    <span class="sidebar-link-note">Email campaigns and templates.</span>
                 </span>
             </a>
             {% endif %}
             <a href="/support" class="sidebar-link sidebar-project-link{% if support_is_active %} active{% endif %}">
                 <span class="sidebar-link-copy">
                     <span class="sidebar-link-label">Support</span>
-                    <span class="sidebar-link-note">Reach the platform team when you need help.</span>
+                    <span class="sidebar-link-note">Platform help and follow-up.</span>
                 </span>
             </a>
         </div>
@@ -115,11 +115,10 @@
 
             {% if feedback_is_active %}
             <div class="sidebar-context-card">
-                <div class="sidebar-context-name">Feedback Workspace</div>
-                <div class="sidebar-context-note">Stay inside the full feedback flow from one focused menu.</div>
+                <div class="sidebar-context-name">Feedback</div>
             </div>
             <div class="sidebar-submenu sidebar-project-submenu">
-                <a href="/feedback" class="sidebar-link sidebar-sublink{% if request.url.path == '/feedback' %} active{% endif %}">Workspace Overview</a>
+                <a href="/feedback" class="sidebar-link sidebar-sublink{% if request.url.path == '/feedback' %} active{% endif %}">Overview</a>
                 {% if show_nomination_entry %}
                 <a href="/feedback/nominate" class="sidebar-link sidebar-sublink{% if request.url.path == '/feedback/nominate' %} active{% endif %}">Nominate Evaluators</a>
                 {% endif %}
@@ -128,29 +127,27 @@
             </div>
             {% elif creative_is_active %}
             <div class="sidebar-context-card">
-                <div class="sidebar-context-name">Creative Suite</div>
+                <div class="sidebar-context-name">Creative</div>
             </div>
             <div class="sidebar-submenu sidebar-project-submenu">
-                <a href="/creative" class="sidebar-link sidebar-sublink{% if request.url.path == '/creative' %} active{% endif %}">Creative Studio</a>
+                <a href="/creative" class="sidebar-link sidebar-sublink{% if request.url.path == '/creative' %} active{% endif %}">Studio</a>
                 <a href="/gallery" class="sidebar-link sidebar-sublink{% if request.url.path == '/gallery' %} active{% endif %}">Files</a>
             </div>
             {% elif data_is_active %}
             <div class="sidebar-context-card">
-                <div class="sidebar-context-name">Data Workspace</div>
-                <div class="sidebar-context-note">Tables, connectors, and workflow structure belong together here.</div>
+                <div class="sidebar-context-name">Data</div>
             </div>
             <div class="sidebar-submenu sidebar-project-submenu">
-                <a href="/data" class="sidebar-link sidebar-sublink{% if request.url.path == '/data' %} active{% endif %}">Data Tables</a>
-                <a href="/external-db" class="sidebar-link sidebar-sublink{% if request.url.path == '/external-db' %} active{% endif %}">External Database</a>
-                <a href="/process-designer" class="sidebar-link sidebar-sublink{% if request.url.path == '/process-designer' %} active{% endif %}">Process Designer</a>
+                <a href="/data" class="sidebar-link sidebar-sublink{% if request.url.path == '/data' %} active{% endif %}">Tables</a>
+                <a href="/external-db" class="sidebar-link sidebar-sublink{% if request.url.path == '/external-db' %} active{% endif %}">External DB</a>
+                <a href="/process-designer" class="sidebar-link sidebar-sublink{% if request.url.path == '/process-designer' %} active{% endif %}">Processes</a>
             </div>
             {% elif projects_is_active %}
             <div class="sidebar-context-card">
                 <div class="sidebar-context-name">Help Center</div>
-                <div class="sidebar-context-note">Requests, boards, and project settings live inside one support space.</div>
             </div>
             <div class="sidebar-submenu sidebar-project-submenu">
-                <a href="/projects" class="sidebar-link sidebar-sublink{% if request.url.path == '/projects' %} active{% endif %}">Workspace Overview</a>
+                <a href="/projects" class="sidebar-link sidebar-sublink{% if request.url.path == '/projects' %} active{% endif %}">Overview</a>
                 <a href="/projects/my-requests" class="sidebar-link sidebar-sublink{% if request.url.path == '/projects/my-requests' %} active{% endif %}">My Requests</a>
                 {% if current_ticket_board_key %}
                 <a href="/projects/{{ current_ticket_board_key }}" class="sidebar-link sidebar-sublink active">Current Board</a>
@@ -162,18 +159,16 @@
             {% elif messaging_is_active %}
             <div class="sidebar-context-card">
                 <div class="sidebar-context-name">Messaging</div>
-                <div class="sidebar-context-note">Build templates, manage recipients, and send campaigns from one focused space.</div>
             </div>
             <div class="sidebar-submenu sidebar-project-submenu">
-                <a href="/messaging" class="sidebar-link sidebar-sublink{% if request.url.path == '/messaging' %} active{% endif %}">Campaign Workspace</a>
+                <a href="/messaging" class="sidebar-link sidebar-sublink{% if request.url.path == '/messaging' %} active{% endif %}">Campaigns</a>
             </div>
             {% elif support_is_active %}
             <div class="sidebar-context-card">
                 <div class="sidebar-context-name">Support Center</div>
-                <div class="sidebar-context-note">Track personal tickets and ask the platform team for help from one place.</div>
             </div>
             <div class="sidebar-submenu sidebar-project-submenu">
-                <a href="/support" class="sidebar-link sidebar-sublink{% if request.url.path == '/support' %} active{% endif %}">Support Board</a>
+                <a href="/support" class="sidebar-link sidebar-sublink{% if request.url.path == '/support' %} active{% endif %}">Board</a>
                 {% if can_view_ticketing %}
                 <a href="/projects" class="sidebar-link sidebar-sublink">Help Center</a>
                 {% endif %}
@@ -212,7 +207,7 @@
                 <div class="top-nav-logo"></div>
                 <div>
                     <div class="top-nav-title">Servexa</div>
-                    <div class="top-nav-sub">{% block subtitle %}Data connectors, evaluation pipelines, creative automation and messaging in one place{% endblock %}</div>
+                    <div class="top-nav-sub">{% block subtitle %}Workspace for operations, feedback, data, and creative flows{% endblock %}</div>
                 </div>
             </div>
             <div class="top-nav-right" id="top-nav-menu">

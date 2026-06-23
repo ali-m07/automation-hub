@@ -9,7 +9,7 @@
     <div>
         <div class="hero-eyebrow">Creative automation</div>
         <h1>Creative Studio</h1>
-        <p>Upload PSD, connect data, preview, generate.</p>
+        <p>PSD in, data in, preview, export.</p>
     </div>
 </section>
 
@@ -22,8 +22,14 @@
     <div class="ux-section-title">
         <div>
             <h2>Source files</h2>
-            <p>Pick the PSD and the data file.</p>
+            <p>Choose one PSD and one data file.</p>
         </div>
+    </div>
+
+    <div class="ux-steps compact-steps">
+        <div class="ux-step"><strong>1. PSD</strong><span>Select or upload the template.</span></div>
+        <div class="ux-step"><strong>2. Data</strong><span>Upload the spreadsheet rows.</span></div>
+        <div class="ux-step"><strong>3. Output</strong><span>Preview and generate files.</span></div>
     </div>
 
     <div class="ux-grid-2">
@@ -44,7 +50,7 @@
             <div class="form-group">
                 <label for="psd-file">Upload PSD</label>
                 <input type="file" id="psd-file" class="form-control" accept=".psd" onchange="handlePSDUpload(event)">
-                <div id="psd-file-name" style="margin-top:8px; color:var(--text-secondary);">Choose a PSD file.</div>
+                <div id="psd-file-name" style="margin-top:8px; color:var(--text-secondary);">No PSD selected yet.</div>
             </div>
             <div class="ux-inline-actions">
                 <button id="read-layers-btn" class="btn" type="button" onclick="readCreativeLayers()">Read layers</button>
@@ -59,7 +65,7 @@
             <div class="form-group">
                 <label for="data-file">Excel data file</label>
                 <input type="file" id="data-file" class="form-control" accept=".xlsx,.xls,.csv" onchange="handleDataUpload(event)">
-                <div id="data-file-name" style="margin-top:8px; color:var(--text-secondary);">One row becomes one output.</div>
+                <div id="data-file-name" style="margin-top:8px; color:var(--text-secondary);">One row creates one output.</div>
             </div>
             <div class="ux-help">
                 <p>Use clear columns like `first_name`, `title`, or `image_file`.</p>
@@ -73,7 +79,7 @@
     <div class="ux-section-title">
         <div>
             <h2>PSD layers</h2>
-            <p>Choose the layers that should receive data.</p>
+            <p>Pick the layers that should receive values.</p>
         </div>
     </div>
     <div class="ux-grid-2">
@@ -116,7 +122,7 @@
     <div class="ux-section-title">
         <div>
             <h2>Layer mapping</h2>
-            <p>Match PSD layers to data columns.</p>
+            <p>Connect layers to spreadsheet columns.</p>
         </div>
     </div>
     <datalist id="layer-names"></datalist>
@@ -152,7 +158,7 @@
     <div class="ux-section-title">
         <div>
             <h2>Preview and generate</h2>
-            <p>Preview the first row, then run the batch.</p>
+            <p>Preview once, then run the batch.</p>
         </div>
     </div>
     <div class="ux-grid-2">
@@ -224,7 +230,7 @@
     <div class="ux-section-title">
         <div>
             <h2>Job history</h2>
-            <p>Recent generation jobs and downloads.</p>
+            <p>Recent jobs and downloads.</p>
         </div>
         {% if user and user.role == 'admin' %}
         <div class="ux-inline-actions">

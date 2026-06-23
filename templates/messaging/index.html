@@ -9,7 +9,7 @@
     <div>
         <div class="hero-eyebrow">Messaging</div>
         <h1>Email campaigns</h1>
-        <p>Upload recipients, preview the message, and send.</p>
+        <p>Recipients, template, preview, send.</p>
     </div>
     <div class="hero-actions">
         <button class="btn" type="button" onclick="showMessagingSettings()">SMTP settings</button>
@@ -26,6 +26,7 @@
     <div class="ux-section-title">
         <div>
             <h2>Campaign setup</h2>
+            <p>Everything needed for one clean send.</p>
         </div>
     </div>
 
@@ -44,7 +45,7 @@
                 <label for="email-data-file">Recipient Excel file</label>
                 <input type="file" id="email-data-file" class="form-control" accept=".xlsx,.xls" onchange="handleEmailDataUpload(event)">
                 <div id="email-data-file-name" style="margin-top:8px; color:var(--text-secondary);"></div>
-                <small style="color:var(--text-secondary);">The file should include at least one recipient email column.</small>
+                <small style="color:var(--text-secondary);">Include at least one email column.</small>
             </div>
         </div>
 
