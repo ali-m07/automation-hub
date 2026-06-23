@@ -2623,6 +2623,17 @@ body {
         linear-gradient(160deg, var(--bg-secondary), var(--bg-tertiary));
 }
 
+.ambient-network {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: -2;
+    pointer-events: none;
+    opacity: .9;
+    mix-blend-mode: normal;
+}
+
 .container {
     max-width: 1360px;
 }
@@ -2728,6 +2739,7 @@ body {
     background:
         linear-gradient(135deg, color-mix(in srgb, var(--surface-raised) 94%, transparent), color-mix(in srgb, var(--surface-muted) 88%, transparent));
     box-shadow: 0 18px 48px color-mix(in srgb, var(--shadow) 100%, transparent), inset 0 1px rgba(255,255,255,.18);
+    backdrop-filter: blur(22px) saturate(145%);
 }
 
 .top-nav-left {
@@ -2843,6 +2855,9 @@ body {
 [data-theme="dark"] .card {
     border-radius: var(--card-radius);
     padding: 24px;
+    background:
+        linear-gradient(145deg, color-mix(in srgb, var(--surface-raised) 94%, transparent), color-mix(in srgb, var(--surface-muted) 86%, transparent)) !important;
+    backdrop-filter: blur(20px) saturate(140%);
 }
 
 .ux-card,
@@ -2931,6 +2946,16 @@ body {
     background:
         radial-gradient(circle at top right, color-mix(in srgb, var(--mint-soft) 68%, transparent), transparent 24%),
         linear-gradient(160deg, color-mix(in srgb, var(--surface-raised) 92%, transparent), color-mix(in srgb, var(--surface-muted) 84%, transparent)) !important;
+}
+
+[data-theme="dark"] .ambient-network {
+    opacity: .66;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ambient-network {
+        display: none;
+    }
 }
 
 .sheet-workspace {

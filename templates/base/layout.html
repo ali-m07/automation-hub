@@ -8,6 +8,7 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body class="sidebar-shell">
+    <canvas id="ambient-network" class="ambient-network" aria-hidden="true"></canvas>
     {% set user_modules = user.modules or [] if user else [] %}
     {% set can_view_feedback = user and (user.role == 'admin' or 'feedback_180' in user_modules or 'feedback_180_admin' in user_modules or 'feedback_hrbp' in user_modules or 'feedback' in user_modules) %}
     {% set can_view_ticketing = user and (user.role == 'admin' or 'ticketing' in user_modules or 'ticketing_admin' in user_modules) %}
@@ -364,6 +365,174 @@
 
     <script src="/static/js/app.js?v=20260622-creative-jobs-fix"></script>
     <script>
+        function initAmbientNetwork() {
+            const canvas = document.getElementById("ambient-network");
+            if (!canvas) return;
+
+            const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+            if (reducedMotion) {
+                canvas.style.display = "none";
+                return;
+            }
+
+            const ctx = canvas.getContext("2d");
+            if (!ctx) return;
+
+            let animationFrame = null;
+            let width = 0;
+            let height = 0;
+            let dpr = 1;
+            let nodes = [];
+            const pointer = {
+                x: -9999,
+                y: -9999,
+                active: false,
+                radius: 160
+            };
+
+            function readPalette() {
+                const styles = getComputedStyle(document.documentElement);
+                return {
+                    line: styles.getPropertyValue("--accent").trim() || "#8f86dc",
+                    node: styles.getPropertyValue("--mint").trim() || "#a9e4d4",
+                    glow: styles.getPropertyValue("--blue").trim() || "#a9d8f5",
+                    text: styles.getPropertyValue("--text-secondary").trim() || "#70778b"
+                };
+            }
+
+            function resize() {
+                dpr = Math.min(window.devicePixelRatio || 1, 1.6);
+                width = window.innerWidth;
+                height = window.innerHeight;
+                canvas.width = Math.floor(width * dpr);
+                canvas.height = Math.floor(height * dpr);
+                canvas.style.width = width + "px";
+                canvas.style.height = height + "px";
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                buildNodes();
+            }
+
+            function buildNodes() {
+                const density = width < 640 ? 26 : width < 1200 ? 40 : 54;
+                nodes = Array.from({ length: density }, () => ({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    vx: (Math.random() - 0.5) * 0.34,
+                    vy: (Math.random() - 0.5) * 0.34,
+                    r: Math.random() * 2.2 + 1.4
+                }));
+            }
+
+            function draw() {
+                const palette = readPalette();
+                ctx.clearRect(0, 0, width, height);
+
+                for (const node of nodes) {
+                    node.x += node.vx;
+                    node.y += node.vy;
+
+                    if (node.x < -40 || node.x > width + 40) node.vx *= -1;
+                    if (node.y < -40 || node.y > height + 40) node.vy *= -1;
+
+                    if (pointer.active) {
+                        const dx = pointer.x - node.x;
+                        const dy = pointer.y - node.y;
+                        const distance = Math.hypot(dx, dy);
+                        if (distance < pointer.radius) {
+                            const force = (pointer.radius - distance) / pointer.radius;
+                            node.x -= (dx / Math.max(distance, 1)) * force * 1.8;
+                            node.y -= (dy / Math.max(distance, 1)) * force * 1.8;
+                        }
+                    }
+                }
+
+                for (let i = 0; i < nodes.length; i++) {
+                    for (let j = i + 1; j < nodes.length; j++) {
+                        const a = nodes[i];
+                        const b = nodes[j];
+                        const dx = a.x - b.x;
+                        const dy = a.y - b.y;
+                        const distance = Math.hypot(dx, dy);
+                        if (distance > 190) continue;
+
+                        let alpha = 0.16 - (distance / 190) * 0.14;
+                        if (pointer.active) {
+                            const da = Math.hypot(pointer.x - a.x, pointer.y - a.y);
+                            const db = Math.hypot(pointer.x - b.x, pointer.y - b.y);
+                            if (da < pointer.radius || db < pointer.radius) {
+                                alpha += 0.16;
+                            }
+                        }
+
+                        ctx.beginPath();
+                        ctx.moveTo(a.x, a.y);
+                        ctx.lineTo(b.x, b.y);
+                        ctx.strokeStyle = hexToRgba(palette.line, Math.max(alpha, 0.02));
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                    }
+                }
+
+                for (const node of nodes) {
+                    let alpha = 0.44;
+                    let radius = node.r;
+                    if (pointer.active) {
+                        const distance = Math.hypot(pointer.x - node.x, pointer.y - node.y);
+                        if (distance < pointer.radius) {
+                            alpha = 0.92;
+                            radius = node.r + 1.4;
+                        }
+                    }
+
+                    ctx.beginPath();
+                    ctx.arc(node.x, node.y, radius, 0, Math.PI * 2);
+                    ctx.fillStyle = hexToRgba(palette.node, alpha);
+                    ctx.shadowBlur = 14;
+                    ctx.shadowColor = hexToRgba(palette.glow, 0.3);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+
+                animationFrame = window.requestAnimationFrame(draw);
+            }
+
+            function hexToRgba(color, alpha) {
+                const value = color.replace("#", "").trim();
+                if (value.length !== 6) return `rgba(143,134,220,${alpha})`;
+                const bigint = parseInt(value, 16);
+                const r = (bigint >> 16) & 255;
+                const g = (bigint >> 8) & 255;
+                const b = bigint & 255;
+                return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+            }
+
+            function handlePointerMove(event) {
+                pointer.x = event.clientX;
+                pointer.y = event.clientY;
+                pointer.active = true;
+            }
+
+            function handlePointerLeave() {
+                pointer.active = false;
+            }
+
+            resize();
+            draw();
+
+            window.addEventListener("resize", resize);
+            window.addEventListener("pointermove", handlePointerMove, { passive: true });
+            window.addEventListener("pointerdown", handlePointerMove, { passive: true });
+            window.addEventListener("pointerleave", handlePointerLeave);
+            document.addEventListener("visibilitychange", () => {
+                if (document.hidden && animationFrame) {
+                    cancelAnimationFrame(animationFrame);
+                    animationFrame = null;
+                } else if (!document.hidden && !animationFrame) {
+                    draw();
+                }
+            });
+        }
+
         function highlightActiveSidebarLink() {
             const path = window.location.pathname;
             const links = document.querySelectorAll(".sidebar-link");
@@ -379,6 +548,7 @@
         }
 
         document.addEventListener("DOMContentLoaded", () => {
+            initAmbientNetwork();
             highlightActiveSidebarLink();
             window.addEventListener("hashchange", highlightActiveSidebarLink);
         });
