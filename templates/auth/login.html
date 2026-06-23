@@ -20,10 +20,10 @@
             </div>
 
             <div class="auth-hero-content">
-                <div class="auth-eyebrow">خوش آمدید</div>
-                <h1 class="auth-hero-title">کارها را جمع‌وجور پیش ببرید،<br>تصمیم‌ها را روشن‌تر بگیرید.</h1>
+                <div class="auth-eyebrow">Welcome</div>
+                <h1 class="auth-hero-title">Keep work moving,<br>keep decisions clear.</h1>
                 <p class="auth-hero-subtitle">
-                    Servexa keeps everyday work focused, connected, and easier to move forward.
+                    Start focused. Stay connected. Move faster with Servexa.
                 </p>
             </div>
         </section>
@@ -46,7 +46,7 @@
                     <input type="text" id="totp-code" name="code" class="form-control" placeholder="000000" maxlength="8" pattern="[0-9\s]*" autocomplete="one-time-code" required>
                 </div>
                 <button class="btn btn-success auth-main-cta" type="submit">Verify and sign in</button>
-                <a class="auth-link" href="/login">← Back to sign in</a>
+                <a class="auth-link" href="/login">&larr; Back to sign in</a>
             </form>
 
             <div class="auth-status-stack">
@@ -276,80 +276,80 @@
         }
 
         function showSignupForm() {
-            document.getElementById('signup-form').style.display = 'block';
+            document.getElementById("signup-form").style.display = "block";
         }
         function hideSignupForm() {
-            document.getElementById('signup-form').style.display = 'none';
-            document.getElementById('signup-status').textContent = '';
-            document.getElementById('signup-status').className = 'status-box';
+            document.getElementById("signup-form").style.display = "none";
+            document.getElementById("signup-status").textContent = "";
+            document.getElementById("signup-status").className = "status-box";
         }
         function showForgotPassword() {
-            document.getElementById('forgot-password-form').style.display = 'block';
+            document.getElementById("forgot-password-form").style.display = "block";
         }
         function hideForgotPassword() {
-            document.getElementById('forgot-password-form').style.display = 'none';
-            document.getElementById('forgot-status').textContent = '';
+            document.getElementById("forgot-password-form").style.display = "none";
+            document.getElementById("forgot-status").textContent = "";
         }
         async function submitForgotPassword() {
-            const email = document.getElementById('forgot-email').value.trim();
-            const statusEl = document.getElementById('forgot-status');
+            const email = document.getElementById("forgot-email").value.trim();
+            const statusEl = document.getElementById("forgot-status");
             if (!email) {
-                statusEl.textContent = 'Enter your email';
-                statusEl.className = 'status-box error';
+                statusEl.textContent = "Enter your email";
+                statusEl.className = "status-box error";
                 return;
             }
-            statusEl.textContent = 'Sending...';
-            statusEl.className = 'status-box info';
+            statusEl.textContent = "Sending...";
+            statusEl.className = "status-box info";
             try {
-                const res = await fetch('/api/forgot-password', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                const res = await fetch("/api/forgot-password", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ email }),
                 });
                 const data = await res.json();
                 if (data.success) {
-                    statusEl.textContent = data.message || 'Check your email for the reset link.';
-                    statusEl.className = 'status-box success';
+                    statusEl.textContent = data.message || "Check your email for the reset link.";
+                    statusEl.className = "status-box success";
                 } else {
-                    statusEl.textContent = data.error || 'Failed';
-                    statusEl.className = 'status-box error';
+                    statusEl.textContent = data.error || "Failed";
+                    statusEl.className = "status-box error";
                 }
             } catch (e) {
-                statusEl.textContent = 'Error: ' + e.message;
-                statusEl.className = 'status-box error';
+                statusEl.textContent = "Error: " + e.message;
+                statusEl.className = "status-box error";
             }
         }
         async function handleSignup(event) {
             event.preventDefault();
-            const statusEl = document.getElementById('signup-status');
+            const statusEl = document.getElementById("signup-status");
             const form = event.target;
-            const email = form.querySelector('#signup-email').value.trim();
-            const first_name = form.querySelector('#signup-first-name').value.trim();
-            const last_name = form.querySelector('#signup-last-name').value.trim();
-            const password = form.querySelector('#signup-password').value;
+            const email = form.querySelector("#signup-email").value.trim();
+            const first_name = form.querySelector("#signup-first-name").value.trim();
+            const last_name = form.querySelector("#signup-last-name").value.trim();
+            const password = form.querySelector("#signup-password").value;
 
-            statusEl.textContent = 'Creating account...';
-            statusEl.className = 'status-box info';
+            statusEl.textContent = "Creating account...";
+            statusEl.className = "status-box info";
 
             try {
-                const res = await fetch('/api/signup', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                const res = await fetch("/api/signup", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ username: email, password, first_name, last_name }),
                 });
                 const data = await res.json();
                 if (data.success) {
-                    statusEl.textContent = data.message || 'Account created. Please wait for admin approval.';
-                    statusEl.className = 'status-box success';
+                    statusEl.textContent = data.message || "Account created. Please wait for admin approval.";
+                    statusEl.className = "status-box success";
                     form.reset();
                     setTimeout(() => hideSignupForm(), 3000);
                 } else {
-                    statusEl.textContent = data.error || 'Failed to create account';
-                    statusEl.className = 'status-box error';
+                    statusEl.textContent = data.error || "Failed to create account";
+                    statusEl.className = "status-box error";
                 }
             } catch (e) {
-                statusEl.textContent = 'Error: ' + e.message;
-                statusEl.className = 'status-box error';
+                statusEl.textContent = "Error: " + e.message;
+                statusEl.className = "status-box error";
             }
         }
 

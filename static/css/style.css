@@ -2950,13 +2950,16 @@ body {
 
 .auth-body {
     min-height: 100vh;
-    padding: 20px;
+    padding: 10px 20px;
     display: grid;
-    place-items: center;
+    align-items: start;
+    justify-items: center;
+    overflow: hidden;
 }
 
 .auth-shell {
     width: min(1180px, 100%);
+    min-height: calc(100vh - 20px);
     display: grid;
     grid-template-columns: minmax(280px, .88fr) minmax(360px, .96fr);
     gap: 18px;
@@ -2976,11 +2979,11 @@ body {
 }
 
 .auth-hero-panel {
-    padding: 28px;
+    padding: 24px 28px;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
-    min-height: 680px;
+    justify-content: flex-start;
+    min-height: 0;
     background:
         radial-gradient(circle at 15% 15%, color-mix(in srgb, var(--mint) 28%, transparent), transparent 28%),
         radial-gradient(circle at 85% 80%, color-mix(in srgb, var(--lavender) 24%, transparent), transparent 30%),
@@ -2988,8 +2991,8 @@ body {
 }
 
 .auth-form-panel {
-    padding: 28px;
-    min-height: 680px;
+    padding: 24px 28px;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -3030,8 +3033,10 @@ body {
 
 .auth-hero-content {
     display: grid;
-    gap: 18px;
+    gap: 14px;
     max-width: 28rem;
+    margin-top: auto;
+    margin-bottom: auto;
 }
 
 .auth-eyebrow {
@@ -3109,7 +3114,7 @@ body {
 }
 
 .auth-panel-header {
-    margin-bottom: 16px;
+    margin-bottom: 12px;
 }
 
 .auth-panel-title {
@@ -3125,7 +3130,7 @@ body {
 
 .auth-form-stack {
     display: grid;
-    gap: 14px;
+    gap: 12px;
 }
 
 .auth-form-panel .form-group {
@@ -3133,12 +3138,12 @@ body {
 }
 
 .auth-form-panel .form-control {
-    min-height: 50px;
+    min-height: 48px;
     border-radius: 16px;
 }
 
 .auth-main-cta {
-    min-height: 52px !important;
+    min-height: 50px !important;
     width: 100%;
     justify-content: center;
     font-size: 1rem;
@@ -3180,8 +3185,8 @@ body {
 }
 
 .auth-toggle-box {
-    margin-top: 14px;
-    padding-top: 14px;
+    margin-top: 10px;
+    padding-top: 10px;
     border-top: 1px solid color-mix(in srgb, var(--border-color) 86%, transparent);
 }
 
@@ -3255,6 +3260,7 @@ body {
 
     .auth-shell {
         grid-template-columns: 1fr;
+        min-height: auto;
     }
 
     .auth-hero-panel,
@@ -3318,12 +3324,13 @@ body {
     }
 
     .auth-body {
-        padding: 12px;
+        padding: 8px 12px 12px;
+        overflow-y: auto;
     }
 
     .auth-hero-panel,
     .auth-form-panel {
-        padding: 16px;
+        padding: 14px 16px;
         border-radius: 24px;
     }
 
