@@ -20,6 +20,37 @@
     </div>
 </section>
 
+<section id="summary-momentum" class="summary-momentum-shell card">
+    <div class="summary-momentum-head">
+        <div>
+            <div class="hero-eyebrow" style="margin-bottom:8px;">Momentum</div>
+            <h2>Build flow, not just tasks.</h2>
+            <p>Track your workspace rhythm, focus level, and current streak.</p>
+        </div>
+        <div class="summary-level-pill">Level <span id="summary-level-value">1</span></div>
+    </div>
+    <div class="summary-momentum-grid">
+        <div class="summary-score-card summary-score-card--primary">
+            <small>Workspace XP</small>
+            <strong id="summary-xp-value">0</strong>
+            <span id="summary-focus-label">Starting up</span>
+        </div>
+        <div class="summary-score-card">
+            <small>Current streak</small>
+            <strong id="summary-streak-value">0 days</strong>
+            <span>Stay active across your core tools.</span>
+        </div>
+        <div class="summary-score-card">
+            <small>Progress to next level</small>
+            <strong id="summary-progress-value">0%</strong>
+            <div class="summary-progress-track">
+                <div id="summary-progress-bar" class="summary-progress-bar" style="width:0%;"></div>
+            </div>
+        </div>
+    </div>
+    <div id="summary-achievements" class="summary-achievement-row"></div>
+</section>
+
 <section class="summary-quick-grid">
     {% if can_view_feedback %}
     <a class="summary-quick-card" href="/feedback">

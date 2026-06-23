@@ -438,6 +438,13 @@ async function loadSummary() {
     const cardsEl = document.getElementById('summary-cards');
     const jobsEl = document.getElementById('summary-last-jobs');
     const ticketEl = document.getElementById('summary-last-ticket');
+    const xpEl = document.getElementById('summary-xp-value');
+    const levelEl = document.getElementById('summary-level-value');
+    const streakEl = document.getElementById('summary-streak-value');
+    const progressEl = document.getElementById('summary-progress-value');
+    const progressBarEl = document.getElementById('summary-progress-bar');
+    const focusEl = document.getElementById('summary-focus-label');
+    const achievementsEl = document.getElementById('summary-achievements');
     if (!cardsEl || !jobsEl || !ticketEl) return;
     try {
         const res = await fetch('/api/summary', { credentials: 'include' });
@@ -463,6 +470,34 @@ async function loadSummary() {
                 <p>Generated files ready to review or download.</p>
             </div>
         `;
+        const tablesCount = Number(data.tables_count ?? 0);
+        const jobsCount = Number((data.last_jobs || []).length);
+        const galleryCount = Number(data.gallery_count ?? 0);
+        const hasTicket = Boolean(data.last_ticket);
+        const xp = (tablesCount * 8) + (jobsCount * 16) + (galleryCount * 4) + (hasTicket ? 14 : 0);
+        const levelSize = 40;
+        const level = Math.max(1, Math.floor(xp / levelSize) + 1);
+        const levelProgress = Math.max(8, Math.min(100, Math.round(((xp % levelSize) / levelSize) * 100)));
+        const streak = Math.max(1, Math.min(14, jobsCount + galleryCount + (hasTicket ? 2 : 0)));
+        const focusMode = jobsCount >= tablesCount && jobsCount >= galleryCount
+            ? 'Creative momentum'
+            : tablesCount >= galleryCount
+                ? 'Data flow'
+                : 'Delivery focus';
+        if (xpEl) xpEl.textContent = xp;
+        if (levelEl) levelEl.textContent = level;
+        if (streakEl) streakEl.textContent = `${streak} day${streak === 1 ? '' : 's'}`;
+        if (progressEl) progressEl.textContent = `${levelProgress}%`;
+        if (progressBarEl) progressBarEl.style.width = `${levelProgress}%`;
+        if (focusEl) focusEl.textContent = focusMode;
+        if (achievementsEl) {
+            const badges = [];
+            if (tablesCount > 0) badges.push('<span class="summary-achievement"><b>#</b> Data builder</span>');
+            if (jobsCount > 0) badges.push('<span class="summary-achievement"><b>*</b> Creative runner</span>');
+            if (galleryCount > 0) badges.push('<span class="summary-achievement"><b>+</b> Asset collector</span>');
+            if (hasTicket) badges.push('<span class="summary-achievement"><b>!</b> Workflow active</span>');
+            achievementsEl.innerHTML = badges.join('') || '<span class="summary-achievement"><b>~</b> First move pending</span>';
+        }
         const jobs = data.last_jobs || [];
         if (jobs.length === 0) {
             jobsEl.innerHTML = '<p style="color:#6b7280;">No Creative jobs yet.</p>';
