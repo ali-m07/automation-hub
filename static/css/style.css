@@ -2218,6 +2218,8 @@ td, [data-theme="dark"] td { background: color-mix(in srgb, var(--surface-raised
 @keyframes driftOne { 0% { transform: translate3d(0,0,0) scale(1); } 100% { transform: translate3d(-24px, 18px, 0) scale(1.08); } }
 @keyframes driftTwo { 0% { transform: translate3d(0,0,0) scale(1); } 100% { transform: translate3d(18px, -20px, 0) scale(1.06); } }
 @keyframes floatMark { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes heroLift { 0% { opacity: 0; transform: translateY(14px) scale(.985); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes heroFade { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: translateY(0); } }
 
 /* Unified product pages */
 .page-hero {
@@ -3052,6 +3054,20 @@ body {
         linear-gradient(160deg, color-mix(in srgb, var(--surface-raised) 90%, transparent), color-mix(in srgb, var(--surface-muted) 86%, transparent));
 }
 
+.auth-hero-panel::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle at 20% 22%, color-mix(in srgb, var(--mint) 14%, transparent), transparent 24%),
+        radial-gradient(circle at 82% 78%, color-mix(in srgb, var(--blue) 12%, transparent), transparent 22%),
+        linear-gradient(135deg, transparent 0%, rgba(255,255,255,.16) 34%, transparent 66%);
+    background-size: auto, auto, 180% 180%;
+    animation: gradientShift 9s ease-in-out infinite;
+    pointer-events: none;
+    opacity: .85;
+}
+
 .auth-form-panel {
     padding: 24px 28px;
     min-height: 0;
@@ -3074,6 +3090,7 @@ body {
     box-shadow:
         0 16px 34px color-mix(in srgb, var(--accent) 22%, transparent),
         inset 0 1px rgba(255,255,255,.3);
+    animation: floatMark 6s ease-in-out infinite;
 }
 
 .auth-brand-copy h1,
@@ -3115,6 +3132,7 @@ body {
     font-weight: 800;
     letter-spacing: .08em;
     text-transform: uppercase;
+    box-shadow: 0 10px 24px color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 .auth-hero-title {
@@ -3122,6 +3140,7 @@ body {
     line-height: 1;
     letter-spacing: -.065em;
     margin: 0;
+    animation: heroLift .75s cubic-bezier(.2, .8, .2, 1) both;
 }
 
 .auth-hero-subtitle {
@@ -3129,6 +3148,7 @@ body {
     font-size: .98rem;
     color: var(--text-secondary);
     line-height: 1.55;
+    animation: heroFade .95s ease both;
 }
 
 .auth-feature-grid {
